@@ -3,11 +3,13 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
+import { useClusterStore } from '@/stores/cluster'
+import BrandMark from '@/components/BrandMark.vue'
 import { getCaptcha, getPublicKey } from '@/api/auth'
 
-/** 验证码原图基准尺寸 */
-const CAPTCHA_W = 280
-const CAPTCHA_H = 110
+/** 验证码原图基准尺寸（须与后端 CaptchaService 的 WIDTH / HEIGHT 保持一致） */
+const CAPTCHA_W = 320
+const CAPTCHA_H = 150
 
 const auth = useAuthStore()
 const ui = useUiStore()
@@ -302,9 +304,12 @@ const confirmLogin = async () => {
     loginStatus.value = 'success'
     ui.success(`欢迎回来，${submit.profile.name}`)
     const target = submit.profile.roleCode === 'MERCHANT' ? '/merchant' : '/'
+    // 跳转动画期间并行预取大盘数据：原来要等 900ms 跳过去后 TopBar 挂载才发请求，
+    // 落地后白屏等待；现在请求与动画同时进行，且成功动画从 900ms 缩短到 300ms。
+    if (target === '/') useClusterStore().load()
     setTimeout(() => {
       router.replace(target)
-    }, 900)
+    }, 300)
   } catch (error) {
     loginStatus.value = 'failed'
     const errMsg = error?.message || '登录失败，请稍后重试'
@@ -351,26 +356,26 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="relative flex min-h-screen w-full flex-col overflow-hidden bg-titan lg:flex-row">
-    <!-- ==================== 左：品牌展示区（沿用应用侧栏同款深空蓝，登录页与控制台同源） ==================== -->
+    <!-- ==================== 左：品牌展示区（与应用侧栏同为浅色，登录页与控制台同源） ==================== -->
     <div
-      class="sidebar-bg relative flex flex-col justify-between border-b border-white/10 p-6 lg:w-[54%] lg:border-b-0 lg:border-r lg:p-12 xl:w-[56%]"
+      class="sidebar-bg relative flex flex-col justify-between border-b border-line p-6 lg:w-[54%] lg:border-b-0 lg:border-r lg:p-12 xl:w-[56%]"
     >
       <!-- 与侧栏一致的网格纹理 -->
-      <div class="sidebar-grid pointer-events-none absolute inset-0 opacity-70"></div>
-      <!-- 顶部高光 -->
-      <div class="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white/[0.06] to-transparent"></div>
+      <div class="sidebar-grid pointer-events-none absolute inset-0"></div>
+      <!-- 顶部淡青渐变，给浅色面板一点层次，避免大面积留白 -->
+      <div class="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-brand-50 to-transparent"></div>
 
       <!-- 品牌标识 -->
       <div class="relative z-10 flex items-center gap-3">
         <div
           class="grid h-11 w-11 place-items-center rounded-xl text-white shadow-lift"
-          style="background: linear-gradient(135deg, #2563eb, #0ea5e9)"
+          style="background: linear-gradient(135deg, #0d9488, #06b6d4)"
         >
-          <i class="fa-solid fa-globe text-[18px]"></i>
+          <BrandMark class="h-[26px] w-[26px]" />
         </div>
         <div>
-          <div class="text-[17px] font-bold tracking-tight text-white">视界译 VisionTrans</div>
-          <div class="text-[11.5px] text-sky-200/70">VR 空间级多模态实时解析系统</div>
+          <div class="text-[17px] font-bold tracking-tight text-ink">视界译 VisionTrans</div>
+          <div class="text-[11.5px] text-sub">VR 空间级多模态实时解析系统</div>
         </div>
       </div>
 
@@ -385,7 +390,7 @@ onBeforeUnmount(() => {
               'border-rose-200': mascotSpeech.type === 'error',
               'border-emerald-200': mascotSpeech.type === 'success',
               'border-amber-200': mascotSpeech.type === 'warning',
-              'border-blue-100': ['normal', 'guide', 'shy', 'curious'].includes(mascotSpeech.type)
+              'border-brand-100': ['normal', 'guide', 'shy', 'curious'].includes(mascotSpeech.type)
             }"
           >
             <!-- 气泡头：徽章 + 身份 -->
@@ -396,7 +401,7 @@ onBeforeUnmount(() => {
                   'bg-rose-50 text-rose-700': mascotSpeech.type === 'error',
                   'bg-emerald-50 text-emerald-700': mascotSpeech.type === 'success',
                   'bg-amber-50 text-amber-700': mascotSpeech.type === 'warning',
-                  'bg-blue-50 text-blue-700': ['normal', 'guide', 'shy', 'curious'].includes(mascotSpeech.type)
+                  'bg-brand-50 text-brand-700': ['normal', 'guide', 'shy', 'curious'].includes(mascotSpeech.type)
                 }"
               >
                 <span
@@ -405,7 +410,7 @@ onBeforeUnmount(() => {
                     'bg-rose-500 animate-ping': mascotSpeech.type === 'error',
                     'bg-emerald-500 animate-bounce': mascotSpeech.type === 'success',
                     'bg-amber-500 animate-pulse': mascotSpeech.type === 'warning',
-                    'bg-blue-500 animate-pulse': ['normal', 'guide', 'shy', 'curious'].includes(mascotSpeech.type)
+                    'bg-brand-500 animate-pulse': ['normal', 'guide', 'shy', 'curious'].includes(mascotSpeech.type)
                   }"
                 ></span>
                 {{ mascotSpeech.tag }}
@@ -481,16 +486,16 @@ onBeforeUnmount(() => {
                 <!-- 围巾：品牌 冰蓝 → 电蓝，与控制台主色同源 -->
                 <linearGradient id="owlScarf" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stop-color="#38BDF8" />
-                  <stop offset="100%" stop-color="#2563EB" />
+                  <stop offset="100%" stop-color="#0D9488" />
                 </linearGradient>
 
                 <radialGradient id="owlGround" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stop-color="#04122f" stop-opacity="0.5" />
-                  <stop offset="100%" stop-color="#04122f" stop-opacity="0" />
+                  <stop offset="0%" stop-color="#0f172a" stop-opacity="0.5" />
+                  <stop offset="100%" stop-color="#0f172a" stop-opacity="0" />
                 </radialGradient>
 
                 <filter id="wingShadow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#04122f" flood-opacity="0.45" />
+                  <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#0f172a" flood-opacity="0.45" />
                 </filter>
               </defs>
 
@@ -502,11 +507,11 @@ onBeforeUnmount(() => {
               <path d="M 158 254 C 158 262 168 262 170 254 C 170 262 180 262 182 254" fill="none" stroke="#F59E0B" stroke-width="6" stroke-linecap="round" />
 
               <!-- 耳羽 -->
-              <polygon points="76,78 60,34 94,56" fill="#E2C99F" />
-              <polygon points="204,78 220,34 186,56" fill="#E2C99F" />
+              <polygon points="76,78 60,34 94,56" fill="#E2C99F" stroke="#C9AB7E" stroke-width="2.5" />
+              <polygon points="204,78 220,34 186,56" fill="#E2C99F" stroke="#C9AB7E" stroke-width="2.5" />
 
-              <!-- 身体 -->
-              <rect x="52" y="48" width="176" height="204" rx="88" fill="url(#owlBody)" />
+              <!-- 身体（浅色主题下加暖褐描边，避免奶油色身体糊在白底上） -->
+              <rect x="52" y="48" width="176" height="204" rx="88" fill="url(#owlBody)" stroke="#D3B78C" stroke-width="3" />
 
               <!-- 肚腹与绒羽纹 -->
               <path d="M 85 160 Q 140 185 195 160 Q 185 240 140 242 Q 95 240 85 160 Z" fill="url(#owlBelly)" />
@@ -525,13 +530,13 @@ onBeforeUnmount(() => {
               <g v-if="mascotMood === 'normal' || mascotMood === 'curious'">
                 <g class="transition-transform duration-75 ease-out" :style="{ transform: `translate(${pupilOffset.x}px, ${pupilOffset.y}px)` }">
                   <circle cx="102" cy="120" :r="mascotMood === 'curious' ? 14.5 : 13" fill="#4B3A1E" />
-                  <circle cx="102" cy="120" r="13" fill="none" stroke="#0EA5E9" stroke-width="1.8" opacity="0.55" />
+                  <circle cx="102" cy="120" r="13" fill="none" stroke="#06B6D4" stroke-width="1.8" opacity="0.55" />
                   <circle cx="98" cy="116" r="4.2" fill="#FFFFFF" />
                   <circle cx="106" cy="123" r="2.2" fill="#FFFFFF" />
                 </g>
                 <g class="transition-transform duration-75 ease-out" :style="{ transform: `translate(${pupilOffset.x}px, ${pupilOffset.y}px)` }">
                   <circle cx="178" cy="120" :r="mascotMood === 'curious' ? 14.5 : 13" fill="#4B3A1E" />
-                  <circle cx="178" cy="120" r="13" fill="none" stroke="#0EA5E9" stroke-width="1.8" opacity="0.55" />
+                  <circle cx="178" cy="120" r="13" fill="none" stroke="#06B6D4" stroke-width="1.8" opacity="0.55" />
                   <circle cx="174" cy="116" r="4.2" fill="#FFFFFF" />
                   <circle cx="182" cy="123" r="2.2" fill="#FFFFFF" />
                 </g>
@@ -571,16 +576,16 @@ onBeforeUnmount(() => {
               <!-- 凝神屏息：提交校验中 -->
               <g v-else-if="mascotMood === 'focus'">
                 <circle cx="102" cy="120" r="9" fill="#4B3A1E" />
-                <circle cx="102" cy="120" r="9" fill="none" stroke="#0EA5E9" stroke-width="1.8" opacity="0.6" />
+                <circle cx="102" cy="120" r="9" fill="none" stroke="#06B6D4" stroke-width="1.8" opacity="0.6" />
                 <circle cx="99.5" cy="117" r="2.6" fill="#FFFFFF" />
                 <circle cx="178" cy="120" r="9" fill="#4B3A1E" />
-                <circle cx="178" cy="120" r="9" fill="none" stroke="#0EA5E9" stroke-width="1.8" opacity="0.6" />
+                <circle cx="178" cy="120" r="9" fill="none" stroke="#06B6D4" stroke-width="1.8" opacity="0.6" />
                 <circle cx="175.5" cy="117" r="2.6" fill="#FFFFFF" />
               </g>
 
               <g v-else-if="mascotMood === 'dizzy'">
-                <path d="M 102 120 m -16 0 a 16 16 0 1 0 32 0 a 11 11 0 1 0 -22 0 a 6 6 0 1 0 12 0" fill="none" stroke="#0EA5E9" stroke-width="3.5" stroke-linecap="round" />
-                <path d="M 178 120 m -16 0 a 16 16 0 1 0 32 0 a 11 11 0 1 0 -22 0 a 6 6 0 1 0 12 0" fill="none" stroke="#0EA5E9" stroke-width="3.5" stroke-linecap="round" />
+                <path d="M 102 120 m -16 0 a 16 16 0 1 0 32 0 a 11 11 0 1 0 -22 0 a 6 6 0 1 0 12 0" fill="none" stroke="#06B6D4" stroke-width="3.5" stroke-linecap="round" />
+                <path d="M 178 120 m -16 0 a 16 16 0 1 0 32 0 a 11 11 0 1 0 -22 0 a 6 6 0 1 0 12 0" fill="none" stroke="#06B6D4" stroke-width="3.5" stroke-linecap="round" />
               </g>
 
               <g v-else-if="mascotMood === 'success'">
@@ -612,7 +617,7 @@ onBeforeUnmount(() => {
                   fill="#38BDF8"
                   d="M 174 130 C 171 156 170 182 172 202 C 173 210 183 210 184 202 C 186 182 185 156 182 130 Z"
                 />
-                <g fill="#0EA5E9">
+                <g fill="#06B6D4">
                   <g class="tear-drop drop-a">
                     <path transform="translate(102,132)" d="M 0 0 C 3.2 4.6 5 7.6 5 9.8 A 5 5 0 0 1 -5 9.8 C -5 7.6 -3.2 4.6 0 0 Z" />
                   </g>
@@ -666,23 +671,23 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- 能力条：统一冰蓝玻璃质感，不再五色杂陈 -->
-        <div class="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 backdrop-blur-md">
-          <span class="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-sky-100/85">
+        <!-- 能力条：浅色胶囊，与浅色品牌面板统一 -->
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full border border-line bg-white/80 px-4 py-2 backdrop-blur-md">
+          <span class="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-slate-600">
             <i class="fa-solid fa-language text-ice"></i>多语种实时互译
           </span>
-          <span class="hidden h-3 w-px bg-white/20 sm:block"></span>
-          <span class="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-sky-100/85">
+          <span class="hidden h-3 w-px bg-line sm:block"></span>
+          <span class="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-slate-600">
             <i class="fa-solid fa-bolt text-ice"></i>4K 60FPS · 延迟 &lt; 18ms
           </span>
-          <span class="hidden h-3 w-px bg-white/20 sm:block"></span>
-          <span class="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-sky-100/85">
+          <span class="hidden h-3 w-px bg-line sm:block"></span>
+          <span class="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-slate-600">
             <i class="fa-solid fa-cube text-ice"></i>空间级双目渲染
           </span>
         </div>
       </div>
 
-      <div class="relative z-10 text-[11px] text-sky-100/45">
+      <div class="relative z-10 text-[11px] text-slate-400">
         © 2026 视界译 VisionTrans · 毫秒级双目注视点空间翻译渲染内核
       </div>
     </div>
@@ -690,12 +695,12 @@ onBeforeUnmount(() => {
     <!-- ==================== 右：登录卡片（与应用内容区同为钛白底，视觉连续） ==================== -->
     <div class="relative flex flex-1 items-center justify-center px-4 py-10 lg:p-12">
       <!-- 内容区微弱蓝光，与左侧深色形成柔和过渡 -->
-      <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(600px_400px_at_50%_0%,rgba(37,99,235,0.07),transparent_70%)]"></div>
+      <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(600px_400px_at_50%_0%,rgba(13,148,136,0.06),transparent_70%)]"></div>
 
       <div class="relative w-full max-w-[420px]">
         <div class="relative overflow-hidden rounded-2xl border border-line bg-white p-7 shadow-card">
           <!-- 卡片顶部品牌细线，呼应侧栏渐变 -->
-          <div class="absolute inset-x-0 top-0 h-[3px]" style="background: linear-gradient(90deg, #1e3a8a, #2563eb 55%, #0ea5e9)"></div>
+          <div class="absolute inset-x-0 top-0 h-[3px]" style="background: linear-gradient(90deg, #0f766e, #0d9488 55%, #06b6d4)"></div>
 
           <div class="mb-5">
             <!-- 身份选择：管理员 / 商户，分别走独立的登录接口与令牌体系 -->
@@ -780,14 +785,14 @@ onBeforeUnmount(() => {
             <span>登 录</span>
           </button>
 
-          <div class="mt-4 rounded-lg border border-blue-100 bg-[#F8FBFF] p-2.5 text-center text-[11.5px] text-sub">
+          <div class="mt-4 rounded-lg border border-brand-100 bg-brand-50 p-2.5 text-center text-[11.5px] text-sub">
             <template v-if="identity === 'merchant'">
-              演示账号 <code class="rounded bg-blue-50 px-1 py-0.5 font-mono text-ink">merchant</code> / 口令
-              <code class="rounded bg-blue-50 px-1 py-0.5 font-mono text-ink">merchant123</code> · RSA 保护
+              演示账号 <code class="rounded bg-brand-50 px-1 py-0.5 font-mono text-ink">merchant</code> / 口令
+              <code class="rounded bg-brand-50 px-1 py-0.5 font-mono text-ink">merchant123</code> · RSA 保护
             </template>
             <template v-else>
-              演示账号 <code class="rounded bg-blue-50 px-1 py-0.5 font-mono text-ink">admin</code> / 口令
-              <code class="rounded bg-blue-50 px-1 py-0.5 font-mono text-ink">admin123</code> · RSA 保护
+              演示账号 <code class="rounded bg-brand-50 px-1 py-0.5 font-mono text-ink">admin</code> / 口令
+              <code class="rounded bg-brand-50 px-1 py-0.5 font-mono text-ink">admin123</code> · RSA 保护
             </template>
           </div>
 
@@ -807,7 +812,7 @@ onBeforeUnmount(() => {
                     <i class="fa-solid fa-arrow-left text-[11px]"></i>
                     <span>返回修改账号口令</span>
                   </button>
-                  <span class="rounded bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-electric">安全挑战</span>
+                  <span class="rounded bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-electric">安全挑战</span>
                 </div>
 
                 <div class="mb-2 flex items-center justify-between text-[12px]">
@@ -838,7 +843,7 @@ onBeforeUnmount(() => {
                 <div
                   class="relative mb-3 overflow-hidden rounded-lg border bg-slate-100 transition-all duration-300"
                   :class="clicks.length === 3 ? 'border-emerald-500 ring-2 ring-emerald-400/20' : 'border-line'"
-                  style="aspect-ratio: 280 / 110;"
+                  style="aspect-ratio: 320 / 150;"
                 >
                   <img
                     v-if="captcha"

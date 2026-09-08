@@ -25,16 +25,16 @@ const roleName = computed(() => props.home?.roleName || auth.user?.role || '商�
   <div class="card anim overflow-hidden">
     <div
       class="relative px-6 py-7"
-      style="background: linear-gradient(120deg, #0b1e4d 0%, #1e3a8a 55%, #0ea5e9 100%)"
+      style="background: linear-gradient(120deg, #115E59 0%, #0F766E 55%, #06B6D4 100%)"
     >
       <div class="relative z-10">
-        <div class="text-[11.5px] font-semibold uppercase tracking-[0.18em] text-sky-200/80">
+        <div class="text-[11.5px] font-semibold uppercase tracking-[0.18em] text-brand-100/80">
           MERCHANT WORKSPACE
         </div>
         <h1 class="mt-2 text-[22px] font-bold tracking-tight text-white">
           <i v-if="loading" class="fa-solid fa-circle-notch fa-spin mr-2 text-[16px]"></i>{{ title }}
         </h1>
-        <p class="mt-1.5 text-[13px] text-sky-100/85">{{ welcome }}</p>
+        <p class="mt-1.5 text-[13px] text-brand-50/85">{{ welcome }}</p>
         <div class="mt-3 flex flex-wrap items-center gap-2">
           <span class="pill pill-blue">{{ roleName }}</span>
           <span class="pill pill-slate">{{ home?.merchantCode || auth.user?.group || '—' }}</span>

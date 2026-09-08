@@ -172,7 +172,7 @@ const exportAssets = () => {
             <div
               v-for="card in column.cards"
               :key="card.id"
-              class="group rounded-xl border border-line p-3 transition hover:border-blue-200"
+              class="group rounded-xl border border-line p-3 transition hover:border-brand-200"
             >
               <div class="flex items-center justify-between">
                 <span class="truncate text-[12.5px] font-medium text-ink">{{ card.title }}</span>

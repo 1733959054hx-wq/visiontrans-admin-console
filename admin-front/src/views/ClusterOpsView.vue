@@ -204,8 +204,8 @@ const topoOption = computed(() => {
   const tree = {
     name: GATEWAY,
     symbolSize: 38,
-    itemStyle: { color: '#0B1E4D' },
-    label: { fontWeight: 600, color: '#0B1E4D' },
+    itemStyle: { color: '#1E3A8A' },
+    label: { fontWeight: 600, color: '#1E3A8A' },
     tip: `承载 ${zones.length} 个可用区 · ${list.length} 个服务组`,
     children: zones.map((zone) => {
       const members = groups.get(zone)

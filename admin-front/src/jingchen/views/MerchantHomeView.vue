@@ -49,7 +49,7 @@ const modules = computed(() => {
       key: 'overview',
       title: '经营概览',
       icon: 'fa-chart-line',
-      grad: 'linear-gradient(135deg,#0EA5E9,#22D3EE)',
+      grad: 'linear-gradient(135deg,#06B6D4,#22D3EE)',
       desc: '近 7 日曝光 / 消耗 / 成交汇总',
       stats: [
         { label: '曝光', value: wan(ov?.kpis?.[0]?.value) },
@@ -62,7 +62,7 @@ const modules = computed(() => {
       key: 'plans',
       title: '投放计划管理',
       icon: 'fa-bullhorn',
-      grad: 'linear-gradient(135deg,#1E3A8A,#2563EB)',
+      grad: 'linear-gradient(135deg,#0F766E,#0D9488)',
       desc: '投放计划增删改查与暂停恢复',
       stats: [
         { label: '计划', value: String(plans.length) },

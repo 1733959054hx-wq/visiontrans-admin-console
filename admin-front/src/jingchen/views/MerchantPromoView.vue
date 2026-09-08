@@ -44,13 +44,13 @@ const makeQr = (code) => {
   const cells = []
   const finder = (x, y) => {
     for (let a = 0; a < 7; a++) for (let b = 0; b < 7; b++) {
-      cells.push(`${(x + a) * 4},${(y + b) * 4},${(a === 0 || a === 6 || b === 0 || b === 6) || (a >= 2 && a <= 4 && b >= 2 && b <= 4) ? '#0B1E4D' : '#fff'}`)
+      cells.push(`${(x + a) * 4},${(y + b) * 4},${(a === 0 || a === 6 || b === 0 || b === 6) || (a >= 2 && a <= 4 && b >= 2 && b <= 4) ? '#115E59' : '#fff'}`)
     }
   }
   const inF = (x, y) => (x < 7 && y < 7) || (x >= n - 7 && y < 7) || (x < 7 && y >= n - 7)
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
     if (inF(x, y)) continue
-    cells.push(`${x * 4},${y * 4},${rnd() > 0.55 ? '#0B1E4D' : '#fff'}`)
+    cells.push(`${x * 4},${y * 4},${rnd() > 0.55 ? '#115E59' : '#fff'}`)
   }
   finder(0, 0)
   finder(n - 7, 0)
@@ -246,7 +246,7 @@ onMounted(() => {
           <div class="card-b">
             <div class="flex h-40 items-end gap-2">
               <div v-for="(d, i) in sales?.days || []" :key="d" class="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <div class="w-4 rounded-t-sm" style="background: linear-gradient(180deg, #2563eb, #0ea5e9)"
+                <div class="w-4 rounded-t-sm" style="background: linear-gradient(180deg, #0D9488, #06B6D4)"
                   :style="`height:${Math.round(((sales.gmv[i] || 0) / gmvMax) * 100)}%`"
                   :title="`${d} GMV ${fmtMoney(sales.gmv[i])}`"></div>
                 <div class="num text-[10px] text-sub">{{ d.slice(5) }}</div>

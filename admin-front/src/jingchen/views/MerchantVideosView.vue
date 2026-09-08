@@ -143,7 +143,7 @@ onMounted(() => {
             </tr>
             <tr v-for="v in videos" v-else :key="v.id">
               <td class="text-[12.5px] font-medium">
-                <i class="fa-solid fa-clapperboard mr-1.5 text-sky-500"></i>{{ v.name }}
+                <i class="fa-solid fa-clapperboard mr-1.5 text-brand-500"></i>{{ v.name }}
               </td>
               <td><StatusPill :text="v.lang" tone="slate" small /></td>
               <td class="num text-right text-[12px]">{{ fmtDur(v.durationSec) }}</td>

@@ -24,9 +24,9 @@ const summary = computed(() => {
   const list = plans.value
   const yuan = (n) => (n || 0).toLocaleString('zh-CN')
   return [
-    { label: '投放计划', value: String(list.length), unit: '个', icon: 'fa-bullhorn', c1: '#1E3A8A', c2: '#2563EB' },
-    { label: '日预算合计', value: `¥ ${yuan(list.reduce((s, p) => s + (p.budget || 0), 0))}`, unit: '', icon: 'fa-coins', c1: '#2563EB', c2: '#0EA5E9' },
-    { label: '今日已消耗', value: `¥ ${yuan(list.reduce((s, p) => s + (p.used || 0), 0))}`, unit: '', icon: 'fa-sack-dollar', c1: '#0EA5E9', c2: '#22D3EE' },
+    { label: '投放计划', value: String(list.length), unit: '个', icon: 'fa-bullhorn', c1: '#0F766E', c2: '#0D9488' },
+    { label: '日预算合计', value: `¥ ${yuan(list.reduce((s, p) => s + (p.budget || 0), 0))}`, unit: '', icon: 'fa-coins', c1: '#0D9488', c2: '#06B6D4' },
+    { label: '今日已消耗', value: `¥ ${yuan(list.reduce((s, p) => s + (p.used || 0), 0))}`, unit: '', icon: 'fa-sack-dollar', c1: '#06B6D4', c2: '#22D3EE' },
     { label: '预算预警', value: String(list.filter((p) => p.status === '预算预警' && !p.paused).length), unit: '个', icon: 'fa-triangle-exclamation', c1: '#F59E0B', c2: '#FB923C' },
   ]
 })
@@ -41,7 +41,7 @@ const planTone = (p) => {
     ] || { text: p.status, tone: 'slate' }
   )
 }
-const barColor = (pct) => (pct > 95 ? '#EF4444' : pct > 80 ? '#F59E0B' : '#2563EB')
+const barColor = (pct) => (pct > 95 ? '#EF4444' : pct > 80 ? '#F59E0B' : '#0D9488')
 const planPct = (p) => (p.budget > 0 ? Math.min(100, Math.round(((p.used || 0) / p.budget) * 100)) : 0)
 
 /* ---- 新增 / 编辑（复用通用 CrudDialog，字段按后端契约配置） ---- */

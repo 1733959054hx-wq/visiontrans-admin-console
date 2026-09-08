@@ -70,7 +70,7 @@ const render = () => {
             borderColor: '#fff',
             borderWidth: 1.5,
             shadowBlur: 8,
-            shadowColor: 'rgba(37,99,235,.35)',
+            shadowColor: 'rgba(37, 99, 235,.35)',
           },
           label: { show: true, position: 'right', distance: 5, fontSize: 10.5, color: '#334155', formatter: (p) => p.name },
           zlevel: 2,

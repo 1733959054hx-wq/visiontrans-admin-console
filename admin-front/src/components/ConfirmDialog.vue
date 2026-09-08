@@ -37,7 +37,7 @@ const emit = defineEmits(['resolve'])
       >
         <div
           class="grid h-9 w-9 flex-none place-items-center rounded-full text-[13px] font-semibold text-white"
-          style="background: linear-gradient(135deg, #0b1e4d, #0ea5e9)"
+          style="background: linear-gradient(135deg, #1E3A8A, #0EA5E9)"
         >
           {{ subject.avatar || String(subject.name || '?').slice(0, 1) }}
         </div>

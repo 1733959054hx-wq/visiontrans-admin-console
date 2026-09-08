@@ -444,7 +444,7 @@ const gotoModeration = () => router.push({ name: 'a8' })
                 <td class="text-[12.5px] font-medium">
                   <span
                     class="mr-2 inline-grid h-6 w-6 place-items-center rounded-lg text-[9.5px] font-bold text-white"
-                    style="background: linear-gradient(135deg, #0b1e4d, #2563eb)"
+                    style="background: linear-gradient(135deg, #1E3A8A, #2563EB)"
                     >{{ admin.name.slice(0, 1) }}</span
                   >{{ admin.name }}
                 </td>
@@ -504,7 +504,7 @@ const gotoModeration = () => router.push({ name: 'a8' })
                   <div class="flex items-center gap-2">
                     <span
                       class="grid h-6 w-6 flex-none place-items-center rounded-lg text-[9.5px] font-bold text-white"
-                      style="background: linear-gradient(135deg, #0b1e4d, #2563eb)"
+                      style="background: linear-gradient(135deg, #1E3A8A, #2563EB)"
                       >{{ log.operator.slice(0, 1) }}</span
                     >
                     <div class="leading-tight">

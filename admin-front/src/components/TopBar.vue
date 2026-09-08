@@ -101,7 +101,7 @@ const toggleBell = async () => {
   <header class="glass relative z-30 flex h-[62px] flex-none items-center gap-4 border-b border-line px-6">
     <div class="flex min-w-0 items-center gap-3">
       <button
-        class="grid h-8 w-8 place-items-center rounded-lg border border-line bg-white text-sub transition hover:border-blue-200 hover:text-electric"
+        class="grid h-8 w-8 place-items-center rounded-lg border border-line bg-white text-sub transition hover:border-brand-200 hover:text-electric"
         title="折叠 / 展开侧栏（H）"
         @click="app.toggleSide()"
       >
@@ -118,9 +118,9 @@ const toggleBell = async () => {
     <div
       class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold"
       style="
-        background: linear-gradient(135deg, #0b1e4d, #1e3a8a 55%, #0ea5e9);
+        background: linear-gradient(135deg, #115E59, #0F766E 55%, #06B6D4);
         color: #fff;
-        box-shadow: 0 6px 16px -8px rgba(14, 165, 233, 0.9);
+        box-shadow: 0 6px 16px -8px rgba(6, 182, 212, 0.9);
       "
     >
       <i class="fa-solid fa-server"></i>{{ app.system?.consoleLabel || '平台管理后台 · Admin Console' }}
@@ -170,7 +170,7 @@ const toggleBell = async () => {
     <!-- 通知（集群告警属后台管理数据，商户不展示） -->
     <div v-if="!auth.isMerchant" class="relative">
       <button
-        class="relative h-9 w-9 rounded-lg border border-line bg-white text-sub transition-all duration-150 hover:border-blue-200 hover:text-electric"
+        class="relative h-9 w-9 rounded-lg border border-line bg-white text-sub transition-all duration-150 hover:border-brand-200 hover:text-electric"
         title="最新告警"
         @click="toggleBell"
       >
@@ -212,7 +212,7 @@ const toggleBell = async () => {
     </div>
 
     <button
-      class="h-9 w-9 rounded-lg border border-line bg-white text-sub transition-all duration-150 hover:border-blue-200 hover:text-electric"
+      class="h-9 w-9 rounded-lg border border-line bg-white text-sub transition-all duration-150 hover:border-brand-200 hover:text-electric"
       title="使用说明与快捷键（?）"
       @click="app.toggleHelp(true)"
     >
@@ -223,7 +223,7 @@ const toggleBell = async () => {
     <div class="flex items-center gap-2 rounded-lg border border-line bg-white py-1 pl-1 pr-2.5">
       <div
         class="grid h-7 w-7 place-items-center rounded-full text-[12px] font-semibold text-white"
-        style="background: linear-gradient(135deg, #0b1e4d, #0ea5e9)"
+        style="background: linear-gradient(135deg, #115E59, #06B6D4)"
       >
         {{ auth.user?.avatar || '管' }}
       </div>

@@ -45,7 +45,7 @@ const SLOT_FIELDS = [
   { key: 'name', label: '广告位名称', type: 'text', required: true, placeholder: '开屏 · 双十一主会场' },
   { key: 'status', label: '库存状态', type: 'select', options: ['已售罄', '部分售出', '预售锁定', '空闲可购'] },
   { key: 'remain', label: '剩余库存', type: 'text', kind: 'percent', suffix: '%', decimals: 1, min: 0, max: 100, placeholder: '100' },
-  { key: 'color', label: '状态色', type: 'select', options: ['#EF4444', '#F59E0B', '#2563EB', '#10B981'] },
+  { key: 'color', label: '状态色', type: 'select', options: ['#EF4444', '#F59E0B', '#0EA5E9', '#10B981'] },
   { key: 'ratio', label: '占用比例（-1 表示预售）', type: 'number', min: -1, max: 100 },
 ]
 
@@ -96,7 +96,7 @@ const cellStyle = (value) => {
   return { background: `rgb(${r},${g},${b})`, color: t > 0.55 ? '#ffffff' : '#0F172A' }
 }
 
-const remainTone = { '100%': 'text-rose-500', '0%': 'text-emerald-600', 预售: 'text-blue-500' }
+const remainTone = { '100%': 'text-rose-500', '0%': 'text-emerald-600', 预售: 'text-brand-500' }
 
 const matchKeyword = (...values) => {
   const keyword = app.keyword.trim().toLowerCase()
@@ -149,7 +149,7 @@ const exportSlots = () => {
             <div class="flex flex-wrap items-center gap-3 text-[11px] text-sub">
               <span class="inline-flex items-center gap-1.5"><i class="h-2.5 w-2.5 rounded-sm" style="background: #ef4444"></i>售罄</span>
               <span class="inline-flex items-center gap-1.5"><i class="h-2.5 w-2.5 rounded-sm" style="background: #f59e0b"></i>部分售出</span>
-              <span class="inline-flex items-center gap-1.5"><i class="h-2.5 w-2.5 rounded-sm" style="background: #2563eb"></i>预售锁定</span>
+              <span class="inline-flex items-center gap-1.5"><i class="h-2.5 w-2.5 rounded-sm" style="background: #0EA5E9"></i>预售锁定</span>
               <span class="inline-flex items-center gap-1.5"><i class="h-2.5 w-2.5 rounded-sm" style="background: #10b981"></i>空闲可购</span>
             </div>
           </div>
@@ -253,7 +253,7 @@ const exportSlots = () => {
           </div>
           <div class="flex items-center gap-2 text-[11px] text-sub">
             <span>低</span>
-            <span class="h-2 w-24 rounded" style="background: linear-gradient(90deg, #f8fafc, #2563eb)"></span>
+            <span class="h-2 w-24 rounded" style="background: linear-gradient(90deg, #f8fafc, #2563EB)"></span>
             <span>高</span>
             <button class="btn btn-ghost btn-sm !px-2 !py-1" title="导出排期" @click="exportSlots">
               <i class="fa-solid fa-file-export"></i>

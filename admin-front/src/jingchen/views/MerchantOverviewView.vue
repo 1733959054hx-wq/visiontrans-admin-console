@@ -28,8 +28,8 @@ const kpiCards = computed(() => {
     value: i === 0 ? wan(item.value) : yuan(item.value),
     note: item.delta,
     icon: ['fa-eye', 'fa-coins', 'fa-sack-dollar', 'fa-receipt'][i] || 'fa-chart-line',
-    c1: ['#1E3A8A', '#2563EB', '#0EA5E9', '#F59E0B'][i],
-    c2: ['#2563EB', '#0EA5E9', '#22D3EE', '#FB923C'][i],
+    c1: ['#0F766E', '#0D9488', '#06B6D4', '#F59E0B'][i],
+    c2: ['#0D9488', '#06B6D4', '#22D3EE', '#FB923C'][i],
   }))
 })
 
@@ -73,7 +73,7 @@ onMounted(() => {
         <div v-for="kpi in kpiCards" :key="kpi.label" class="card anim relative overflow-hidden p-4">
           <div
             class="absolute -right-8 -top-8 h-32 w-32 rounded-full"
-            :style="`background:radial-gradient(circle,rgba(37,99,235,0.14),transparent 70%)`"
+            :style="`background:radial-gradient(circle,rgba(13, 148, 136,0.14),transparent 70%)`"
           ></div>
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
@@ -108,7 +108,7 @@ onMounted(() => {
               <div class="flex w-full items-end justify-center gap-1" style="height: 132px">
                 <div
                   class="w-2.5 rounded-t-sm"
-                  style="background: linear-gradient(180deg, #2563eb, #0ea5e9)"
+                  style="background: linear-gradient(180deg, #0D9488, #06B6D4)"
                   :style="`height:${t.ch}%`"
                   :title="`${t.day} 消耗 ${yuan(t.consume)}`"
                 ></div>
@@ -123,7 +123,7 @@ onMounted(() => {
             </div>
           </div>
           <div class="mt-3 flex items-center gap-4 text-[11px] text-sub">
-            <span><i class="mr-1 inline-block h-2 w-2 rounded-sm" style="background: #2563eb"></i>广告消耗</span>
+            <span><i class="mr-1 inline-block h-2 w-2 rounded-sm" style="background: #0D9488"></i>广告消耗</span>
             <span><i class="mr-1 inline-block h-2 w-2 rounded-sm" style="background: #f59e0b"></i>成交 GMV</span>
             <span class="ml-auto num">合计消耗 {{ yuan(trend.items.reduce((s, t) => s + t.consume, 0)) }}</span>
           </div>

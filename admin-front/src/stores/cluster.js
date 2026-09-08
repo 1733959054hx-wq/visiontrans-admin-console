@@ -38,6 +38,9 @@ export const useClusterStore = defineStore('cluster', {
       }
     },
     async load() {
+      // 并发保护：登录成功后会预取大盘，随后 TopBar 与集群页挂载又会各调一次；
+      // 没有这个判断会同时发出多份相同的聚合请求（该接口较重，重复查询代价明显）。
+      if (this.loading) return
       const ui = useUiStore()
       const app = useAppStore()
       this.loading = true
