@@ -6,12 +6,16 @@ import SideBar from '@/components/SideBar.vue'
 import ToastHost from '@/components/ToastHost.vue' // Toast 已上移至 App.vue 全局挂载
 import TopBar from '@/components/TopBar.vue'
 import { useAppStore } from '@/stores/app'
+import { useAuthStore } from '@/stores/auth'
 
 const app = useAppStore()
+const auth = useAuthStore()
 const router = useRouter()
 
 const menus = computed(() => app.nav.items)
 const topBar = ref(null)
+/** 商户只有顶部导航栏，不展示后台管理侧栏 */
+const showSideBar = computed(() => !auth.isMerchant)
 
 onMounted(() => {
   app.loadMeta()
@@ -37,7 +41,8 @@ function onKeydown(event) {
     topBar.value?.focusSearch()
   } else if (key === '?' || (key === '/' && event.shiftKey)) {
     app.toggleHelp()
-  } else if (['1', '2', '3', '4', '5'].includes(key)) {
+  } else if (!auth.isMerchant && ['1', '2', '3', '4', '5'].includes(key)) {
+    // 数字键切换的是后台管理模块，商户无此菜单，直接忽略
     const target = menus.value[Number(key) - 1]
     if (target) router.push({ name: target.id })
   }
@@ -46,7 +51,7 @@ function onKeydown(event) {
 
 <template>
   <div class="flex h-screen overflow-hidden">
-    <SideBar />
+    <SideBar v-if="showSideBar" />
 
     <div class="flex min-w-0 flex-1 flex-col">
       <TopBar ref="topBar" />

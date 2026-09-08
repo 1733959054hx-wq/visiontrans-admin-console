@@ -10,16 +10,20 @@ import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.gzu.adminconsole.common.TokenResolver;
 import com.gzu.adminconsole.config.AdminContext;
 import com.gzu.adminconsole.entity.AdminUserEntity;
 import com.gzu.adminconsole.entity.AuthSessionEntity;
 
 /**
- * 登录会话数据访问层。
+ * 登录会话数据访问层（主工程：后台管理员 / 运营 / 审计员）。
+ *
+ * <p>同时作为 {@link TokenResolver} 的默认实现参与统一鉴权：
+ * 商户等模块的令牌由各自模块解析，互不干扰。
  */
 @Repository
 @Transactional(readOnly = true)
-public class AuthRepository {
+public class AuthRepository implements TokenResolver {
 
     /** 令牌有效期（小时）。 */
     public static final int TOKEN_HOURS = 8;
@@ -64,6 +68,21 @@ public class AuthRepository {
                 LocalDateTime.now().plusHours(TOKEN_HOURS));
         em.persist(session);
         return session;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>主工程实现：识别后台管理员令牌并绑定身份；商户令牌返回 false，由商户模块的解析器接管。
+     */
+    @Override
+    public boolean resolveAndBind(String token) {
+        AuthSessionEntity session = findValidSession(token);
+        if (session == null) {
+            return false;
+        }
+        bind(session);
+        return true;
     }
 
     /** 更新口令哈希（登录成功后的静默升级：历史弱哈希 → 当前算法）。 */

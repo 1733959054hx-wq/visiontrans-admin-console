@@ -61,7 +61,8 @@ adminConsole/
 │     │  ├─ dto/                           # 视图模型（VO），按模块分 common/cluster/model/...
 │     │  ├─ repository/                    # Model 层：JPA 实现（EntityManager + JPQL）
 │     │  ├─ entity/                        # JPA 实体（22 张表）
-│     │  └─ model/                         # 领域记录（record），Service 层只依赖它
+│     │  ├─ model/                         # 领域记录（record），Service 层只依赖它
+│     │  └─ jingchen/                      # 商户模块（独立分层：common/config/controller/service/dto/entity/repository）
 │     └─ resources/
 │        └─ application.properties         # ★ 全部后端配置集中于此
 └─ admin-front/                         # 前端 Vue 3
@@ -80,6 +81,7 @@ adminConsole/
       │  ├─ ConfirmDialog.vue           # 删除二次确认
       │  ├─ EChart / DonutChart / SparkLine / WorldMap   # 图表
       │  └─ KpiCard / StatusPill / ProgressBar / RankList / ToggleSwitch
+      ├─ jingchen/                      # 商户模块（平行分层：config/api/stores/components/views/router）
       └─ views/                         # 5 个业务页面
 ```
 
@@ -180,8 +182,48 @@ npm run build          # 产物在 admin-front/dist
 | `SUPER_ADMIN` | 超级管理员 | 全部接口，含删除与模型热更 / 回滚 / 灰度 |
 | `OPERATIONS` | 运营管理员 | 各模块新增 / 修改与业务动作，不含删除、不含 RBAC 授权 |
 | `AUDITOR` | 只读审计员 | 仅 `GET` 大盘数据 |
+| `MERCHANT` | 商户用户 | 仅 `/merchant/**` 工作台接口（与后台管理完全隔离；独立账号 / 令牌 / 会话） |
 
 未标注 `@RequireRole` 的写操作（POST / PUT / PATCH / DELETE）会被 `AuthInterceptor` 按最小权限直接拒绝，避免新增接口漏配角色。
+
+### 五-B、商户模块（jingchen）· 基于角色的登录隔离
+
+商户用户（角色 `MERCHANT`）与主工程**平行独立**：拥有自己的 `controller/service/repository/entity/dto/common/config` 分层（包 `com.gzu.adminconsole.jingchen`），商户侧的数据结构与业务逻辑一律定义在模块内，不复用后台管理的 `model` / `entity`。
+
+**账号**
+
+| 角色 | 登录账号 | 口令 | 令牌存储 | 落地页 |
+|---|---|---|---|---|
+| 管理员 | `admin` | `admin123` | 后台 `auth_session` | `/cluster` |
+| 商户 | `merchant` | `merchant123` | 模块自有 `merchant_session` | `/merchant` |
+
+> 商户账号默认由 `MerchantAccountInitializer` 在 `admin-console.jingchen.enabled=true`（默认）时自动灌入；账号 / 口令可经 `application.properties` 的 `admin-console.jingchen.username` / `.password` 覆盖。
+
+**方案：独立登录（选身份）**
+
+登录页提供「管理员 / 商户」身份切换（顶部分段控件）。二者走**完全独立的登录接口与令牌体系**：
+
+- 管理员：`POST /api/auth/login` → 主工程 `auth_session` 令牌
+- 商户：`POST /api/merchant/login` → 模块自有 `merchant_session` 令牌
+
+统一鉴权 `AuthInterceptor` 通过 `common/TokenResolver` SPI 依次尝试主工程与会话解析器：管理员令牌由 `AuthRepository` 解析，商户令牌由 `MerchantSessionRepository` 解析，互不干扰。
+
+**双向隔离（核心）**
+
+| 方向 | 机制 |
+|---|---|
+| 后台接口防商户 | 后台 5 个控制器（Cluster/Model/Moderation/Ad/Security）类上加 `@RequireRole({"SUPER_ADMIN","OPERATIONS","AUDITOR"})`。原实现只有写操作受限、GET 对任何登录用户开放，商户能读到集群 / 安全等管理数据，已修复 |
+| 商户接口防管理员 | `MerchantController` / `MerchantAuthController` 标 `@RequireRole("MERCHANT")` |
+| 数据表隔离 | 商户账号 / 凭据 / 会话落在 `merchant_account` / `merchant_session`，**不进 `admin_user`**，因此商户不会出现在后台「管理员账号」列表，也不计入管理员总数 KPI |
+| 路由隔离 | 前端路由 `meta.roles`：管理员页仅 `ADMIN_ROLES` 可见，商户页仅 `MERCHANT` 可见；越权访问被守卫强制打回各自首页 |
+
+**共享边界（已与主干业务隔离）**
+
+模块与主干的共用点均集中在主工程的少量「标准扩展点」上，不改动主干业务逻辑：
+
+- `common/TokenResolver`：令牌解析 SPI，主工程与各模块各实现一个，由 `AuthInterceptor` 统一调度（开闭原则）。
+- 登录页 `/login`：共用同一页面与「点击式验证码 / RSA 加密」设施；仅在提交时按所选身份调不同接口。
+- 加密 / 验证码工具：`RsaKeyHolder`、`CaptchaService`、`PasswordHasher` 为主干公共工具（不含业务数据），商户登录直接复用。
 
 ## 六、数据持久化说明
 

@@ -25,6 +25,7 @@ import com.gzu.adminconsole.service.AdService;
 @RestController
 @ConditionalOnProperty(prefix = "admin-console.api", name = "enabled", havingValue = "true", matchIfMissing = true)
 @RequestMapping("${admin-console.api.base-path:/api}/ads")
+@RequireRole({"SUPER_ADMIN", "OPERATIONS", "AUDITOR"})
 public class AdController {
 
     private final AdService service;

@@ -1,10 +1,24 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
+import { MERCHANT_ROLE } from '@/jingchen/config'
+// 模块路由由各模块自行维护后在此注册（商户模块：src/jingchen/router）
+import { merchantRoutes } from '@/jingchen/router'
+
+/** 后台管理角色：可访问 a6 ~ a10 全部页面 */
+const ADMIN_ROLES = ['SUPER_ADMIN', 'OPERATIONS', 'AUDITOR']
+
+/** 按角色返回登录后的落地页：商户进商户工作台，其余进集群大盘 */
+function homeFor(roleCode) {
+  return roleCode === MERCHANT_ROLE ? '/merchant' : '/cluster'
+}
 
 /**
  * 路由与后端导航菜单 id 一一对应（a6 ~ a10），
  * 菜单数据由 GET /api/meta/nav 下发，保证前后端单一数据源。
+ *
+ * meta.roles 声明该页面允许访问的角色，由下面的守卫统一强制校验，
+ * 实现「商户看不到管理页、管理员进不了商户页」的双向隔离。
  */
 const router = createRouter({
   history: createWebHistory(),
@@ -19,35 +33,37 @@ const router = createRouter({
       path: '/',
       redirect: '/cluster',
     },
+    // 商户模块路由（角色隔离见 meta.roles）
+    ...merchantRoutes,
     {
       path: '/cluster',
       name: 'a6',
       component: () => import('@/views/ClusterOpsView.vue'),
-      meta: { title: '集群态势感知与推演监控大盘' },
+      meta: { title: '集群态势感知与推演监控大盘', roles: ADMIN_ROLES },
     },
     {
       path: '/models',
       name: 'a7',
       component: () => import('@/views/ModelHubView.vue'),
-      meta: { title: 'AI 模型生命周期与热更中心' },
+      meta: { title: 'AI 模型生命周期与热更中心', roles: ADMIN_ROLES },
     },
     {
       path: '/moderation',
       name: 'a8',
       component: () => import('@/views/ModerationView.vue'),
-      meta: { title: '语种术语库审核与 UGC 风控中台' },
+      meta: { title: '语种术语库审核与 UGC 风控中台', roles: ADMIN_ROLES },
     },
     {
       path: '/ads',
       name: 'a9',
       component: () => import('@/views/AdSchedulerView.vue'),
-      meta: { title: '全网广告位排期与调度引擎' },
+      meta: { title: '全网广告位排期与调度引擎', roles: ADMIN_ROLES },
     },
     {
       path: '/security',
       name: 'a10',
       component: () => import('@/views/SecurityView.vue'),
-      meta: { title: '安全风控、设备审计与 RBAC 权限' },
+      meta: { title: '安全风控、设备审计与 RBAC 权限', roles: ADMIN_ROLES },
     },
     {
       path: '/:pathMatch(.*)*',
@@ -56,11 +72,11 @@ const router = createRouter({
   ],
 })
 
-// 登录守卫：未登录访问受保护页面 → 跳登录页；已登录访问登录页 → 跳首页
+// 登录守卫：未登录访问受保护页面 → 跳登录页；已登录访问登录页 → 按角色送回各自首页
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
   if (to.meta.public) {
-    return auth.isLoggedIn ? '/' : true
+    return auth.isLoggedIn ? homeFor(auth.roleCode) : true
   }
   if (!auth.isLoggedIn) {
     return { path: '/login' }
@@ -72,6 +88,15 @@ router.beforeEach(async (to) => {
     if (!auth.isLoggedIn) {
       return { path: '/login' }
     }
+  }
+  // 根路径按角色分发
+  if (to.path === '/') {
+    return { path: homeFor(auth.roleCode) }
+  }
+  // 角色与页面不匹配：强制回到该角色的首页（前端兜底，后端另有 @RequireRole 拦截接口）
+  const allowed = to.meta.roles
+  if (allowed && allowed.length && !allowed.includes(auth.roleCode)) {
+    return { path: homeFor(auth.roleCode) }
   }
   return true
 })

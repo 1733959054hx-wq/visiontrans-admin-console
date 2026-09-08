@@ -14,6 +14,8 @@ const ui = useUiStore()
 const router = useRouter()
 
 const form = reactive({ username: '', password: '' })
+/** 登录身份：管理员 / 商户（选身份后走各自独立的登录接口与令牌体系） */
+const identity = ref('admin')
 const loading = ref(false)
 const captcha = ref(null)
 const clicks = ref([])
@@ -175,7 +177,7 @@ const mascotSpeech = computed(() => {
     return {
       tag: '认真观察',
       type: 'curious',
-      text: '请在右侧输入您的管理员授权账号 ✍️',
+      text: identity.value === 'merchant' ? '请在右侧输入您的商户授权账号 ✍️' : '请在右侧输入您的管理员授权账号 ✍️',
     }
   }
   if (isBlinking.value) {
@@ -293,17 +295,15 @@ const confirmLogin = async () => {
   clearGesture()
   gesture.value = 'focus' // 校验中凝神屏息
   try {
-    const res = await auth.login(
-      form.username,
-      form.password,
-      publicKey.value,
-      captcha.value.id,
-      clicks.value
-    )
+    // 按所选身份走各自独立的登录接口：商户签发商户令牌，管理员签发后台令牌
+    const submit = identity.value === 'merchant'
+      ? await auth.loginMerchant(form.username, form.password, publicKey.value, captcha.value.id, clicks.value)
+      : await auth.login(form.username, form.password, publicKey.value, captcha.value.id, clicks.value)
     loginStatus.value = 'success'
-    ui.success(`欢迎回来，${res.profile.name}`)
+    ui.success(`欢迎回来，${submit.profile.name}`)
+    const target = submit.profile.roleCode === 'MERCHANT' ? '/merchant' : '/'
     setTimeout(() => {
-      router.replace('/')
+      router.replace(target)
     }, 900)
   } catch (error) {
     loginStatus.value = 'failed'
@@ -698,8 +698,35 @@ onBeforeUnmount(() => {
           <div class="absolute inset-x-0 top-0 h-[3px]" style="background: linear-gradient(90deg, #1e3a8a, #2563eb 55%, #0ea5e9)"></div>
 
           <div class="mb-5">
-            <h2 class="text-[17px] font-bold tracking-tight text-ink">管理员登录</h2>
-            <p class="mt-1 text-[12px] text-sub">请输入系统授权凭证以访问控制台</p>
+            <!-- 身份选择：管理员 / 商户，分别走独立的登录接口与令牌体系 -->
+            <div class="mb-4 inline-flex rounded-xl border border-line bg-slate-50 p-1">
+              <button
+                type="button"
+                class="rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition"
+                :class="identity === 'admin' ? 'bg-white text-electric shadow-sm' : 'text-sub hover:text-ink'"
+                @click="identity = 'admin'"
+              >
+                管理员
+              </button>
+              <button
+                type="button"
+                class="rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition"
+                :class="identity === 'merchant' ? 'bg-white text-electric shadow-sm' : 'text-sub hover:text-ink'"
+                @click="identity = 'merchant'"
+              >
+                商户
+              </button>
+            </div>
+            <h2 class="text-[17px] font-bold tracking-tight text-ink">
+              {{ identity === 'merchant' ? '商户登录' : '管理员登录' }}
+            </h2>
+            <p class="mt-1 text-[12px] text-sub">
+              {{
+                identity === 'merchant'
+                  ? '请输入商户授权凭证以进入独立工作台'
+                  : '请输入系统授权凭证以访问控制台'
+              }}
+            </p>
           </div>
 
           <!-- 账号 -->
@@ -754,8 +781,14 @@ onBeforeUnmount(() => {
           </button>
 
           <div class="mt-4 rounded-lg border border-blue-100 bg-[#F8FBFF] p-2.5 text-center text-[11.5px] text-sub">
-            演示账号 <code class="rounded bg-blue-50 px-1 py-0.5 font-mono text-ink">admin</code> / 口令
-            <code class="rounded bg-blue-50 px-1 py-0.5 font-mono text-ink">admin123</code> · RSA 保护
+            <template v-if="identity === 'merchant'">
+              演示账号 <code class="rounded bg-blue-50 px-1 py-0.5 font-mono text-ink">merchant</code> / 口令
+              <code class="rounded bg-blue-50 px-1 py-0.5 font-mono text-ink">merchant123</code> · RSA 保护
+            </template>
+            <template v-else>
+              演示账号 <code class="rounded bg-blue-50 px-1 py-0.5 font-mono text-ink">admin</code> / 口令
+              <code class="rounded bg-blue-50 px-1 py-0.5 font-mono text-ink">admin123</code> · RSA 保护
+            </template>
           </div>
 
           <!-- 卡片内验证抽屉 -->

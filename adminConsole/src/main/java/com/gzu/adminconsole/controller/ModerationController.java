@@ -26,6 +26,7 @@ import com.gzu.adminconsole.service.ModerationService;
 @RestController
 @ConditionalOnProperty(prefix = "admin-console.api", name = "enabled", havingValue = "true", matchIfMissing = true)
 @RequestMapping("${admin-console.api.base-path:/api}/moderation")
+@RequireRole({"SUPER_ADMIN", "OPERATIONS", "AUDITOR"})
 public class ModerationController {
 
     private final ModerationService service;

@@ -25,6 +25,7 @@ import com.gzu.adminconsole.service.ClusterService;
 @RestController
 @ConditionalOnProperty(prefix = "admin-console.api", name = "enabled", havingValue = "true", matchIfMissing = true)
 @RequestMapping("${admin-console.api.base-path:/api}/cluster")
+@RequireRole({"SUPER_ADMIN", "OPERATIONS", "AUDITOR"})
 public class ClusterController {
 
     private final ClusterService service;

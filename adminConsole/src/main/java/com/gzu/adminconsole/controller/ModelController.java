@@ -23,6 +23,7 @@ import com.gzu.adminconsole.service.ModelService;
 @RestController
 @ConditionalOnProperty(prefix = "admin-console.api", name = "enabled", havingValue = "true", matchIfMissing = true)
 @RequestMapping("${admin-console.api.base-path:/api}/models")
+@RequireRole({"SUPER_ADMIN", "OPERATIONS", "AUDITOR"})
 public class ModelController {
 
     private final ModelService service;

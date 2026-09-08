@@ -82,9 +82,11 @@ const alerts = computed(() => cluster.data?.alerts || [])
 const alarms = computed(() => alerts.value.slice(0, 5))
 const badge = computed(() => alerts.value.length || 0)
 
-// 应用启动即拉取一次，保证各页面铃铛角标与内容都是真实数据
+// 应用启动即拉取一次，保证各页面铃铛角标与内容都是真实数据；
+// 仅当身份已由 /auth/me 校验通过（auth.user 非空）时才请求，避免无效令牌触发 401 提示
 onMounted(() => {
-  if (!cluster.data && !cluster.loading) cluster.load()
+  // 商户无权访问集群接口（后端 @RequireRole 会 403），不拉取以免产生无意义的报错提示
+  if (auth.user && !auth.isMerchant && !cluster.data && !cluster.loading) cluster.load()
 })
 
 const toggleBell = async () => {
@@ -144,8 +146,8 @@ const toggleBell = async () => {
       />
     </div>
 
-    <!-- md 起常驻；更窄时由 / 快捷键强制展开 -->
-    <div class="relative" :class="searchForced ? 'block' : 'hidden md:block'">
+    <!-- md 起常驻；更窄时由 / 快捷键强制展开（商户页面无表格数据，不展示） -->
+    <div v-if="!auth.isMerchant" class="relative" :class="searchForced ? 'block' : 'hidden md:block'">
       <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-400"></i>
       <input
         ref="searchInput"
@@ -165,8 +167,8 @@ const toggleBell = async () => {
       </button>
     </div>
 
-    <!-- 通知 -->
-    <div class="relative">
+    <!-- 通知（集群告警属后台管理数据，商户不展示） -->
+    <div v-if="!auth.isMerchant" class="relative">
       <button
         class="relative h-9 w-9 rounded-lg border border-line bg-white text-sub transition-all duration-150 hover:border-blue-200 hover:text-electric"
         title="最新告警"
