@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>平台管理后台 · Admin Console | 视界译 VisionTrans · 基于手机摄像头的 VR 实时解析和翻译系统</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        navy:     '#1E3A8A',   /* 海军蓝 · 主色 */
+        abyss:    '#0B1E4D',   /* 深空蓝 · 侧栏底色 */
+        electric: '#2563EB',   /* 星际电蓝 · 交互主色 */
+        ice:      '#0EA5E9',   /* 高光冰青 · 数据高亮 */
+        titan:    '#F8FAFC',   /* 冷钛白 · 空间底色 */
+        line:     '#E2E8F0',   /* 浅蓝灰 · 微边框 */
+        ink:      '#0F172A',   /* 主文本 */
+        sub:      '#64748B',   /* 次级文本 */
+      },
+      boxShadow: {
+        card: '0 1px 2px rgba(15,23,42,.04), 0 10px 30px -14px rgba(30,58,138,.18)',
+        lift: '0 8px 30px -10px rgba(37,99,235,.35)',
+      },
+      fontFamily: {
+        sans: ['Inter','"Segoe UI"','"Microsoft YaHei"','system-ui','sans-serif'],
+      }
+    }
+  }
+}
+</script>
+<style>
+  :root{
+    --navy:#1E3A8A; --abyss:#0B1E4D; --electric:#2563EB; --ice:#0EA5E9;
+    --titan:#F8FAFC; --line:#E2E8F0; --ink:#0F172A; --sub:#64748B;
+  }
+  *{ -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; }
+  body{
+    font-family:'Inter','Segoe UI','Microsoft YaHei',system-ui,sans-serif;
+    background:var(--titan); color:var(--ink);
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+  .num{ font-family:'JetBrains Mono','Consolas','SFMono-Regular',monospace; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+
+  /* ---------- 容器与卡片 ---------- */
+  .card{ background:#fff; border:1px solid var(--line); border-radius:14px;
+    box-shadow:0 1px 2px rgba(15,23,42,.04), 0 10px 30px -14px rgba(30,58,138,.16); }
+  .card-h{ display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:14px 18px; border-bottom:1px solid #EEF2F7; }
+  .card-t{ font-size:14.5px; font-weight:600; color:var(--ink); letter-spacing:.01em; }
+  .card-s{ font-size:11.5px; color:var(--sub); margin-top:2px; }
+  .card-b{ padding:16px 18px; }
+
+  /* ---------- 毛玻璃 ---------- */
+  .glass{ background:rgba(255,255,255,.78); backdrop-filter:blur(16px) saturate(140%);
+    -webkit-backdrop-filter:blur(16px) saturate(140%); }
+  .glass-dark{ background:rgba(255,255,255,.06); backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.12); }
+
+  /* ---------- 侧栏 ---------- */
+  #sidebar{ background:
+      radial-gradient(900px 500px at 20% -10%, rgba(37,99,235,.35), transparent 60%),
+      linear-gradient(180deg,#0B1E4D 0%, #132A63 45%, #1E3A8A 100%); }
+  #sidebar::after{ content:''; position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background-image:linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+                     linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size:34px 34px; }
+  .nav-item{ position:relative; display:flex; align-items:center; gap:11px; width:100%;
+    padding:10px 12px; border-radius:10px; color:rgba(226,232,240,.82); font-size:13.6px;
+    cursor:pointer; transition:.18s; z-index:2; }
+  .nav-item .nav-ico{ width:30px; height:30px; border-radius:8px; display:grid; place-items:center;
+    font-size:13px; background:rgba(255,255,255,.07); color:rgba(226,232,240,.9); transition:.18s; }
+  .nav-item:hover{ color:#fff; background:rgba(255,255,255,.07); }
+  .nav-item.active{ color:#fff; background:linear-gradient(90deg, rgba(37,99,235,.95), rgba(14,165,233,.55));
+    box-shadow:0 6px 18px -8px rgba(14,165,233,.9); }
+  .nav-item.active .nav-ico{ background:rgba(255,255,255,.2); color:#fff; }
+  .nav-item.active::before{ content:''; position:absolute; left:-18px; top:50%; transform:translateY(-50%);
+    width:3px; height:20px; border-radius:0 3px 3px 0; background:#38BDF8; box-shadow:0 0 12px #38BDF8; }
+  .nav-sub{ font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; opacity:.62; }
+
+  /* ---------- 模式切换 ---------- */
+  .seg{ display:flex; gap:4px; padding:4px; border-radius:12px; background:#F1F5F9; border:1px solid var(--line); }
+  .seg button{ padding:6px 16px; border-radius:9px; font-size:13px; font-weight:600; color:var(--sub); transition:.18s; }
+  .seg button.active{ color:#fff; background:linear-gradient(135deg,#1E3A8A,#2563EB 60%,#0EA5E9);
+    box-shadow:0 6px 16px -8px rgba(37,99,235,.9); }
+
+  /* ---------- 组件 ---------- */
+  .chip{ display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px;
+    font-size:12px; border:1px solid var(--line); background:#fff; color:#334155; cursor:pointer; transition:.16s; }
+  .chip:hover{ border-color:#93C5FD; color:#1D4ED8; background:#F0F7FF; }
+  .chip.on{ border-color:#2563EB; background:#EFF6FF; color:#1D4ED8; font-weight:600;
+    box-shadow:0 0 0 3px rgba(37,99,235,.10); }
+  .pill{ display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px;
+    font-size:11.5px; font-weight:600; }
+  .pill-green{ background:#ECFDF5; color:#047857; }
+  .pill-blue { background:#EFF6FF; color:#1D4ED8; }
+  .pill-amber{ background:#FFFBEB; color:#B45309; }
+  .pill-red  { background:#FEF2F2; color:#B91C1C; }
+  .pill-slate{ background:#F1F5F9; color:#475569; }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:8px 15px;
+    border-radius:9px; font-size:13px; font-weight:600; cursor:pointer; transition:.18s; border:1px solid transparent; }
+  .btn-primary{ background:linear-gradient(135deg,#1E3A8A,#2563EB); color:#fff; box-shadow:0 8px 20px -10px rgba(37,99,235,.9); }
+  .btn-primary:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+  .btn-ice{ background:linear-gradient(135deg,#2563EB,#0EA5E9); color:#fff; }
+  .btn-ghost{ background:#fff; border-color:var(--line); color:#334155; }
+  .btn-ghost:hover{ border-color:#93C5FD; color:#1D4ED8; background:#F8FBFF; }
+  .btn-sm{ padding:5px 11px; font-size:12px; border-radius:8px; }
+
+  .field{ width:100%; padding:8px 12px; border:1px solid var(--line); border-radius:9px; font-size:13px;
+    color:var(--ink); background:#fff; transition:.16s; }
+  .field:focus{ outline:none; border-color:#2563EB; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+  .lbl{ display:block; font-size:12px; font-weight:600; color:#334155; margin-bottom:6px; }
+
+  /* 进度条 */
+  .bar{ height:7px; border-radius:99px; background:#EEF2F7; overflow:hidden; }
+  .bar > i{ display:block; height:100%; border-radius:99px;
+    background:linear-gradient(90deg,#1E3A8A,#2563EB 55%,#0EA5E9); }
+  .bar.warn > i{ background:linear-gradient(90deg,#B45309,#F59E0B); }
+  .bar.danger > i{ background:linear-gradient(90deg,#991B1B,#EF4444); }
+  .bar.ok > i{ background:linear-gradient(90deg,#065F46,#10B981); }
+
+  /* 表格 */
+  table.tb{ width:100%; border-collapse:separate; border-spacing:0; font-size:13px; }
+  table.tb thead th{ text-align:left; padding:10px 14px; font-size:11.5px; font-weight:600; letter-spacing:.04em;
+    color:#64748B; background:#F8FAFC; border-bottom:1px solid var(--line); white-space:nowrap; }
+  table.tb tbody td{ padding:11px 14px; border-bottom:1px solid #F1F5F9; color:#334155; vertical-align:middle; }
+  table.tb tbody tr:hover td{ background:#F8FBFF; }
+  table.tb tbody tr:last-child td{ border-bottom:none; }
+  .td-main{ font-weight:600; color:var(--ink); }
+  .td-r{ text-align:right; }
+
+  /* 开关 */
+  .sw{ position:relative; width:42px; height:23px; border-radius:99px; background:#CBD5E1; cursor:pointer; transition:.2s; flex:none; }
+  .sw::after{ content:''; position:absolute; top:2.5px; left:2.5px; width:18px; height:18px; border-radius:50%;
+    background:#fff; box-shadow:0 1px 3px rgba(15,23,42,.3); transition:.2s; }
+  .sw.on{ background:linear-gradient(135deg,#2563EB,#0EA5E9); }
+  .sw.on::after{ left:21.5px; }
+
+  /* 滑块 */
+  input[type=range].rng{ -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:99px; outline:none; }
+  input[type=range].rng::-webkit-slider-thumb{ -webkit-appearance:none; width:20px; height:20px; border-radius:50%;
+    background:#fff; border:3px solid #2563EB; box-shadow:0 2px 8px rgba(37,99,235,.5); cursor:pointer; }
+  input[type=range].rng::-moz-range-thumb{ width:18px; height:18px; border-radius:50%; background:#fff;
+    border:3px solid #2563EB; cursor:pointer; }
+
+  /* 滚动条 */
+  ::-webkit-scrollbar{ width:9px; height:9px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:#CBD5E1; border-radius:99px; border:2px solid var(--titan); }
+  ::-webkit-scrollbar-thumb:hover{ background:#94A3B8; }
+
+  /* 动效 */
+  @keyframes pulse-ring{ 0%{ transform:scale(.6); opacity:.9 } 80%,100%{ transform:scale(2.6); opacity:0 } }
+  .dot-live{ position:relative; }
+  .dot-live::after{ content:''; position:absolute; inset:-4px; border-radius:50%;
+    border:2px solid #22D3EE; animation:pulse-ring 1.8s cubic-bezier(.2,.7,.4,1) infinite; }
+  @keyframes flow{ to{ stroke-dashoffset:-1000 } }
+  .flow-line{ stroke-dasharray:6 6; animation:flow 14s linear infinite; }
+  @keyframes rise{ from{ opacity:0; transform:translateY(8px) } to{ opacity:1; transform:none } }
+  .page.active .anim{ animation:rise .38s cubic-bezier(.2,.7,.4,1) both; }
+
+  /* 页面容器 */
+  .page{ display:none; }
+  .page.active{ display:block; }
+
+  /* 二维码 */
+  .qr{ image-rendering:pixelated; }
+
+  /* 打印 / 截图 */
+  @media print{
+    .no-print{ display:none !important; }
+    #sidebar{ display:none !important; }
+    body{ background:#fff; }
+    .page{ display:none !important; }
+    .page.active{ display:block !important; }
+  }
+  /* 长截图模式：解除整页滚动锁定，便于一次性截取完整页面 */
+  body.longshot{ height:auto; overflow:visible; }
+  body.longshot > div{ height:auto !important; overflow:visible !important; }
+  body.longshot #viewport{ overflow:visible !important; height:auto !important; }
+  body.longshot #sidebar{ position:sticky; top:0; align-self:flex-start; height:100vh; }
+  .shot-toolbar{ position:fixed; right:18px; bottom:18px; z-index:60; display:flex; gap:8px;
+    padding:8px; border-radius:14px; background:rgba(255,255,255,.9); border:1px solid var(--line);
+    box-shadow:0 10px 30px -12px rgba(30,58,138,.35); backdrop-filter:blur(10px); }
+  .shot-toolbar button{ width:34px; height:34px; border-radius:9px; color:#475569; display:grid; place-items:center; transition:.16s; }
+  .shot-toolbar button:hover{ background:#EFF6FF; color:#1D4ED8; }
+</style>
+</head>
+<body class="bg-titan">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- ============ 左侧导航 ============ -->
+  <aside id="sidebar" class="no-print relative w-[248px] flex-none flex flex-col text-white overflow-hidden">
+    <div class="relative z-10 px-5 py-5 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl grid place-items-center text-white text-base"
+           style="background:linear-gradient(135deg,#2563EB,#0EA5E9);box-shadow:0 8px 20px -8px #0EA5E9">
+        <i class="fa-solid fa-vr-cardboard"></i>
+      </div>
+      <div class="leading-tight">
+        <div class="text-[15px] font-bold tracking-wide">视界译 VisionTrans</div>
+        <div class="text-[10.5px] text-slate-300/80 tracking-wider">VR 实时解析与翻译系统</div>
+      </div>
+    </div>
+
+    <div class="relative z-10 px-5 pb-3">
+      <div class="glass-dark rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 dot-live"></span>
+        <div class="text-[11.5px] leading-tight">
+          <div class="font-semibold" id="sb-mode-name">商户端 · Merchant Cloud</div>
+          <div class="text-slate-300/70 text-[10px]">集群正常 · 端到端 186ms</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="relative z-10 px-4 pt-3 pb-1 text-[10px] font-semibold tracking-[.14em] text-slate-400/70 uppercase"
+         id="sb-group">业务运营</div>
+    <nav id="navlist" class="relative z-10 flex-1 px-4 py-2 space-y-1 overflow-y-auto"></nav>
+
+    <div class="relative z-10 px-4 py-4 border-t border-white/10">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full grid place-items-center text-[12px] font-bold text-white"
+             style="background:linear-gradient(135deg,#1E3A8A,#0EA5E9)">贺</div>
+        <div class="leading-tight flex-1 min-w-0">
+          <div class="text-[12.5px] font-semibold truncate">Danny · 运营管理员</div>
+          <div class="text-[10px] text-slate-300/70 truncate">ID: MT-20873 · 已实名</div>
+        </div>
+        <i class="fa-solid fa-ellipsis text-slate-300/70 text-xs cursor-pointer"></i>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ 右侧主体 ============ -->
+  <div class="flex-1 flex flex-col min-w-0">
+
+    <!-- 顶栏 -->
+    <header class="no-print relative z-30 h-[62px] flex-none glass border-b border-line flex items-center px-6 gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <div>
+          <div class="text-[15px] font-semibold leading-tight" id="hd-title">经营与投放大盘</div>
+          <div class="text-[11px] text-sub leading-tight" id="hd-crumb">商户端 / 经营与投放大盘 / Dashboard</div>
+        </div>
+      </div>
+
+      <div class="flex-1"></div>
+
+
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12.5px] font-semibold"
+           style="background:linear-gradient(135deg,#0B1E4D,#1E3A8A 55%,#0EA5E9);color:#fff;box-shadow:0 6px 16px -8px rgba(14,165,233,.9)">
+        <i class="fa-solid fa-server"></i>平台管理后台 · Admin Console
+      </div>
+
+
+      <div class="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-line bg-white text-[12px] text-sub">
+        <i class="fa-regular fa-calendar text-ice"></i>
+        <span class="num">2026-09-01 ~ 2026-09-30</span>
+        <i class="fa-solid fa-chevron-down text-[9px]"></i>
+      </div>
+
+      <div class="relative hidden lg:block">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-400"></i>
+        <input class="pl-8 pr-3 py-1.5 w-52 text-[12.5px] rounded-lg border border-line bg-white focus:outline-none focus:border-electric focus:ring-2 focus:ring-electric/15"
+               placeholder="搜索项目 / 订单 / 模型 ID">
+      </div>
+
+      <button class="no-print relative w-9 h-9 rounded-lg border border-line bg-white text-sub hover:text-electric hover:border-blue-200">
+        <i class="fa-regular fa-bell"></i>
+        <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold grid place-items-center">6</span>
+      </button>
+      <button class="no-print w-9 h-9 rounded-lg border border-line bg-white text-sub hover:text-electric hover:border-blue-200">
+        <i class="fa-regular fa-circle-question"></i>
+      </button>
+    </header>
+
+    <!-- 内容区 -->
+    <main id="viewport" class="flex-1 overflow-y-auto bg-titan"></main>
+  </div>
+</div>
+
+<!-- 截图工具条 -->
+<div class="shot-toolbar no-print">
+  <button title="全屏展示 (F)" onclick="toggleFull()"><i class="fa-solid fa-expand"></i></button>
+  <button title="打印 / 导出 PDF (P)" onclick="window.print()"><i class="fa-solid fa-print"></i></button>
+  <button title="收起侧栏 (H)" onclick="toggleSide()"><i class="fa-solid fa-left-right"></i></button>
+  <button title="长截图模式 (L)" onclick="toggleLong()"><i class="fa-solid fa-panorama"></i></button>
+</div>
+
+<script>
+/* =========================================================================
+   视界译 VisionTrans · PC 端高保真原型
+   纯原生 JS + Tailwind CDN + FontAwesome；所有图表由 SVG 运行时绘制
+   ========================================================================= */
+
+/* ------------------------------ 数据字典 ------------------------------ */
+const NAV = {
+  admin: {
+    group:'平台治理', name:'平台管理后台 · Admin Console', icon:'fa-server',
+    items:[
+      { id:'a6',  icon:'fa-satellite-dish', text:'集群态势感知',    sub:'Cluster Ops',      title:'集群态势感知与推演监控大盘' },
+      { id:'a7',  icon:'fa-brain',          text:'AI 模型与热更',   sub:'Model Lifecycle',  title:'AI 模型生命周期与热更中心' },
+      { id:'a8',  icon:'fa-language',       text:'术语库与 UGC 风控', sub:'Moderation',     title:'语种术语库审核与 UGC 风控中台' },
+      { id:'a9',  icon:'fa-calendar-day',   text:'广告位排期引擎',  sub:'Scheduler',        title:'全网广告位排期与调度引擎' },
+      { id:'a10', icon:'fa-shield-halved',  text:'安全风控与 RBAC', sub:'Security & RBAC',  title:'安全风控、设备审计与 RBAC 权限' },
+    ]
+  }
+};
+
+const STATE = { mode:'admin', page:'a6', side:true };
+const RENDERED = new Set();
+
+/* ------------------------------ 通用工具 ------------------------------ */
+const $  = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const fmt = n => (n??0).toLocaleString('en-US');
+const money = (n,d=2)=> '¥' + (n).toLocaleString('en-US',{minimumFractionDigits:d, maximumFractionDigits:d});
+
+function svg(tag, attrs={}, parent=null){
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs){ if(attrs[k]!==undefined && attrs[k]!==null) el.setAttribute(k, attrs[k]); }
+  if(parent) parent.appendChild(el);
+  return el;
+}
+function mkSVG(w,h,cls=''){
+  const s = svg('svg');
+  s.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  s.setAttribute('width','100%'); s.setAttribute('height',h);
+  s.setAttribute('preserveAspectRatio','none');
+  if(cls) s.setAttribute('class', cls);
+  return s;
+}
+function defsGradient(s, id, c1, c2, vertical=true){
+  const d = svg('defs',{},s);
+  const g = svg('linearGradient',{id, x1:'0', y1:'0', x2: vertical?'0':'1', y2: vertical?'1':'0'}, d);
+  svg('stop',{offset:'0%',  'stop-color':c1, 'stop-opacity':'.42'}, g);
+  svg('stop',{offset:'100%','stop-color':c2, 'stop-opacity':'0'}, g);
+  return id;
+}
+function esc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* --------------------------- SVG 图表引擎 --------------------------- */
+/**
+ * 折线 / 面积混合图（支持双 Y 轴）
+ * opt: { labels, series:[{name,data,color,type:'area'|'line',axis:'left'|'right',dashed}],
+ *        height, yFmtL, yFmtR, ticks:5, dots:true }
+ */
+function chart(el, opt){
+  el.innerHTML = '';
+  const labels = opt.labels, series = opt.series, h = opt.height||260;
+  const W = Math.max(el.clientWidth || 900, 320);
+  const pad = Object.assign({t:18, r:18, b:30, l:58}, opt.pad||{});
+  const iw = W - pad.l - pad.r, ih = h - pad.t - pad.b;
+  const s = mkSVG(W,h);
+  const axes = { left:{max:0,min:0}, right:{max:0,min:0} };
+  series.forEach(se=>{
+    const ax = axes[se.axis||'left'];
+    ax.max = Math.max(ax.max, Math.max(...se.data));
+  });
+  axes.left.max  = opt.maxL  ?? (axes.left.max*1.18  || 1);
+  axes.right.max = opt.maxR  ?? (axes.right.max*1.25 || 1);
+  const ticks = opt.ticks||5;
+
+  // 网格 + 左轴刻度
+  for(let i=0;i<=ticks;i++){
+    const y = pad.t + ih - ih*i/ticks;
+    svg('line',{x1:pad.l, y1:y, x2:W-pad.r, y2:y, stroke:'#EEF2F7','stroke-width':1}, s);
+    const t = svg('text',{x:pad.l-10, y:y+4, 'text-anchor':'end', 'font-size':'10.5', fill:'#94A3B8',
+      'font-family':'JetBrains Mono, monospace'}, s);
+    t.textContent = (opt.yFmtL||(v=>Math.round(v)))(axes.left.max*i/ticks);
+  }
+  if(opt.maxR || series.some(x=>x.axis==='right')){
+    for(let i=0;i<=ticks;i++){
+      const y = pad.t + ih - ih*i/ticks;
+      const t = svg('text',{x:W-pad.r+8, y:y+4, 'text-anchor':'start','font-size':'10.5',fill:'#94A3B8',
+        'font-family':'JetBrains Mono, monospace'}, s);
+      t.textContent = (opt.yFmtR||(v=>(+v).toFixed(1)))(axes.right.max*i/ticks);
+    }
+  }
+  // X 轴标签
+  const step = Math.max(1, Math.ceil(labels.length/ (W<560?6:10)));
+  labels.forEach((lb,i)=>{
+    if(i%step!==0 && i!==labels.length-1) return;
+    const x = pad.l + iw*i/(labels.length-1);
+    const t = svg('text',{x, y:h-8, 'text-anchor':'middle','font-size':'10.5',fill:'#94A3B8'}, s);
+    t.textContent = lb;
+  });
+
+  const X = i => pad.l + iw*i/(labels.length-1);
+  const Y = (v,ax) => pad.t + ih - ih*((v-(ax==='right'?0:0))/(axes[ax||'left'].max));
+
+  series.forEach(se=>{
+    const ax = se.axis||'left';
+    const pts = se.data.map((v,i)=>[X(i), Y(v,ax)]);
+    const d = pts.map((p,i)=> (i? 'L':'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    if(se.type!=='line'){
+      const gid = 'g'+Math.random().toString(36).slice(2,8);
+      defsGradient(s, gid, se.color, se.color);
+      const area = d + ` L ${X(labels.length-1).toFixed(1)} ${pad.t+ih} L ${pad.l} ${pad.t+ih} Z`;
+      svg('path',{d:area, fill:`url(#${gid})`}, s);
+    }
+    svg('path',{d, fill:'none', stroke:se.color, 'stroke-width':se.width||2.4,
+      'stroke-linecap':'round','stroke-linejoin':'round',
+      'stroke-dasharray': se.dashed? '5 4' : null}, s);
+    if(se.dots!==false){
+      pts.forEach((p,i)=>{
+        const c = svg('circle',{cx:p[0], cy:p[1], r:3.4, fill:'#fff', stroke:se.color, 'stroke-width':2}, s);
+        const ti = svg('title',{},c); ti.textContent = `${labels[i]} · ${se.name}：${fmt(se.data[i])}`;
+      });
+    }
+    if(se.forecast){
+      const n = se.data.length;
+      svg('line',{x1:X(n-2.5), y1:pad.t, x2:X(n-2.5), y2:pad.t+ih, stroke:'#CBD5E1','stroke-dasharray':'4 4'}, s);
+      const t = svg('text',{x:X(n-2.5)+6, y:pad.t+11,'font-size':'10',fill:'#94A3B8'}, s);
+      t.textContent = '推演预测';
+    }
+  });
+  el.appendChild(s);
+
+  if(opt.legend!==false){
+    const lg = document.createElement('div');
+    lg.className = 'flex flex-wrap items-center gap-4 mt-2 px-1';
+    lg.innerHTML = series.map(se=>
+      `<span class="inline-flex items-center gap-1.5 text-[11.5px] text-sub">
+         <i style="width:9px;height:9px;border-radius:3px;background:${se.color};display:inline-block"></i>${se.name}
+       </span>`).join('');
+    el.appendChild(lg);
+  }
+}
+
+/** 分组柱状图（支持双 Y 轴：series[].axis = 'right'） */
+function barChart(el, opt){
+  el.innerHTML='';
+  const labels=opt.labels, series=opt.series, h=opt.height||240;
+  const W=Math.max(el.clientWidth||900,320);
+  const hasR = series.some(x=>x.axis==='right');
+  const pad=Object.assign({t:16, r:hasR?56:16, b:30, l:56}, opt.pad||{});
+  const iw=W-pad.l-pad.r, ih=h-pad.t-pad.b;
+  const s=mkSVG(W,h);
+  const mL = opt.max  ?? (Math.max(...series.filter(x=>x.axis!=='right').flatMap(x=>x.data))*1.2 || 1);
+  const mR = opt.maxR ?? (Math.max(...series.filter(x=>x.axis==='right').flatMap(x=>x.data))*1.2 || 1);
+  const ticks=4;
+  const fmtL = opt.yFmt  || (v=>Math.round(v));
+  const fmtR = opt.yFmtR || (v=>Math.round(v));
+  for(let i=0;i<=ticks;i++){
+    const y=pad.t+ih-ih*i/ticks;
+    svg('line',{x1:pad.l,y1:y,x2:W-pad.r,y2:y,stroke:'#EEF2F7'},s);
+    const t=svg('text',{x:pad.l-10,y:y+4,'text-anchor':'end','font-size':'10.5',fill:'#94A3B8',
+      'font-family':'JetBrains Mono, monospace'},s);
+    t.textContent=fmtL(mL*i/ticks);
+    if(hasR){
+      const t2=svg('text',{x:W-pad.r+8,y:y+4,'text-anchor':'start','font-size':'10.5',fill:'#94A3B8',
+        'font-family':'JetBrains Mono, monospace'},s);
+      t2.textContent=fmtR(mR*i/ticks);
+    }
+  }
+  const gw=iw/labels.length, bw=Math.min(opt.barW||22, (gw-10)/series.length);
+  labels.forEach((lb,i)=>{
+    const cx=pad.l+gw*i+gw/2;
+    series.forEach((se,k)=>{
+      const v=se.data[i], bh=ih*v/(se.axis==='right'?mR:mL);
+      const x=cx-(series.length*bw+ (series.length-1)*5)/2 + k*(bw+5);
+      const gid='bg'+Math.random().toString(36).slice(2,7);
+      const d=svg('defs',{},s), g=svg('linearGradient',{id:gid,x1:'0',y1:'0',x2:'0',y2:'1'},d);
+      svg('stop',{offset:'0%','stop-color':se.c1},g); svg('stop',{offset:'100%','stop-color':se.c2},g);
+      const r=svg('rect',{x, y:pad.t+ih-bh, width:bw, height:Math.max(bh,1), rx:4, fill:`url(#${gid})`},s);
+      const ti=svg('title',{},r); ti.textContent=`${lb} · ${se.name}：${fmt(v)}`;
+    });
+    const t=svg('text',{x:cx,y:h-9,'text-anchor':'middle','font-size':'10.5',fill:'#94A3B8'},s);
+    t.textContent=lb;
+  });
+  el.appendChild(s);
+  if(opt.legend!==false){
+    const lg=document.createElement('div');
+    lg.className='flex flex-wrap items-center gap-4 mt-2 px-1';
+    lg.innerHTML=series.map(se=>`<span class="inline-flex items-center gap-1.5 text-[11.5px] text-sub">
+      <i style="width:9px;height:9px;border-radius:3px;background:linear-gradient(180deg,${se.c1},${se.c2});display:inline-block"></i>${se.name}</span>`).join('');
+    el.appendChild(lg);
+  }
+}
+
+/** 横向排行榜 */
+function rankChart(el, items, opt={}){
+  el.innerHTML = '';
+  const max = Math.max(...items.map(i=>i.value));
+  el.innerHTML = items.map((it,i)=>`
+    <div class="flex items-center gap-3 py-[7px]">
+      <div class="w-5 h-5 flex-none rounded-md grid place-items-center text-[10.5px] font-bold num"
+           style="background:${i<3?'linear-gradient(135deg,#1E3A8A,#0EA5E9)':'#EEF2F7'};
+                  color:${i<3?'#fff':'#64748B'}">${i+1}</div>
+      <div class="w-[38%] min-w-0">
+        <div class="text-[12.5px] font-medium text-ink truncate">${it.name}</div>
+        <div class="text-[10.5px] text-sub truncate">${it.sub||''}</div>
+      </div>
+      <div class="flex-1 bar"><i style="width:${(it.value/max*100).toFixed(1)}%"></i></div>
+      <div class="w-[74px] text-right num text-[12.5px] font-semibold text-ink">${opt.fmt?opt.fmt(it.value):fmt(it.value)}</div>
+      <div class="w-12 text-right text-[11px] font-semibold ${it.delta>=0?'text-emerald-600':'text-rose-500'}">
+        ${it.delta>=0?'+':''}${it.delta}%</div>
+    </div>`).join('');
+}
+
+/** 环形进度 */
+function donut(el, opt){
+  el.innerHTML='';
+  const size=opt.size||150, sw=opt.sw||14, r=(size-sw)/2, c=2*Math.PI*r;
+  const pct=opt.pct;
+  const s=mkSVG(size,size); s.setAttribute('preserveAspectRatio','xMidYMid meet');
+  s.style.width=size+'px'; s.style.height=size+'px'; s.style.margin='0 auto'; s.style.display='block';
+  const gid='dg'+Math.random().toString(36).slice(2,7);
+  const defs=svg('defs',{},s), g=svg('linearGradient',{id:gid,x1:'0',y1:'0',x2:'1',y2:'1'},defs);
+  svg('stop',{offset:'0%','stop-color':opt.c1||'#1E3A8A'},g);
+  svg('stop',{offset:'100%','stop-color':opt.c2||'#0EA5E9'},g);
+  svg('circle',{cx:size/2,cy:size/2,r, fill:'none', stroke:'#EEF2F7','stroke-width':sw},s);
+  const arc=svg('circle',{cx:size/2,cy:size/2,r, fill:'none', stroke:`url(#${gid})`,'stroke-width':sw,
+    'stroke-linecap':'round','stroke-dasharray':`${(c*pct/100).toFixed(2)} ${c.toFixed(2)}`,
+    transform:`rotate(-90 ${size/2} ${size/2})`},s);
+  const t1=svg('text',{x:size/2,y:size/2+2,'text-anchor':'middle','font-size':opt.fs||22,'font-weight':'700',
+    fill:'#0F172A','font-family':'JetBrains Mono, monospace'},s);
+  t1.textContent=opt.value;
+  const t2=svg('text',{x:size/2,y:size/2+20,'text-anchor':'middle','font-size':'10.5',fill:'#64748B'},s);
+  t2.textContent=opt.label||'';
+  el.appendChild(s);
+}
+
+/** 双色渐变波形图（端到端延迟拆解：堆叠面积 + 顶部波形） */
+function waveChart(el, opt){
+  el.innerHTML='';
+  const W=Math.max(el.clientWidth||900,320), h=opt.height||280;
+  const pad=Object.assign({t:16,r:18,b:28,l:56},opt.pad||{});
+  const iw=W-pad.l-pad.r, ih=h-pad.t-pad.b;
+  const s=mkSVG(W,h);
+  const n=opt.points;                       // 采样点数量
+  const layers=opt.layers;                  // [{name,c1,c2,fn}]
+  const total=i=>layers.reduce((a,l)=>a+l.fn(i),0);
+  const maxY=opt.max || Math.max(...Array.from({length:n},(_,i)=>total(i)))*1.12;
+  const X=i=>pad.l+iw*i/(n-1), Y=v=>pad.t+ih-ih*v/maxY;
+
+  for(let k=0;k<=4;k++){
+    const y=pad.t+ih-ih*k/4;
+    svg('line',{x1:pad.l,y1:y,x2:W-pad.r,y2:y,stroke:'#EEF2F7'},s);
+    const t=svg('text',{x:pad.l-10,y:y+4,'text-anchor':'end','font-size':'10.5',fill:'#94A3B8',
+      'font-family':'JetBrains Mono, monospace'},s);
+    t.textContent=Math.round(maxY*k/4)+(opt.unit||'');
+  }
+  // 堆叠层（自上而下绘制，底层最后）
+  const cum=new Array(n).fill(0);
+  layers.slice().reverse().forEach(l=>{
+    const top=[], bot=[];
+    for(let i=0;i<n;i++){ bot.push([X(i), Y(cum[i])]); cum[i]+=l.fn(i); top.push([X(i), Y(cum[i])]); }
+    const d=top.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ')+
+            ' '+ bot.slice().reverse().map((p,i)=>(i?'L':'L')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ')+' Z';
+    const gid='wg'+Math.random().toString(36).slice(2,8);
+    const defs=svg('defs',{},s), g=svg('linearGradient',{id:gid,x1:'0',y1:'0',x2:'0',y2:'1'},defs);
+    svg('stop',{offset:'0%','stop-color':l.c1,'stop-opacity':'.85'},g);
+    svg('stop',{offset:'100%','stop-color':l.c2,'stop-opacity':'.35'},g);
+    svg('path',{d, fill:`url(#${gid})`, stroke:l.c1,'stroke-width':1.2,'stroke-opacity':'.55'},s);
+  });
+  // 顶部总延迟曲线
+  const cum2=new Array(n).fill(0);
+  const tops=[];
+  for(let i=0;i<n;i++){ layers.forEach(l=>cum2[i]+=l.fn(i)); tops.push([X(i),Y(cum2[i])]); }
+  svg('path',{d:tops.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' '),
+    fill:'none', stroke:'#1E3A8A','stroke-width':2.2,'stroke-linejoin':'round'},s);
+  // 时间轴
+  (opt.labels||[]).forEach(lb=>{
+    const x=pad.l+iw*lb.at/(n-1);
+    svg('line',{x1:x,y1:pad.t,x2:x,y2:pad.t+ih,stroke:'#E2E8F0','stroke-dasharray':'3 3'},s);
+    const t=svg('text',{x,y:h-8,'text-anchor':'middle','font-size':'10.5',fill:'#94A3B8'},s);
+    t.textContent=lb.t;
+  });
+  el.appendChild(s);
+  if(opt.legend!==false){
+    const lg=document.createElement('div');
+    lg.className='flex flex-wrap items-center gap-x-5 gap-y-1.5 mt-2 px-1';
+    lg.innerHTML=layers.slice().reverse().map(l=>
+      `<span class="inline-flex items-center gap-1.5 text-[11.5px] text-sub">
+        <i style="width:9px;height:9px;border-radius:3px;background:linear-gradient(180deg,${l.c1},${l.c2});display:inline-block"></i>${l.name}</span>`).join('')
+      + `<span class="inline-flex items-center gap-1.5 text-[11.5px] text-sub"><i style="width:9px;height:2px;background:#1E3A8A;display:inline-block"></i>端到端总延迟</span>`;
+    el.appendChild(lg);
+  }
+}
+
+/** 迷你 Sparkline */
+function spark(el, data, color='#2563EB', h=34){
+  el.innerHTML='';
+  const W=Math.max(el.clientWidth||120,60);
+  const s=mkSVG(W,h);
+  const max=Math.max(...data), min=Math.min(...data), rg=(max-min)||1;
+  const X=i=>i*(W-4)/(data.length-1)+2, Y=v=>h-4-((v-min)/rg)*(h-9);
+  const gid='sg'+Math.random().toString(36).slice(2,7);
+  defsGradient(s,gid,color,color);
+  const d=data.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join(' ');
+  svg('path',{d:d+` L ${X(data.length-1).toFixed(1)} ${h} L 2 ${h} Z`, fill:`url(#${gid})`},s);
+  svg('path',{d, fill:'none', stroke:color,'stroke-width':1.8,'stroke-linecap':'round'},s);
+  el.appendChild(s);
+}
+
+/** 二维码（确定性伪随机矩阵） */
+function qrCode(el, seedStr, size=168){
+  const N=25, cell=size/N;
+  let seed=0; for(const ch of seedStr) seed=(seed*131+ch.charCodeAt(0))>>>0;
+  const rnd=()=>{ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; };
+  const s=mkSVG(size,size); s.setAttribute('preserveAspectRatio','xMidYMid meet');
+  s.style.width=size+'px'; s.style.height=size+'px';
+  svg('rect',{x:0,y:0,width:size,height:size,fill:'#fff'},s);
+  const inFinder=(r,c)=> (r<8&&c<8)||(r<8&&c>=N-8)||(r>=N-8&&c<8);
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+    if(inFinder(r,c)) continue;
+    if(rnd()>0.52) svg('rect',{x:c*cell,y:r*cell,width:cell,height:cell,fill:'#0F172A'},s);
+  }
+  const finder=(ox,oy)=>{
+    svg('rect',{x:ox*cell,y:oy*cell,width:cell*7,height:cell*7,fill:'#0F172A'},s);
+    svg('rect',{x:(ox+1)*cell,y:(oy+1)*cell,width:cell*5,height:cell*5,fill:'#fff'},s);
+    svg('rect',{x:(ox+2)*cell,y:(oy+2)*cell,width:cell*3,height:cell*3,fill:'#1E3A8A'},s);
+  };
+  finder(0,0); finder(N-7,0); finder(0,N-7);
+  for(let i=8;i<N-8;i++){ if((i%2)===0){ svg('rect',{x:i*cell,y:6*cell,width:cell,height:cell,fill:'#0F172A'},s);
+                                        svg('rect',{x:6*cell,y:i*cell,width:cell,height:cell,fill:'#0F172A'},s); } }
+  el.appendChild(s);
+}
+
+/* --------------------------- 布局与导航 --------------------------- */
+function buildSidebar(){
+  const cfg = NAV[STATE.mode];
+  $('#sb-mode-name').textContent = cfg.name;
+  $('#sb-group').textContent = cfg.group;
+  $('#navlist').innerHTML = cfg.items.map(it=>`
+    <div class="nav-item" data-go="${it.id}">
+      <span class="nav-ico"><i class="fa-solid ${it.icon}"></i></span>
+      <span class="leading-tight min-w-0">
+        <span class="block truncate">${it.text}</span>
+        <span class="nav-sub block truncate">${it.sub}</span>
+      </span>
+      <i class="fa-solid fa-chevron-right ml-auto text-[9px] opacity-50"></i>
+    </div>`).join('');
+  $$('#navlist .nav-item').forEach(n=> n.addEventListener('click', ()=>go(n.dataset.go)));
+}
+
+function go(id){
+  if(!NAV[STATE.mode].items.some(i => i.id === id)) id = NAV[STATE.mode].items[0].id;
+  STATE.page = id;
+  $$('#navlist .nav-item').forEach(n=> n.classList.toggle('active', n.dataset.go===id));
+  $$('.page').forEach(p=> p.classList.remove('active'));
+  const page = $('#page-'+id);
+  page.classList.add('active');
+  const meta = NAV[STATE.mode].items.find(i=>i.id===id);
+  $('#hd-title').textContent = meta.title;
+  $('#hd-crumb').textContent = `${STATE.mode==='merchant'?'商户端':'平台管理后台'} / ${meta.title} / ${meta.sub}`;
+  $('#viewport').scrollTop = 0;
+  if(!RENDERED.has(id)){ (window.CHARTS[id]||(()=>{}))(); RENDERED.add(id); }
+  else { (window.CHARTS[id]||(()=>{}))(); }
+}
+
+function toggleFull(){
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+  else document.exitFullscreen?.();
+}
+function toggleSide(){
+  STATE.side = !STATE.side;
+  $('#sidebar').style.display = STATE.side ? '' : 'none';
+}
+function toggleLong(){
+  document.body.classList.toggle('longshot');
+}
+
+document.addEventListener('keydown', e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  const k=e.key.toLowerCase();
+  if(k==='f') toggleFull();
+  if(k==='h') toggleSide();
+  if(k==='l') toggleLong();
+  if(k==='p'){ e.preventDefault(); window.print(); }
+  const list = NAV[STATE.mode].items.map(i=>i.id);
+  const i = list.indexOf(STATE.page);
+  if(e.key==='ArrowDown' && i<list.length-1) go(list[i+1]);
+  if(e.key==='ArrowUp'   && i>0)             go(list[i-1]);
+});
+
+let rt;
+window.addEventListener('resize', ()=>{
+  clearTimeout(rt); rt=setTimeout(()=>{ (window.CHARTS[STATE.page]||(()=>{}))(); }, 220);
+});
+
+/* =======================================================================
+   PAGES —— 10 个核心业务界面（商户端 5 + 管理后台 5）
+   ======================================================================= */
+const PAGES = {};
+
+/* ---------- 公用片段 ---------- */
+const pageHead = (title, desc, actions='') => `
+  <div class="flex items-end justify-between gap-4 mb-4 anim no-print">
+    <div>
+      <h1 class="text-[19px] font-bold text-ink tracking-tight">${title}</h1>
+      <p class="text-[12.5px] text-sub mt-1">${desc}</p>
+    </div>
+    <div class="flex items-center gap-2">${actions}</div>
+  </div>`;
+
+const kpi = (o) => `
+  <div class="card p-4 anim">
+    <div class="flex items-start justify-between gap-2">
+      <div class="min-w-0">
+        <div class="text-[12px] text-sub">${o.label}</div>
+        <div class="num text-[25px] font-bold text-ink leading-tight mt-1.5">${o.value}</div>
+      </div>
+      <div class="w-10 h-10 flex-none rounded-xl grid place-items-center text-white text-[15px]"
+           style="background:linear-gradient(135deg,${o.c1},${o.c2});box-shadow:0 8px 18px -10px ${o.c2}">
+        <i class="fa-solid ${o.icon}"></i>
+      </div>
+    </div>
+    <div class="mt-2.5 flex items-center gap-2">
+      <span class="pill ${o.up?'pill-green':'pill-red'}">
+        <i class="fa-solid fa-arrow-${o.up?'up':'down'} text-[9px]"></i>${o.delta}</span>
+      <span class="text-[11px] text-sub">${o.note}</span>
+    </div>
+    <div class="mt-2.5 h-[34px]" data-spark="${o.spark.join(',')}" data-color="${o.c2}"></div>
+  </div>`;
+
+/* =======================================================================
+   6 · 集群态势感知与推演监控大盘（管理后台）
+   ======================================================================= */
+PAGES.a6 = () => {
+  const nodes = [
+    ['vt-shanghai-core-01','华东 1（上海）','主节点 · GPU 推理','4','62.4%','41.2%','186 ms','健康'],
+    ['vt-shanghai-core-02','华东 1（上海）','主节点 · GPU 推理','2','58.9%','39.6%','192 ms','健康'],
+    ['vt-shanghai-nmt-01','华东 1（上海）','NMT 翻译','2','71.8%','48.3%','178 ms','健康'],
+    ['vt-shanghai-asr-01','华东 1（上海）','ASR 语音识别','2','66.2%','44.1%','204 ms','健康'],
+    ['vt-shenzhen-dr-01','华南 1（深圳）','容灾节点 · CPU 兜底','2','83.6%','66.9%','246 ms','高负载'],
+    ['vt-shenzhen-dr-02','华南 1（深圳）','容灾节点 · CPU 兜底','2','54.2%','37.1%','228 ms','健康'],
+    ['vt-shanghai-gateway-01','华东 1（上海）','API 网关 / 鉴权','1','47.5%','32.8%','168 ms','健康'],
+    ['vt-shanghai-cache-01','华东 1（上海）','缓存 / 模型分发','1','38.4%','25.6%','142 ms','健康'],
+  ];
+  const alarms = [
+    ['14:22:08','P2','华南 1（深圳）容灾节点负载 83.6%，已自动扩容 2 个容器','已自愈'],
+    ['13:56:41','P3','主节点出口带宽利用率 78%，已启用限流降级预案','已自愈'],
+    ['13:18:02','P1','NMT 翻译服务 v3.8.2 灰度批次 B 错误率 0.42% 超阈值，已自动回滚','已回滚'],
+    ['12:04:33','P3','华南容灾节点磁盘水位 78%，触发日志清理任务','已处理'],
+    ['11:42:19','P2','主节点 GPU 显存碎片率 31%，已触发显存整理','已处理'],
+    ['10:26:57','P3','开屏广告素材 CDN 回源率上升至 6.8%，已预热缓存','已自愈'],
+  ];
+  return `
+  <div class="p-5">
+    ${pageHead('集群态势感知与推演监控大盘',
+      '全网实时并发、端到端延迟拆解、QPS 吞吐与节点健康度 · 采样周期 5s · 数据时延 < 1s',
+      `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-semibold"
+         style="background:#ECFDF5;color:#047857"><span class="w-2 h-2 rounded-full bg-emerald-500 dot-live"></span>实时监控中</span>
+       <button class="btn btn-ghost btn-sm"><i class="fa-solid fa-satellite-dish"></i>拓扑视图</button>
+       <button class="btn btn-primary btn-sm"><i class="fa-solid fa-flask"></i>容量推演</button>`)}
+
+    <!-- 4 项核心指标 -->
+    <div class="grid grid-cols-4 gap-4">
+      <div class="card p-4 anim relative overflow-hidden">
+        <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full" style="background:radial-gradient(circle,rgba(37,99,235,.16),transparent 70%)"></div>
+        <div class="flex items-start justify-between">
+          <div><div class="text-[12px] text-sub">全网并发会话数</div>
+            <div class="num text-[28px] font-bold text-navy leading-tight mt-1.5">14,820</div></div>
+          <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#1E3A8A,#0EA5E9)"><i class="fa-solid fa-users-rays"></i></div>
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+          <span class="pill pill-green"><i class="fa-solid fa-arrow-up text-[9px]"></i>6.8%</span>
+          <span class="text-[11px] text-sub">较 1 小时前 · 峰值 15,600</span>
+        </div>
+        <div class="mt-2.5 h-[34px]" data-spark="86,92,90,98,104,102,110,118,116,126,134,148" data-color="#2563EB"></div>
+      </div>
+      <div class="card p-4 anim relative overflow-hidden">
+        <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full" style="background:radial-gradient(circle,rgba(14,165,233,.16),transparent 70%)"></div>
+        <div class="flex items-start justify-between">
+          <div><div class="text-[12px] text-sub">端到端平均延迟</div>
+            <div class="num text-[28px] font-bold text-navy leading-tight mt-1.5">186<span class="text-[15px] text-sub font-normal"> ms</span></div></div>
+          <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#2563EB,#0EA5E9)"><i class="fa-solid fa-stopwatch"></i></div>
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+          <span class="pill pill-green"><i class="fa-solid fa-arrow-down text-[9px]"></i>12 ms</span>
+          <span class="text-[11px] text-sub">SLA 目标 ≤ 250 ms</span>
+        </div>
+        <div class="mt-2.5 h-[34px]" data-spark="242,236,240,228,222,216,210,204,198,194,190,186" data-color="#0EA5E9"></div>
+      </div>
+      <div class="card p-4 anim relative overflow-hidden">
+        <div class="absolute -right-8 -top-8 w-32 h-32 rounded-full" style="background:radial-gradient(circle,rgba(30,58,138,.16),transparent 70%)"></div>
+        <div class="flex items-start justify-between">
+          <div><div class="text-[12px] text-sub">核心 API 吞吐量（QPS）</div>
+            <div class="num text-[28px] font-bold text-navy leading-tight mt-1.5">860</div></div>
+          <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#0B1E4D,#2563EB)"><i class="fa-solid fa-bolt"></i></div>
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+          <span class="pill pill-green"><i class="fa-solid fa-arrow-up text-[9px]"></i>9.4%</span>
+          <span class="text-[11px] text-sub">设计容量 1,200 QPS（≥500 QPS 达标）</span>
+        </div>
+        <div class="mt-2.5 h-[34px]" data-spark="486,524,562,604,648,692,724,762,796,828,846,860" data-color="#1E3A8A"></div>
+      </div>
+      <div class="card p-4 anim">
+        <div class="flex items-center justify-between">
+          <div><div class="text-[12px] text-sub">节点健康度</div>
+            <div class="num text-[28px] font-bold text-emerald-600 leading-tight mt-1.5">99.98%</div>
+            <div class="text-[11px] text-sub mt-1.5">在线 16 / 16 个微服务容器 · 异常 0</div></div>
+          <div data-chart="a6-health" style="width:104px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 延迟拆解波形 + 告警流 -->
+    <div class="grid grid-cols-3 gap-4 mt-4">
+      <!-- 延迟拆解波形 -->
+      <div class="card col-span-2 anim">
+        <div class="card-h">
+          <div><div class="card-t">端到端延迟拆解波形图</div>
+            <div class="card-s">五层管线堆叠耗时 + 端到端总延迟曲线 · 单位 ms</div></div>
+          <div class="flex items-center gap-1">
+            <button class="btn btn-primary btn-sm !px-2.5">P50</button>
+            <button class="btn btn-ghost btn-sm !px-2.5">P95</button>
+            <button class="btn btn-ghost btn-sm !px-2.5">P99</button>
+          </div>
+        </div>
+        <div class="card-b"><div data-chart="a6-wave"></div></div>
+        <div class="card-h !border-b-0 !border-t border-line">
+          <span class="text-[11.5px] text-sub">帧抓取 18 ms · OCR 检测 46 ms · NMT 翻译 62 ms · 空间渲染 34 ms · 图层上屏 16 ms</span>
+          <span class="text-[11.5px] text-sub">合计 <b class="num text-navy">186 ms</b> · SLA ≤ 250 ms</span>
+        </div>
+      </div>
+      <!-- 告警流 -->
+      <div class="card anim">
+        <div class="card-h"><div><div class="card-t">实时告警与自愈事件流</div>
+          <div class="card-s">自愈率 96.4% · 平均自愈耗时 4.2s</div></div>
+          <span class="pill pill-green"><i class="fa-solid fa-robot text-[9px]"></i>自动处置</span></div>
+        <div class="card-b space-y-2">
+          ${alarms.map(a=>`
+          <div class="rounded-lg border border-line p-2.5">
+            <div class="flex items-center gap-2">
+              <span class="pill ${a[1]==='P1'?'pill-red':a[1]==='P2'?'pill-amber':'pill-blue'} !text-[10px]">${a[1]}</span>
+              <span class="num text-[11px] text-sub">${a[0]}</span>
+              <span class="pill pill-green !text-[10px] ml-auto"><i class="fa-solid fa-circle-check text-[9px]"></i>${a[3]}</span>
+            </div>
+            <div class="text-[12px] text-ink mt-1.5 leading-snug">${a[2]}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4 mt-4">
+      <!-- 吞吐与容量推演 -->
+      <div class="card col-span-2 anim">
+        <div class="card-h"><div><div class="card-t">核心 API 吞吐量与容量水位推演</div>
+          <div class="card-s">24 小时真实吞吐 + LSTM 未来 3 小时推演 + 设计容量上限（1,200 QPS）</div></div></div>
+        <div class="card-b"><div data-chart="a6-qps"></div></div>
+      </div>
+      <!-- 双可用区并发 -->
+      <div class="card anim">
+        <div class="card-h"><div><div class="card-t">双可用区并发分布</div>
+          <div class="card-s">含端侧离线引擎会话（不计入云端并发）</div></div></div>
+        <div class="card-b"><div data-chart="a6-region"></div></div>
+        <div class="card-h !border-b-0 !border-t border-line">
+          <span class="text-[11.5px] text-sub">合计</span>
+          <span class="num text-[12.5px] font-semibold text-navy">14,820 会话</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 容器健康度明细 -->
+    <div class="card anim mt-4">
+      <div class="card-h">
+        <div><div class="card-t">微服务容器健康度明细</div>
+          <div class="card-s">双可用区 8 个服务组 / 16 个容器 · 实时采样周期 5s</div></div>
+        <span class="pill pill-green"><i class="fa-solid fa-circle-check text-[9px]"></i>16 / 16 在线</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="tb">
+          <thead><tr><th>节点 ID</th><th>可用区</th><th>服务角色</th><th>容器数</th><th>CPU 利用率</th><th>GPU / 显存</th><th>平均延迟</th><th>状态</th></tr></thead>
+          <tbody>
+            ${nodes.map(n=>{
+              const cb = parseFloat(n[4])>80?'#EF4444':parseFloat(n[4])>60?'#F59E0B':'#10B981';
+              const gb = parseFloat(n[5])>80?'#EF4444':parseFloat(n[5])>60?'#F59E0B':'#2563EB';
+              return `
+            <tr>
+              <td class="num text-[12px] font-medium">${n[0]}</td>
+              <td class="text-[12px]">${n[1]}</td>
+              <td class="text-[12px]">${n[2]}</td>
+              <td class="num text-[12px]">${n[3]}</td>
+              <td><div class="flex items-center gap-2"><div class="bar w-16"><i style="width:${n[4]};background:${cb}"></i></div><span class="num text-[11.5px]">${n[4]}</span></div></td>
+              <td><div class="flex items-center gap-2"><div class="bar w-16"><i style="width:${n[5]};background:${gb}"></i></div><span class="num text-[11.5px]">${n[5]}</span></div></td>
+              <td class="num text-[12px]">${n[6]}</td>
+              <td><span class="pill ${n[7]==='健康'?'pill-green':'pill-amber'}">${n[7]}</span></td>
+            </tr>`;}).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+};
+
+
+    /* =======================================================================
+       7 · AI 模型生命周期与热更中心（管理后台）
+       ======================================================================= */
+    PAGES.a7 = () => {
+      const models = [
+        ['DBNet-Tiny v4.2.1','端侧 OCR','INT8','0.9 MB','98.4%','100%','全量','fa-bolt text-emerald-500'],
+        ['CRNN-zhXX v3.1.0','端侧 OCR','INT8','1.2 MB','96.2%','100%','全量','fa-bolt text-emerald-500'],
+        ['NMT-Edge-zhXX v3.8.4','端侧翻译','INT8','3.4 MB','92.1%','35%','灰度 B 观察中','fa-circle-half-stroke text-amber-500'],
+        ['NMT-Cloud-zhXX v5.0.2','云端翻译','FP16','86 MB','—','100%','全量','fa-bolt text-emerald-500'],
+        ['Whisper-AR v2.3.0','端侧 ASR','INT8','4.1 MB','88.7%','60%','灰度 C 未开始','fa-circle-half-stroke text-amber-500'],
+        ['NMT-Cloud-enXX v5.0.2','云端翻译','FP16','91 MB','—','100%','全量','fa-bolt text-emerald-500'],
+        ['Manga-OCR v1.4.0','端侧漫画 OCR','INT8','1.8 MB','84.3%','100%','全量','fa-bolt text-emerald-500'],
+        ['SignLLM v0.9.0','端侧手语','FP16','12 MB','41.2%','10%','灰度 A 已通过','fa-circle-half-stroke text-amber-500'],
+        ['Spatial-AR v3.0.1','端侧空间渲染','INT8','2.6 MB','91.5%','100%','全量','fa-bolt text-emerald-500'],
+      ];
+      const tl = [
+        ['v3.8.4 批次 B 灰度','2026-09-02 22:06','NMT-Edge-zhXX 灰度比例提升至 35%，观察中','fa-circle-half-stroke text-amber-500'],
+        ['v4.2.1 端侧全量','2026-09-02 18:33','DBNet-Tiny 端侧全量下发，OCR 准确率 +0.3pt','fa-check text-emerald-500'],
+        ['v3.8.3 自动回滚','2026-09-01 14:12','批次 B P99 超阈值，触发自动回滚（耗时 4.2s）','fa-rotate-left text-rose-500'],
+        ['v5.0.2 云端全量','2026-08-30 09:00','NMT-Cloud 双语对升级，BLEU +1.8','fa-check text-emerald-500'],
+        ['v3.8.0 灰度发布','2026-08-28 11:20','NMT-Edge 首批 10% 灰度开启','fa-circle-half-stroke text-amber-500'],
+      ];
+      return `
+      <div class="p-5">
+        ${pageHead('AI 模型生命周期与热更中心',
+          '端侧量化模型（INT8/FP16，最小 0.9MB）与云端大模型统一纳管 · 秒级热更 · 一键回滚',
+          `<button class="btn btn-ghost btn-sm"><i class="fa-solid fa-list-check"></i>训练数据接入</button>
+           <button class="btn btn-primary btn-sm"><i class="fa-solid fa-rotate"></i>版本发布</button>`)}
+
+        <div class="grid grid-cols-4 gap-4">
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">纳管模型</div>
+            <div class="num text-[26px] font-bold text-navy leading-tight mt-1.5">42</div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#1E3A8A,#2563EB)"><i class="fa-solid fa-cubes"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">端侧 28 · 云端 14</div>
+            <div class="mt-2.5 h-[30px]" data-spark="28,29,30,31,34,36,38,39,40,41,42" data-color="#1E3A8A"></div></div>
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">端侧覆盖率</div>
+            <div class="num text-[26px] font-bold text-navy leading-tight mt-1.5">94.82<span class="text-[15px] text-sub font-normal">%</span></div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#0EA5E9,#38BDF8)"><i class="fa-solid fa-mobile-screen"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">活跃设备 2,186 万台</div>
+            <div class="mt-2.5 h-[30px]" data-spark="88,89,90,91,92,93,93.5,94,94.4,94.7,94.82" data-color="#0EA5E9"></div></div>
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">平均热更耗时</div>
+            <div class="num text-[26px] font-bold text-navy leading-tight mt-1.5">6.4<span class="text-[15px] text-sub font-normal"> s</span></div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#0B1E4D,#1E3A8A)"><i class="fa-solid fa-bolt"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">SLA ≤ 10s · 秒级下发</div>
+            <div class="mt-2.5 h-[30px]" data-spark="9.2,8.8,8.1,7.6,7.2,7.0,6.8,6.6,6.5,6.4,6.4" data-color="#1E3A8A"></div></div>
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">自动回滚</div>
+            <div class="num text-[26px] font-bold text-emerald-600 leading-tight mt-1.5">3<span class="text-[15px] text-sub font-normal"> 次</span></div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#065F46,#10B981)"><i class="fa-solid fa-rotate-left"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">近 7 日 · 全部成功</div>
+            <div class="mt-2.5 h-[30px]" data-spark="0,0,1,1,2,2,2,3,3,3,3" data-color="#10B981"></div></div>
+        </div>
+
+        <div class="card anim mt-4">
+          <div class="card-h"><div><div class="card-t">模型部署与灰度状态</div><div class="card-s">端侧模型支持灰度比例下发与秒级热更，回滚耗时 ≤ 10s</div></div>
+            <button class="btn btn-ghost btn-sm"><i class="fa-solid fa-download"></i>导出清单</button></div>
+          <div class="overflow-x-auto">
+            <table class="tb">
+              <thead><tr><th>模型</th><th>类型</th><th>精度</th><th>包体积</th><th>端侧覆盖率</th><th>灰度进度</th><th>状态</th><th>秒级热更</th></tr></thead>
+              <tbody>
+                ${models.map(m=>{
+                  const stc = m[6].indexOf('全量')>=0?'pill-green':m[6].indexOf('观察')>=0?'pill-amber':'pill-blue';
+                  return `<tr><td class="text-[12.5px] font-medium"><i class="fa-solid ${m[7]} mr-1.5"></i>${m[0]}</td>
+                    <td class="text-[12px]">${m[1]}</td>
+                    <td><span class="pill pill-blue">${m[2]}</span></td>
+                    <td class="num text-[12px]">${m[3]}</td>
+                    <td class="num text-[12px]">${m[4]}</td>
+                    <td><div class="flex items-center gap-2"><div class="bar w-24"><i style="width:${m[5]}"></i></div><span class="num text-[11.5px] text-sub">${m[5]}</span></div></td>
+                    <td><span class="pill ${stc}">${m[6]}</span></td>
+                    <td><button class="btn btn-ghost btn-sm !px-2 !py-1"><i class="fa-solid fa-bolt text-ice"></i></button></td></tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 mt-4">
+          <div class="card anim">
+            <div class="card-h"><div><div class="card-t">灰度下发与热更策略</div><div class="card-s">分批灰度 · 自动回滚 · 弱网断点续传</div></div></div>
+            <div class="card-b">
+              <div class="text-[12px] text-sub mb-1">灰度比例</div>
+              <div class="flex items-center gap-3">
+                <input type="range" class="rng" min="0" max="100" value="35">
+                <span class="num text-[15px] font-bold text-navy w-12 text-right">35%</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2 mt-3">
+                <div class="rounded-lg border border-line p-2.5"><div class="flex items-center justify-between"><span class="text-[12px] font-medium">批次 A</span><span class="pill pill-green !text-[10px]">已通过</span></div><div class="num text-[11px] text-sub mt-1">10%</div></div>
+                <div class="rounded-lg border border-line p-2.5"><div class="flex items-center justify-between"><span class="text-[12px] font-medium">批次 B</span><span class="pill pill-amber !text-[10px]">观察中</span></div><div class="num text-[11px] text-sub mt-1">35%</div></div>
+                <div class="rounded-lg border border-line p-2.5"><div class="flex items-center justify-between"><span class="text-[12px] font-medium">批次 C</span><span class="pill pill-blue !text-[10px]">未开始</span></div><div class="num text-[11px] text-sub mt-1">60%</div></div>
+                <div class="rounded-lg border border-line p-2.5"><div class="flex items-center justify-between"><span class="text-[12px] font-medium">全量</span><span class="pill pill-slate !text-[10px]">待触发</span></div><div class="num text-[11px] text-sub mt-1">100%</div></div>
+              </div>
+              <div class="mt-3 space-y-1.5">
+                ${[['自动回滚阈值','已开启'],['夜间低峰窗口','已开启'],['弱网断点续传','已开启'],['强制全量推送','已关闭']].map(s=>`
+                <div class="flex items-center justify-between text-[12px]"><span class="text-sub">${s[0]}</span>
+                  <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-toggle-${s[1].indexOf('开')>=0?'on text-electric':'off text-slate-300'}"></i><span class="${s[1].indexOf('开')>=0?'text-electric':'text-sub'}">${s[1]}</span></span></div>`).join('')}
+              </div>
+              <div class="flex gap-2 mt-3">
+                <button class="btn btn-primary btn-sm flex-1"><i class="fa-solid fa-bolt"></i>秒级热更</button>
+                <button class="btn btn-ghost btn-sm flex-1"><i class="fa-solid fa-rotate-left"></i>一键回滚</button>
+              </div>
+            </div>
+          </div>
+          <div class="card col-span-2 anim">
+            <div class="card-h"><div><div class="card-t">版本迭代与运维时间线</div><div class="card-s">端到端可追溯的模型生命周期</div></div></div>
+            <div class="card-b">
+              <div class="relative pl-5">
+                <div class="absolute left-[7px] top-1 bottom-1 w-px bg-line"></div>
+                ${tl.map(t=>`
+                <div class="relative pb-4 last:pb-0">
+                  <span class="absolute -left-[18px] top-1 w-3.5 h-3.5 rounded-full bg-white border-2 ${t[3].indexOf('emerald')>=0?'border-emerald-500':t[3].indexOf('rose')>=0?'border-rose-500':'border-amber-500'}"></span>
+                  <div class="flex items-center gap-2"><span class="text-[12.5px] font-semibold text-ink">${t[0]}</span><span class="num text-[11px] text-sub">${t[1]}</span></div>
+                  <div class="text-[12px] text-sub mt-0.5">${t[2]}</div>
+                </div>`).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    };
+
+
+    /* =======================================================================
+       8 · 语种术语库审核与 UGC 风控中台（管理后台）
+       ======================================================================= */
+    PAGES.a8 = () => {
+      const kanban = [
+        ['待初审', 18, 'pill-amber', [
+          ['国际机场安检术语包 v3.1','高','领域：交通 · 海关','李审核','09-04 18:00'],
+          ['医疗处方拉丁文对照 v2.0','中','领域：医疗','王审核','09-05 10:00'],
+          ['动漫拟声词词典 v1.4','低','领域：文娱','—','—'],
+        ]],
+        ['术语复核', 7, 'pill-blue', [
+          ['航空管制通话术语 v5.2','高','置信度 96.4%','陈复核','09-04 12:00'],
+          ['法律条款多语种 v3.0','中','置信度 91.2%','赵复核','09-04 15:00'],
+        ]],
+        ['已发布', 1286, 'pill-green', [
+          ['机场标识多语 v4.0','—','本月 +312','—','—'],
+          ['金融财报术语 v2.8','—','本月 +88','—','—'],
+        ]],
+      ];
+      const assets = [
+        ['AR 开屏 · 全站冷启动','98.4%','通过'],
+        ['AR 街景 · 南京路商圈','95.1%','通过'],
+        ['AR Banner · 教育季','88.7%','人工复审'],
+        ['AR 激励视频 · 游戏联运','82.3%','人工复审'],
+        ['AR 信息流 · 电商','74.6%','驳回'],
+        ['AR 贴片 · 影视宣发','69.2%','驳回'],
+      ];
+      return `
+      <div class="p-5">
+        ${pageHead('语种术语库审核与 UGC 风控中台',
+          '多语种术语库审核、AR 广告素材机审与 UGC 违规高亮拦截 · 平均处置耗时 82 ms',
+          `<button class="btn btn-ghost btn-sm"><i class="fa-solid fa-file-import"></i>术语库导入</button>
+           <button class="btn btn-primary btn-sm"><i class="fa-solid fa-list-check"></i>新建审核流</button>`)}
+
+        <div class="grid grid-cols-4 gap-4">
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">在库术语总量</div>
+            <div class="num text-[26px] font-bold text-navy leading-tight mt-1.5">286.42<span class="text-[15px] text-sub font-normal"> 万</span></div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#1E3A8A,#2563EB)"><i class="fa-solid fa-language"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">覆盖 32 语种 · 14 行业</div>
+            <div class="mt-2.5 h-[30px]" data-spark="240,252,264,271,278,283,285,286,286.2,286.4,286.42" data-color="#1E3A8A"></div></div>
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">今日待审词条</div>
+            <div class="num text-[26px] font-bold text-navy leading-tight mt-1.5">18,462</div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#B45309,#F59E0B)"><i class="fa-solid fa-hourglass-half"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">初审 18 · 复核 7</div>
+            <div class="mt-2.5 h-[30px]" data-spark="15200,16100,17020,17550,18010,18240,18390,18480,18530,18490,18462" data-color="#F59E0B"></div></div>
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">素材机审准确率</div>
+            <div class="num text-[26px] font-bold text-navy leading-tight mt-1.5">98.42<span class="text-[15px] text-sub font-normal">%</span></div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#0B1E4D,#1E3A8A)"><i class="fa-solid fa-robot"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">误杀率 0.38%</div>
+            <div class="mt-2.5 h-[30px]" data-spark="97.1,97.6,97.9,98.0,98.2,98.3,98.35,98.38,98.4,98.41,98.42" data-color="#1E3A8A"></div></div>
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">UGC 违规拦截</div>
+            <div class="num text-[26px] font-bold text-rose-500 leading-tight mt-1.5">6,284</div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#B91C1C,#EF4444)"><i class="fa-solid fa-shield-halved"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">高危 412 · 待复核 1,286</div>
+            <div class="mt-2.5 h-[30px]" data-spark="4200,4700,5200,5600,5900,6100,6200,6240,6260,6272,6284" data-color="#EF4444"></div></div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 mt-4">
+          ${kanban.map(col=>`
+          <div class="card anim">
+            <div class="card-h"><div class="card-t">${col[0]}</div><span class="pill ${col[2]}">${col[1]}</span></div>
+            <div class="card-b space-y-2">
+              ${col[3].map(t=>`
+              <div class="rounded-xl border border-line p-3 hover:border-blue-200 transition">
+                <div class="flex items-center justify-between"><span class="text-[12.5px] font-medium text-ink">${t[0]}</span>
+                  <span class="pill ${t[1]==='高'?'pill-red':t[1]==='中'?'pill-amber':'pill-slate'} !text-[10px]">${t[1]}</span></div>
+                <div class="text-[11px] text-sub mt-1">${t[2]}</div>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="text-[11px] text-sub"><i class="fa-solid fa-user mr-1"></i>${t[3]}</span>
+                  <span class="num text-[11px] text-sub">${t[4]}</span>
+                </div>
+              </div>`).join('')}
+            </div>
+          </div>`).join('')}
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mt-4">
+          <div class="card anim">
+            <div class="card-h"><div><div class="card-t">AR 广告素材机审置信度</div><div class="card-s">置信度 ≥ 90% 绿 · 80–90% 琥珀 · 80% 以下驳回</div></div></div>
+            <div class="card-b space-y-2.5">
+              ${assets.map(a=>{
+                const c = a[1].charAt(0)==='9'?'text-emerald-600':a[1].charAt(0)==='8'?'text-amber-600':'text-rose-500';
+                const bc = a[1].charAt(0)==='9'?'bg-emerald-500':a[1].charAt(0)==='8'?'bg-amber-500':'bg-rose-500';
+                return `<div class="flex items-center gap-3">
+                  <span class="text-[12px] text-ink w-44 truncate">${a[0]}</span>
+                  <div class="bar flex-1"><i class="${bc}" style="width:${a[1]}"></i></div>
+                  <span class="num text-[12px] font-semibold ${c} w-12 text-right">${a[1]}</span>
+                  <span class="pill ${a[2]==='通过'?'pill-green':a[2]==='人工复审'?'pill-amber':'pill-red'} !text-[10px] w-16 text-center">${a[2]}</span>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+          <div class="card anim">
+            <div class="card-h"><div><div class="card-t">UGC 违规文本高亮拦截 · 用户退款与争议仲裁</div>
+              <div class="card-s">实时流处理 · 平均处置耗时 82 ms · 退款工单 SLA 24h</div></div>
+              <div class="flex items-center gap-1.5">
+                <button class="btn btn-primary btn-sm">全部</button>
+                <button class="btn btn-ghost btn-sm">高危</button>
+                <button class="btn btn-ghost btn-sm">退款争议</button>
+              </div></div>
+            <div class="card-b">
+              <div class="rounded-xl border border-line p-3 bg-rose-50/40">
+                <div class="flex items-center justify-between"><span class="text-[12px] font-semibold text-ink">违规片段原位高亮</span>
+                  <span class="pill pill-red !text-[10px]">高危导流</span></div>
+                <p class="text-[12.5px] leading-relaxed mt-2">用户评论：「加我<span class="bg-rose-200 text-rose-700 px-1 rounded">微信 xxx 领免费翻译</span>，比官方便宜一半」<span class="bg-amber-200 text-amber-800 px-1 rounded">疑似人身攻击内容</span></p>
+                <div class="flex items-center gap-2 mt-2 text-[11px] text-sub"><i class="fa-solid fa-crosshairs text-rose-500"></i>命中规则：导流话术（0.94）· 辱骂（0.88）</div>
+                <div class="flex gap-2 mt-3">
+                  <button class="btn btn-ghost btn-sm flex-1"><i class="fa-solid fa-check"></i>复核</button>
+                  <button class="btn btn-ghost btn-sm flex-1"><i class="fa-solid fa-circle-check"></i>放行</button>
+                  <button class="btn btn-primary btn-sm flex-1"><i class="fa-solid fa-ban"></i>封禁</button>
+                </div>
+              </div>
+              <div class="rounded-xl border border-line p-3 mt-3">
+                <div class="flex items-center justify-between"><span class="text-[12px] font-semibold text-ink">退款仲裁工单</span><span class="pill pill-amber !text-[10px]">SLA 剩余 6h12m</span></div>
+                <div class="grid grid-cols-2 gap-2 mt-2 text-[12px]">
+                  <div><span class="text-sub">关联订单</span> <span class="num font-semibold text-ink">RO-20260902-0418</span></div>
+                  <div><span class="text-sub">实付金额</span> <span class="num font-semibold text-ink">¥ 128.00</span></div>
+                  <div><span class="text-sub">建议退款</span> <span class="num font-semibold text-rose-500">¥ 64.00</span></div>
+                  <div><span class="text-sub">仲裁建议</span> <span class="font-semibold text-amber-600">部分退款 50%</span></div>
+                </div>
+                <div class="text-[11px] text-sub mt-2">命中规则：额度已使用 68% · 离线包不可退 · 非质量问题</div>
+                <button class="btn btn-primary btn-sm w-full mt-3"><i class="fa-solid fa-gavel"></i>按建议退款</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    };
+
+
+    /* =======================================================================
+       9 · 全网广告位排期与调度引擎（管理后台）
+       ======================================================================= */
+    PAGES.a9 = () => {
+      const slots = [
+        ['开屏 · 全站冷启动首帧','已售罄','#EF4444','100%'],
+        ['信息流 · 首页第 3 位','部分售出','#F59E0B','76%'],
+        ['AR 街景 · 南京路商圈','部分售出','#F59E0B','68%'],
+        ['激励视频 · 游戏联运','预售锁定','#2563EB','—'],
+        ['Banner · 教育季专题','空闲可购','#10B981','0%'],
+        ['贴片 · 影视宣发','已售罄','#EF4444','100%'],
+        ['搜索 · 品牌专区','部分售出','#F59E0B','54%'],
+        ['Push · 时区推送','空闲可购','#10B981','0%'],
+        ['暂停位 · A/B 实验','部分售出','#F59E0B','41%'],
+        ['直播 · 带货挂件商品','预售锁定','#2563EB','—'],
+        ['会员 · 免广告权益','已售罄','#EF4444','100%'],
+        ['海外 · 多语种联运','空闲可购','#10B981','0%'],
+      ];
+      const scenes = ['街景','商超','机场','会展','校园','影院','景区'];
+      const langs = ['EN↔ZH','JA↔ZH','KO↔ZH','DE↔ZH','FR↔ZH','ES↔ZH','AR↔ZH'];
+      const days = ['09-03','09-04','09-05','09-06','09-07','09-08','09-09'];
+      // 确定性伪随机，保证每次渲染一致
+      const seed = (i,j)=> ((i*7 + j*13 + 5) % 10) / 10;
+      const ecp = (i,j)=> Math.round(28 + 34*Math.abs(Math.sin((i+1)*1.7+(j+1)*0.9)) + (i===j?22:0));
+      const maxE = 92;
+      return `
+      <div class="p-5">
+        ${pageHead('全网广告位排期与调度引擎',
+          '12 类广告位库存甘特排期 · 场景×语种 eCPM 策略矩阵 · 单用户跨广告位联合频控',
+          `<button class="btn btn-ghost btn-sm"><i class="fa-solid fa-calendar-plus"></i>新建排期</button>
+           <button class="btn btn-primary btn-sm"><i class="fa-solid fa-wand-magic-sparkles"></i>AI 智能调优</button>`)}
+
+        <div class="grid grid-cols-4 gap-4">
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">在售广告位</div>
+            <div class="num text-[26px] font-bold text-navy leading-tight mt-1.5">1,286</div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#1E3A8A,#2563EB)"><i class="fa-solid fa-rectangle-ad"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">跨 7 场景 · 9 语种</div>
+            <div class="mt-2.5 h-[30px]" data-spark="1100,1140,1186,1212,1240,1258,1268,1276,1282,1285,1286" data-color="#1E3A8A"></div></div>
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">未来 7 日库存占用率</div>
+            <div class="num text-[26px] font-bold text-navy leading-tight mt-1.5">76.42<span class="text-[15px] text-sub font-normal">%</span></div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#B45309,#F59E0B)"><i class="fa-solid fa-chart-pie"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">建议溢价 12%</div>
+            <div class="mt-2.5 h-[30px]" data-spark="62,65,68,70,72,73.5,74.8,75.4,75.9,76.2,76.42" data-color="#F59E0B"></div></div>
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">排期冲突告警</div>
+            <div class="num text-[26px] font-bold text-amber-600 leading-tight mt-1.5">6</div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#0B1E4D,#1E3A8A)"><i class="fa-solid fa-triangle-exclamation"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">其中 2 项超卖风险</div>
+            <div class="mt-2.5 h-[30px]" data-spark="1,2,2,3,4,4,5,5,5,6,6" data-color="#F59E0B"></div></div>
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">今日调度请求数</div>
+            <div class="num text-[26px] font-bold text-navy leading-tight mt-1.5">1,286,400</div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#065F46,#10B981)"><i class="fa-solid fa-arrows-spin"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">平均决策 8.6ms · 填充率 94.2%</div>
+            <div class="mt-2.5 h-[30px]" data-spark="820,910,1010,1110,1180,1230,1250,1268,1278,1284,1286" data-color="#10B981"></div></div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 mt-4">
+          <div class="card col-span-2 anim">
+            <div class="card-h"><div><div class="card-t">广告位库存甘特图</div><div class="card-s">12 广告位 × 7 天 · 售罄 / 部分售出 / 预售锁定 / 空闲可购</div></div>
+              <div class="flex items-center gap-3 text-[11px] text-sub">
+                <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-sm" style="background:#EF4444"></i>售罄</span>
+                <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-sm" style="background:#F59E0B"></i>部分售出</span>
+                <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-sm" style="background:#2563EB"></i>预售锁定</span>
+                <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-sm" style="background:#10B981"></i>空闲可购</span>
+              </div></div>
+            <div class="card-b overflow-x-auto">
+              <table class="w-full text-[11.5px]">
+                <thead><tr class="text-sub"><th class="text-left font-medium py-1.5 pr-3">广告位</th>${days.map(d=>`<th class="font-medium px-1">${d}</th>`).join('')}<th class="pl-3 font-medium">剩余库存</th></tr></thead>
+                <tbody>
+                  ${slots.map((s,si)=>{
+                    const cells = days.map((d,di)=>{
+                      const fill = s[1]==='已售罄' ? true : s[1]==='空闲可购' ? false : seed(si,di)>0.45;
+                      return `<td class="px-1 py-1"><div class="h-5 rounded ${fill?'':'border border-dashed border-line'}" style="${fill?'background:'+s[2]:''}"></div></td>`;
+                    }).join('');
+                    const pct = s[3]==='—' ? '预售' : s[3];
+                    const pc = s[3]==='100%'?'text-rose-500':s[3]==='0%'?'text-emerald-600':s[3]==='—'?'text-blue-500':'text-amber-600';
+                    return `<tr><td class="text-left text-ink py-1.5 pr-3 whitespace-nowrap">${s[0]}</td>${cells}<td class="pl-3 num font-semibold ${pc}">${pct}</td></tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card anim">
+            <div class="card-h"><div><div class="card-t">单用户频次限制</div><div class="card-s">跨广告位联合频控</div></div></div>
+            <div class="card-b space-y-3">
+              ${[['单用户日上限','5 次 / 天',10,5],['单用户周上限','20 次 / 周',40,20],['单会话上限','3 次',10,3],['冷却间隔','30 分钟',60,30],['AR 锚定点上限','2 个 / 场景',6,2]].map(c=>`
+              <div><div class="flex items-center justify-between text-[12px] mb-1"><span class="text-sub">${c[0]}</span><span class="num font-semibold text-navy">${c[1]}</span></div>
+                <input type="range" class="rng" min="0" max="${c[2]}" value="${c[3]}"></div>`).join('')}
+              <div class="pt-2 border-t border-line space-y-1.5">
+                ${[['VIP 用户豁免','已开启'],['新用户保护期','已开启'],['跨端去重','已开启'],['弱网降级','已关闭']].map(s=>`
+                <div class="flex items-center justify-between text-[12px]"><span class="text-sub">${s[0]}</span>
+                  <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-toggle-${s[1].indexOf('开')>=0?'on text-electric':'off text-slate-300'}"></i><span class="${s[1].indexOf('开')>=0?'text-electric':'text-sub'}">${s[1]}</span></span></div>`).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card anim mt-4">
+          <div class="card-h"><div><div class="card-t">场景定向 × 语种对 eCPM 策略矩阵</div><div class="card-s">49 格策略单元 · 颜色越深 eCPM 越高（单位：指数）</div></div>
+            <div class="flex items-center gap-2 text-[11px] text-sub"><span>低</span><span class="w-24 h-2 rounded" style="background:linear-gradient(90deg,#F8FAFC,#2563EB)"></span><span>高</span></div></div>
+          <div class="card-b overflow-x-auto">
+            <table class="text-[11px]">
+              <thead><tr class="text-sub"><th class="pr-2"></th>${langs.map(l=>`<th class="px-1.5 font-medium">${l}</th>`).join('')}</tr></thead>
+              <tbody>
+                ${scenes.map((sc,i)=>`<tr><td class="text-ink font-medium pr-2 py-1 whitespace-nowrap">${sc}</td>${langs.map((l,j)=>{
+                  const v=ecp(i,j); const t=v/maxE;
+                  const bg=`rgb(${Math.round(248-(248-37)*t)},${Math.round(250-(250-99)*t)},${Math.round(252-(252-235)*t)})`;
+                  const fg=t>0.55?'#ffffff':'#0F172A';
+                  return `<td class="px-1.5 py-1 text-center num font-medium" style="background:${bg};color:${fg}">${v}</td>`;
+                }).join('')}</tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div class="card-h !border-b-0 !border-t border-line">
+            <span class="text-[11.5px] text-sub"><i class="fa-solid fa-wand-magic-sparkles text-ice mr-1"></i>AI 建议：「机场 × EN↔ZH」eCPM 指数最高，建议提升该组合溢价 12% 并追加预算</span>
+            <button class="btn btn-primary btn-sm"><i class="fa-solid fa-check"></i>采纳建议</button>
+          </div>
+        </div>
+      </div>`;
+    };
+
+
+    /* =======================================================================
+       10 · 安全风控、设备审计与 RBAC 权限（管理后台）
+       ======================================================================= */
+    PAGES.a10 = () => {
+      const devices = [
+        ['北京 · 联通','61.135.169.105','DEV-2A71-3C08','1,286','86','正常','pill-green'],
+        ['上海 · 电信','101.86.106.29','DEV-8F2A-9C31','642','92','异常','pill-red'],
+        ['深圳 · 电信','113.87.193.226','DEV-4D19-77E2','1,024','74','可疑','pill-amber'],
+        ['广州 · 移动','183.14.132.8','DEV-6B33-10AF','486','68','正常','pill-green'],
+        ['杭州 · 移动','112.17.68.31','DEV-1E92-45D6','318','81','可疑','pill-amber'],
+        ['成都 · 电信','171.212.201.87','DEV-9C04-28B1','204','35','正常','pill-green'],
+        ['西安 · 联通','117.36.202.114','DEV-3F58-6AD9','142','29','正常','pill-green'],
+      ];
+      const plans = [
+        ['免费体验版','¥ 0','注册即享 · 有效期 30 天','每日 20 次 · 仅端侧模型','1,286,420','72%'],
+        ['会员月卡','¥ 28','按自然月订阅 · 自动续费','每日 500 次 · 含云端大模型','86,240','85%'],
+        ['会员年卡','¥ 268','按年订阅 · 立省 ¥ 68','每日 1,200 次 · 含 AR 空间广告免打扰','24,186','46%'],
+      ];
+      const logs = [
+        ['2026-09-03 14:22:08','张小雨','超级管理员','集群运维组','节点上下线 / 驱逐','将 vt-shanghai-core-01 节点置为维护模式','203.208.60.12 · 上海','成功','a3f8b21c9d4e'],
+        ['2026-09-03 13:41:16','陈默','超级管理员','模型治理组','模型版本发布','发布 NMT-Cloud-zhXX v5.0.2 至全量','203.208.60.31 · 上海','成功','b7e29a3105c8'],
+        ['2026-09-03 12:58:02','王倩','运营管理员','内容审核组','UGC 违规处置','批量封禁高危导流账号 12 个','112.17.68.42 · 杭州','成功','c5d1f47b8a02'],
+        ['2026-09-03 11:32:50','赵磊','运营管理员','广告运营组','溢价策略审批','审批通过「AR 街景锚定」溢价 12%','112.17.68.57 · 杭州','成功','d92c6e5f3b71'],
+        ['2026-09-03 10:05:34','孙奇','运营管理员','商户与结算组','套餐与额度配置','调整会员年卡翻译额度至 12,000 次','101.86.106.88 · 上海','成功','e48a1d60c937'],
+        ['2026-09-03 09:47:12','刘洋','只读审计员','—','日志导出','导出近 7 日操作日志（只读）','61.135.169.77 · 北京','成功','f1b3a82d4e05'],
+        ['2026-09-03 08:59:41','张小雨','超级管理员','安全审计组','异常设备封禁','封禁异常登录设备 DEV-8F2A-9C31','203.208.60.12 · 上海','成功','0c7e5b194ad3'],
+        ['2026-09-02 22:31:07','system','系统自动任务','—','自动扩缩容','华南 1 容灾节点扩容 2 个容器','10.0.0.24 · 内网','成功','9a4d2f6b85e1'],
+      ];
+      return `
+      <div class="p-5">
+        ${pageHead('安全风控、设备审计与 RBAC 权限',
+          '管理员分级授权、异常设备地理监控与不可篡改的审计日志 · 日志留存 180 天',
+          `<button class="btn btn-ghost btn-sm"><i class="fa-solid fa-shield-halved"></i>安全策略</button>
+           <button class="btn btn-primary btn-sm"><i class="fa-solid fa-user-plus"></i>新增管理员</button>`)}
+
+        <div class="grid grid-cols-4 gap-4">
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">管理员账号总数</div>
+            <div class="num text-[26px] font-bold text-navy leading-tight mt-1.5">40</div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#1E3A8A,#2563EB)"><i class="fa-solid fa-user-shield"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">超管 6 · 运营 30 · 审计 4</div>
+            <div class="mt-2.5 h-[30px]" data-spark="34,35,36,37,38,39,39,40,40,40,40" data-color="#1E3A8A"></div></div>
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">今日异常设备</div>
+            <div class="num text-[26px] font-bold text-rose-500 leading-tight mt-1.5">42</div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#B91C1C,#EF4444)"><i class="fa-solid fa-mobile-screen-button"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">已封禁 38 · 待复核 4</div>
+            <div class="mt-2.5 h-[30px]" data-spark="18,22,26,29,32,35,37,39,40,41,42" data-color="#EF4444"></div></div>
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">越权访问拦截</div>
+            <div class="num text-[26px] font-bold text-navy leading-tight mt-1.5">186</div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#B45309,#F59E0B)"><i class="fa-solid fa-hand"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">近 24 小时 · 全部已阻断</div>
+            <div class="mt-2.5 h-[30px]" data-spark="96,112,128,141,152,163,171,178,182,184,186" data-color="#F59E0B"></div></div>
+          <div class="card p-4 anim"><div class="flex items-start justify-between"><div><div class="text-[12px] text-sub">操作日志留存</div>
+            <div class="num text-[26px] font-bold text-navy leading-tight mt-1.5">180<span class="text-[15px] text-sub font-normal"> 天</span></div></div>
+            <div class="w-10 h-10 rounded-xl grid place-items-center text-white" style="background:linear-gradient(135deg,#0B1E4D,#1E3A8A)"><i class="fa-solid fa-link"></i></div></div>
+            <div class="mt-2 text-[11px] text-sub">区块链存证 · 累计 186.4 万条</div>
+            <div class="mt-2.5 h-[30px]" data-spark="172,174,176,177,178,179,179,180,180,180,180" data-color="#1E3A8A"></div></div>
+        </div>
+
+        <!-- 权限树与角色权限矩阵 -->
+        <div class="grid grid-cols-3 gap-4 mt-4">
+          <div class="card col-span-3 anim">
+            <div class="card-h">
+              <div><div class="card-t">多级角色权限树状分配</div>
+                <div class="card-s">3 个角色域 · 6 个权限组 · 共 24 项细粒度权限（✓ 已授权 · − 部分授权 · 空 未授权）</div></div>
+              <span class="pill pill-blue"><i class="fa-solid fa-users-gear text-[9px]"></i>三态授权</span>
+            </div>
+            <div class="card-b grid grid-cols-3 gap-4">
+<div class="rounded-xl border border-line overflow-hidden"><div class="flex items-center gap-2.5 px-3 py-2.5" style="background:linear-gradient(90deg,#F0F7FF,#F8FAFC)"><i class="fa-solid fa-chevron-down text-[9px] text-sub"></i><i class="fa-solid fa-user-tie text-navy text-[12px]"></i><span class="text-[13px] font-semibold text-ink">超级管理员 · Super Admin</span><span class="pill pill-blue !text-[10.5px] ml-auto">6 人</span></div><div class="divide-y divide-[#F1F5F9]"><div class="px-3 py-2.5"><div class="flex items-center gap-2"><i class="fa-solid fa-users-gear text-[11px] text-ice"></i><span class="text-[12.5px] font-medium text-ink">集群运维组</span><span class="text-[11px] text-sub ml-auto">2 人</span></div><div class="mt-2 space-y-1.5"><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>集群态势大盘查看</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>节点上下线 / 驱逐</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>熔断降级编排</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-amber-50 text-amber-500 grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-minus"></i></span><span>容量推演与扩容</span></div></div></div><div class="px-3 py-2.5"><div class="flex items-center gap-2"><i class="fa-solid fa-users-gear text-[11px] text-ice"></i><span class="text-[12.5px] font-medium text-ink">模型治理组</span><span class="text-[11px] text-sub ml-auto">2 人</span></div><div class="mt-2 space-y-1.5"><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>模型版本发布</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>灰度比例配置</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>秒级热更 / 回滚</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-amber-50 text-amber-500 grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-minus"></i></span><span>训练数据接入</span></div></div></div><div class="px-3 py-2.5"><div class="flex items-center gap-2"><i class="fa-solid fa-users-gear text-[11px] text-ice"></i><span class="text-[12.5px] font-medium text-ink">安全审计组</span><span class="text-[11px] text-sub ml-auto">2 人</span></div><div class="mt-2 space-y-1.5"><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>操作日志只读</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>异常设备封禁</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>RBAC 权限配置</span></div><div class="flex items-center gap-1.5 text-[12px] text-slate-400"><span class="w-4 h-4 rounded bg-slate-100 text-slate-400 grid place-items-center text-[8px] flex-none"><i class="fa-solid "></i></span><span>密钥轮换</span></div></div></div></div></div><div class="rounded-xl border border-line overflow-hidden"><div class="flex items-center gap-2.5 px-3 py-2.5" style="background:linear-gradient(90deg,#F0F7FF,#F8FAFC)"><i class="fa-solid fa-chevron-down text-[9px] text-sub"></i><i class="fa-solid fa-user-gear text-navy text-[12px]"></i><span class="text-[13px] font-semibold text-ink">运营管理员 · Operations</span><span class="pill pill-blue !text-[10.5px] ml-auto">30 人</span></div><div class="divide-y divide-[#F1F5F9]"><div class="px-3 py-2.5"><div class="flex items-center gap-2"><i class="fa-solid fa-users-gear text-[11px] text-ice"></i><span class="text-[12.5px] font-medium text-ink">内容审核组</span><span class="text-[11px] text-sub ml-auto">18 人</span></div><div class="mt-2 space-y-1.5"><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>术语库初审</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-amber-50 text-amber-500 grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-minus"></i></span><span>术语库终审</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>UGC 违规处置</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>素材机审复核</span></div></div></div><div class="px-3 py-2.5"><div class="flex items-center gap-2"><i class="fa-solid fa-users-gear text-[11px] text-ice"></i><span class="text-[12.5px] font-medium text-ink">广告运营组</span><span class="text-[11px] text-sub ml-auto">8 人</span></div><div class="mt-2 space-y-1.5"><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>广告位排期编辑</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>频次策略配置</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-amber-50 text-amber-500 grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-minus"></i></span><span>溢价审批</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>素材上下架</span></div></div></div><div class="px-3 py-2.5"><div class="flex items-center gap-2"><i class="fa-solid fa-users-gear text-[11px] text-ice"></i><span class="text-[12.5px] font-medium text-ink">商户与结算组</span><span class="text-[11px] text-sub ml-auto">4 人</span></div><div class="mt-2 space-y-1.5"><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>套餐与额度配置</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>用户退款审批</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>分销渠道管理</span></div><div class="flex items-center gap-1.5 text-[12px] text-slate-400"><span class="w-4 h-4 rounded bg-slate-100 text-slate-400 grid place-items-center text-[8px] flex-none"><i class="fa-solid "></i></span><span>资金调拨</span></div></div></div></div></div><div class="rounded-xl border border-line overflow-hidden"><div class="flex items-center gap-2.5 px-3 py-2.5" style="background:linear-gradient(90deg,#F0F7FF,#F8FAFC)"><i class="fa-solid fa-chevron-down text-[9px] text-sub"></i><i class="fa-solid fa-user-lock text-navy text-[12px]"></i><span class="text-[13px] font-semibold text-ink">只读审计员 · Auditor</span><span class="pill pill-blue !text-[10.5px] ml-auto">4 人</span></div><div class="divide-y divide-[#F1F5F9]"><div class="px-3 py-2.5"><div class="flex items-center gap-2"><i class="fa-solid fa-users-gear text-[11px] text-ice"></i><span class="text-[12.5px] font-medium text-ink">合规审计组</span><span class="text-[11px] text-sub ml-auto">4 人</span></div><div class="mt-2 space-y-1.5"><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>全量日志只读</span></div><div class="flex items-center gap-1.5 text-[12px] "><span class="w-4 h-4 rounded bg-[#EFF6FF] text-electric grid place-items-center text-[8px] flex-none"><i class="fa-solid fa-check"></i></span><span>合规报表导出</span></div><div class="flex items-center gap-1.5 text-[12px] text-slate-400"><span class="w-4 h-4 rounded bg-slate-100 text-slate-400 grid place-items-center text-[8px] flex-none"><i class="fa-solid "></i></span><span>任何写操作</span></div><div class="flex items-center gap-1.5 text-[12px] text-slate-400"><span class="w-4 h-4 rounded bg-slate-100 text-slate-400 grid place-items-center text-[8px] flex-none"><i class="fa-solid "></i></span><span>权限配置</span></div></div></div></div></div></div>
+            </div>
+            <div class="card-h !border-b-0 !border-t border-line">
+              <span class="text-[11.5px] text-sub"><i class="fa-solid fa-circle-info text-ice mr-1"></i>修改后需点击「保存权限配置」生效；超管与只读审计员的写权限默认锁定</span>
+              <button class="btn btn-primary btn-sm"><i class="fa-solid fa-floppy-disk"></i>保存权限配置</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 地图 -->
+        <div class="card anim mt-4">
+          <div class="card-h">
+            <div><div class="card-t">异常设备登录监控地图</div><div class="card-s">全球实时登录热力 · 气泡大小为会话数，红色为已判定异常</div></div>
+            <div class="flex items-center gap-3 text-[11px] text-sub">
+              <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-full bg-emerald-500"></i>正常</span>
+              <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-full bg-amber-500"></i>可疑</span>
+              <span class="inline-flex items-center gap-1.5"><i class="w-2.5 h-2.5 rounded-full bg-rose-500"></i>异常</span>
+            </div>
+          </div>
+          <div class="card-b">
+            <div data-chart="a10-map" style="width:100%"></div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="tb">
+              <thead><tr><th>地域 · 运营商</th><th>IP 地址</th><th>设备指纹</th><th>会话数</th><th>风险分</th><th>判定</th><th>处置</th></tr></thead>
+              <tbody>
+                ${devices.map(d=>`
+                <tr>
+                  <td class="text-[12.5px] font-medium">${d[0]}</td>
+                  <td class="num text-[12px]">${d[1]}</td>
+                  <td class="num text-[11.5px] text-sub">${d[2]}</td>
+                  <td class="num text-[12px]">${d[3]}</td>
+                  <td><div class="flex items-center gap-2"><div class="bar w-16"><i style="width:${d[4]}%;background:${parseInt(d[4])>85?'#EF4444':parseInt(d[4])>70?'#F59E0B':'#10B981'}"></i></div><span class="num text-[11.5px]">${d[4]}</span></div></td>
+                  <td><span class="pill ${d[6]}">${d[5]}</span></td>
+                  <td><button class="btn btn-ghost btn-sm !px-2 !py-1"><i class="fa-solid fa-ban text-rose-500"></i></button></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 会员套餐与额度配置 -->
+        <div class="card anim mt-4">
+          <div class="card-h">
+            <div><div class="card-t">会员套餐与翻译额度配置</div>
+              <div class="card-s">额度按自然月重置，超额自动降级为按次计费 · 商户与结算组可编辑</div></div>
+            <button class="btn btn-ghost btn-sm"><i class="fa-solid fa-gavel"></i>退款仲裁工单</button>
+          </div>
+          <div class="card-b grid grid-cols-3 gap-4">
+            ${plans.map(p=>`
+            <div class="rounded-xl border border-line overflow-hidden">
+              <div class="px-3.5 py-3" style="background:linear-gradient(135deg,#F0F7FF,#F8FAFC)">
+                <div class="flex items-center justify-between">
+                  <span class="text-[13.5px] font-semibold text-ink">${p[0]}</span>
+                  <span class="num text-[16px] font-bold text-navy">${p[1]}</span>
+                </div>
+                <div class="text-[11.5px] text-sub mt-0.5">${p[2]}</div>
+              </div>
+              <div class="px-3.5 py-3">
+                <div class="text-[12px]">${p[3]}</div>
+                <div class="mt-2.5">
+                  <div class="flex items-center justify-between text-[11.5px] mb-1">
+                    <span class="text-sub">本月额度消耗</span>
+                    <span class="num font-semibold ${parseInt(p[5])>=85?'text-amber-600':'text-navy'}">${p[5]}</span>
+                  </div>
+                  <div class="bar"><i style="width:${p[5]};background:${parseInt(p[5])>=85?'#F59E0B':'#2563EB'}"></i></div>
+                </div>
+                <div class="flex items-center justify-between mt-2.5">
+                  <span class="text-[11.5px] text-sub">订阅人数 <b class="num text-ink">${p[4]}</b></span>
+                  <div class="flex gap-1.5">
+                    <button class="btn btn-ghost btn-sm !px-2 !py-1"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-primary btn-sm !px-2 !py-1"><i class="fa-solid fa-sliders"></i>额度</button>
+                  </div>
+                </div>
+              </div>
+            </div>`).join('')}
+          </div>
+        </div>
+
+    <!-- 操作日志 -->
+    <div class="card mt-4 anim">
+      <div class="card-h">
+        <div><div class="card-t">管理员操作日志（180 天不可篡改）</div>
+          <div class="card-s">采用追加写入 + 区块链哈希链式存证，任何管理员（含超管）均无法修改或删除</div></div>
+        <div class="flex items-center gap-2">
+          <span class="pill pill-green"><i class="fa-solid fa-link text-[9px]"></i>哈希链已校验</span>
+          <button class="btn btn-ghost btn-sm"><i class="fa-solid fa-file-export"></i>导出存证</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="tb">
+          <thead><tr><th>操作时间</th><th>操作人</th><th>操作类型</th><th>操作详情</th><th>来源 IP / 地域</th><th>结果</th><th>存证哈希</th></tr></thead>
+          <tbody>
+            ${logs.map(l=>`
+            <tr>
+              <td class="num text-[12.5px]">${l[0]}</td>
+              <td><div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg grid place-items-center text-[9.5px] font-bold text-white"
+                      style="background:linear-gradient(135deg,#0B1E4D,#2563EB)">${l[1].slice(0,1)}</span>
+                <span class="text-[12.5px] font-medium">${l[1]}</span></div></td>
+              <td><span class="pill pill-slate">${l[2]}</span></td>
+              <td class="text-[12.5px]">${l[3]}</td>
+              <td class="num text-[11.5px] text-sub">${l[4]}</td>
+              <td><span class="pill ${l[5]==='成功'?'pill-green':l[5]==='已拦截'?'pill-red':'pill-amber'}">${l[5]}</span></td>
+              <td class="num text-[11px] text-sub"><i class="fa-solid fa-link text-[9px] text-ice mr-1"></i>${l[6]}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-h !border-b-0 !border-t border-line">
+        <span class="text-[11.5px] text-sub">显示 1–8 条，共 1,864,208 条 · 留存期 180 天（2026-03-07 ~ 2026-09-03）</span>
+        <div class="flex items-center gap-1">
+          <button class="btn btn-ghost btn-sm">上一页</button>
+          <button class="btn btn-primary btn-sm !w-8 !px-0">1</button>
+          <button class="btn btn-ghost btn-sm">下一页</button>
+        </div>
+      </div>
+    </div>
+
+      </div>`;
+    };
+
+/* =======================================================================
+   CHARTS —— 各页面的图表渲染（页面首次显示时按需绘制，随窗口缩放重绘）
+   ======================================================================= */
+window.CHARTS = {};
+
+function renderCommon(id){
+  const p = $('#page-'+id);
+  if(!p) return;
+  p.querySelectorAll('[data-spark]').forEach(el=>{
+    spark(el, el.dataset.spark.split(',').map(Number), el.dataset.color || '#2563EB');
+  });
+  p.querySelectorAll('[data-qr]').forEach(el=> qrCode(el, el.dataset.qr, 168));
+}
+
+/* ---- 6 · 集群态势感知与推演监控大盘 ---- */
+window.CHARTS.a6 = ()=>{
+  renderCommon('a6');
+  donut($('#page-a6 [data-chart="a6-health"]'), {
+    pct:99.98, value:'99.98%', label:'节点健康度', size:104, sw:11, fs:17, c1:'#10B981', c2:'#0EA5E9'
+  });
+
+  waveChart($('#page-a6 [data-chart="a6-wave"]'), {
+    height:300, points:120, max:236, unit:'ms',
+    labels:[{at:0,t:'13:30'},{at:30,t:'13:40'},{at:60,t:'13:50'},{at:90,t:'14:00'},{at:119,t:'14:10'}],
+    layers:[
+      { name:'帧抓取',   c1:'#1E3A8A', c2:'#3B62C4', fn:i=> 18 + 4*Math.sin(i/7) },
+      { name:'OCR 检测', c1:'#2563EB', c2:'#60A5FA', fn:i=> 46 + 9*Math.sin(i/5+1) },
+      { name:'NMT 翻译', c1:'#0EA5E9', c2:'#7DD3FC', fn:i=> 62 + 14*Math.sin(i/6+2) },
+      { name:'空间渲染', c1:'#38BDF8', c2:'#BAE6FD', fn:i=> 34 + 7*Math.sin(i/4+3) },
+      { name:'图层上屏', c1:'#6366F1', c2:'#A5B4FC', fn:i=> 16 + 3*Math.sin(i/8+4) },
+    ]
+  });
+
+  // 24 小时真实 QPS（峰值 860，设计容量 1,200，满足 5.2 节 ≥500 QPS 要求）
+  const real = [212,186,164,148,132,124,138,186,268,342,428,486,528,562,548,536,586,642,708,812,860,764,588,412];
+  const forecast = real.slice();
+  for(let i=21;i<24;i++) forecast[i] = Math.round(real[20] * (1 - (i-20)*0.11));
+  chart($('#page-a6 [data-chart="a6-qps"]'), {
+    labels: Array.from({length:24},(_,i)=>String(i).padStart(2,'0')+':00'),
+    height:250, maxL:1300, ticks:4,
+    series:[
+      { name:'真实 QPS 吞吐', color:'#2563EB', type:'area', data: real },
+      { name:'LSTM 容量推演', color:'#0EA5E9', type:'line', data: forecast, dashed:true, forecast:true },
+      { name:'设计容量上限 1,200 QPS', color:'#F59E0B', type:'line', data: new Array(24).fill(1200), dashed:true, dots:false, width:1.6 },
+    ],
+    yFmtL: v=> Math.round(v)
+  });
+
+  rankChart($('#page-a6 [data-chart="a6-region"]'), [
+    { name:'华东 1（上海）', sub:'主节点 · 9 个容器',   value:8640, delta:6.2 },
+    { name:'华南 1（深圳）', sub:'容灾节点 · 4 个容器', value:6180, delta:12.6 },
+    { name:'端侧离线引擎', sub:'不计入云端并发 · 自治', value:2760, delta:2.4 },
+  ], { fmt: v => fmt(v)+' 会话' });
+};
+
+/* ---- 7 · AI 模型生命周期与热更中心 ---- */
+window.CHARTS.a7 = ()=>{ renderCommon('a7'); };
+
+/* ---- 8 · 语种术语库审核与 UGC 风控中台 ---- */
+window.CHARTS.a8 = ()=>{ renderCommon('a8'); };
+
+/* ---- 9 · 全网广告位排期与调度引擎 ---- */
+window.CHARTS.a9 = ()=>{ renderCommon('a9'); };
+
+/* ---- 10 · 安全风控、设备审计与 RBAC 权限 ---- */
+window.CHARTS.a10 = ()=>{
+  renderCommon('a10');
+  const el = $('#page-a10 [data-chart="a10-map"]');
+  el.innerHTML='';
+  const W=Math.max(el.clientWidth||860,420), H=360;
+  const s=mkSVG(W,H);
+  const PX = lon => (lon+180)/360*W;
+  const PY = lat => (84-lat)/144*H;
+
+  // 海洋背景
+  const gid='ocean'+Math.random().toString(36).slice(2,6);
+  const defs=svg('defs',{},s), g=svg('linearGradient',{id:gid,x1:'0',y1:'0',x2:'0',y2:'1'},defs);
+  svg('stop',{offset:'0%','stop-color':'#F8FBFF'},g);
+  svg('stop',{offset:'100%','stop-color':'#EFF6FF'},g);
+  svg('rect',{x:0,y:0,width:W,height:H,fill:`url(#${gid})`,rx:10},s);
+
+  // 经纬网格
+  for(let lon=-180;lon<=180;lon+=30) svg('line',{x1:PX(lon),y1:0,x2:PX(lon),y2:H,stroke:'#E2E8F0','stroke-width':.8},s);
+  for(let lat=60;lat>=-60;lat-=30)   svg('line',{x1:0,y1:PY(lat),x2:W,y2:PY(lat),stroke:'#E2E8F0','stroke-width':.8},s);
+
+  // 大陆轮廓（经纬度多边形 → 等距圆柱投影）
+  const MAP = {
+    'NA':[[-168,65],[-160,71],[-140,70],[-125,70],[-100,73],[-80,73],[-60,60],[-55,50],[-65,45],[-70,41],
+          [-75,35],[-81,25],[-97,26],[-105,20],[-115,30],[-125,40],[-125,48],[-135,58],[-150,60]],
+    'SA':[[-81,8],[-70,12],[-60,10],[-50,0],[-35,-5],[-38,-15],[-48,-25],[-58,-35],[-62,-40],[-65,-50],
+          [-70,-55],[-75,-45],[-72,-35],[-71,-20],[-78,-5]],
+    'EU':[[-10,36],[0,44],[5,50],[8,55],[12,58],[20,60],[30,62],[40,60],[45,50],[40,45],[30,45],[28,40],
+          [20,40],[15,38],[5,43],[-5,43]],
+    'AF':[[-17,15],[-16,25],[-5,35],[10,37],[25,32],[35,31],[43,12],[51,12],[42,-2],[40,-15],[35,-25],[25,-34],
+          [18,-34],[12,-18],[9,-2],[5,5],[-8,5]],
+    'AS':[[45,50],[60,55],[75,70],[90,75],[105,77],[130,72],[145,70],[160,70],[170,65],[160,60],[143,52],
+          [135,45],[127,38],[122,30],[110,20],[100,12],[95,20],[90,22],[80,8],[72,20],[65,25],[58,22],[50,28],[45,38]],
+    'AU':[[113,-22],[122,-18],[130,-12],[142,-11],[150,-22],[153,-28],[148,-38],[140,-38],[130,-32],[115,-34]]
+  };
+  Object.values(MAP).forEach(poly=>{
+    svg('path',{ d: poly.map((p,i)=>(i?'L':'M')+PX(p[0]).toFixed(1)+' '+PY(p[1]).toFixed(1)).join(' ')+' Z',
+      fill:'#DBEAFE', stroke:'#93C5FD','stroke-width':1 }, s);
+  });
+
+  // 监控点位
+  const pts = [
+    { n:'上海',   lon:121.47, lat:31.23, s:842,  k:'bad'  },
+    { n:'北京',   lon:116.40, lat:39.90, s:1204, k:'ok'   },
+    { n:'东京',   lon:139.69, lat:35.68, s:986,  k:'ok'   },
+    { n:'新加坡', lon:103.82, lat:1.35,  s:386,  k:'warn' },
+    { n:'迪拜',   lon:55.27,  lat:25.20, s:208,  k:'ok'   },
+    { n:'法兰克福',lon:8.68,  lat:50.11, s:512,  k:'ok'   },
+    { n:'旧金山', lon:-122.42,lat:37.77, s:248,  k:'warn' },
+    { n:'圣保罗', lon:-46.63, lat:-23.55,s:164,  k:'bad'  },
+  ];
+  const COLOR = { ok:'#10B981', warn:'#F59E0B', bad:'#EF4444' };
+  const hub = pts[0];
+  // 流量连线（汇聚至上海枢纽）
+  pts.slice(1).forEach(p=>{
+    const x1=PX(hub.lon), y1=PY(hub.lat), x2=PX(p.lon), y2=PY(p.lat);
+    const mx=(x1+x2)/2, my=(y1+y2)/2 - Math.abs(x2-x1)*0.16 - 18;
+    svg('path',{ d:`M${x1} ${y1} Q ${mx} ${my} ${x2} ${y2}`, fill:'none',
+      stroke:COLOR[p.k], 'stroke-width':1.1, 'stroke-opacity':'.45', class:'flow-line' }, s);
+  });
+  pts.forEach(p=>{
+    const x=PX(p.lon), y=PY(p.lat), r=Math.max(4, Math.min(11, p.s/140));
+    if(p.k!=='ok'){
+      const ring=svg('circle',{cx:x,cy:y,r,fill:'none',stroke:COLOR[p.k],'stroke-width':1.4},s);
+      svg('animate',{attributeName:'r', values:`${r};${r*3.4}`, dur:'2.4s', repeatCount:'indefinite'},ring);
+      svg('animate',{attributeName:'opacity', values:'0.85;0', dur:'2.4s', repeatCount:'indefinite'},ring);
+    }
+    svg('circle',{cx:x,cy:y,r,fill:COLOR[p.k],'fill-opacity':'.9',stroke:'#fff','stroke-width':2},s);
+    const lb=svg('text',{x, y:y-r-7, 'text-anchor':'middle','font-size':'10.5',fill:'#334155','font-weight':'600'},s);
+    lb.textContent = p.n;
+    const sb=svg('text',{x, y:y+r+13, 'text-anchor':'middle','font-size':'9.5',fill:'#64748B',
+      'font-family':'JetBrains Mono, monospace'},s);
+    sb.textContent = fmt(p.s)+' 会话';
+  });
+  el.appendChild(s);
+};
+
+/* ------------------------------ 启动 ------------------------------ */
+function boot(){
+  $('#viewport').innerHTML = Object.keys(PAGES).map(id=>
+    `<section id="page-${id}" class="page"></section>`).join('');
+  Object.keys(PAGES).forEach(id=>{ $('#page-'+id).innerHTML = PAGES[id](); });
+  buildSidebar();
+  // 支持 ?page=a6 或 #a6 深链直达，便于逐页全屏截图 / 打印
+  const q = new URLSearchParams(location.search).get('page') || location.hash.replace('#','');
+  go(PAGES[q] ? q : 'a6');
+}
+boot();
+</script>
+</body>
+</html>

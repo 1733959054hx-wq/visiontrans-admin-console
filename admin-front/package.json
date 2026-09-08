@@ -1,0 +1,28 @@
+{
+  "name": "admin-front",
+  "version": "1.0.0",
+  "private": true,
+  "description": "视界译 VisionTrans · 平台管理后台前端（Vue3 + Vite + Pinia + Tailwind）",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "axios": "^1.7.9",
+    "echarts": "^5.6.0",
+    "jsencrypt": "^3.5.4",
+    "pinia": "^2.3.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.0.7"
+  }
+}

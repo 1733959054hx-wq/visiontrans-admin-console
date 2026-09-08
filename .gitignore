@@ -1,0 +1,38 @@
+# ============ 依赖 ============
+node_modules/
+admin-front/node_modules/
+
+# ============ 构建 / 编译产物 ============
+target/
+*.class
+*.jar
+*.war
+*.lst
+
+# ============ 日志 ============
+*.log
+dev.log
+dev-err.log
+boot.log
+boot-err.log
+boot-run.log
+smoke-out.txt
+
+# ============ IDE / 编辑器 ============
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# ============ 操作系统 ============
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# ============ 本地环境变量（按需，不提交含密钥的 local 文件） ============
+.env.local
+.env.*.local
+
+# ============ 杂项（误创建的孤立文件） ============
+/nul; ---
