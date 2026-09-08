@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 8.0.40, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.41, for Win64 (x86_64)
 --
--- Host: 127.0.0.1    Database: shixun
+-- Host: localhost    Database: shixun
 -- ------------------------------------------------------
--- Server version	8.0.40
+-- Server version	8.0.41
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -16,6 +16,39 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
+-- Table structure for table `ad_plan`
+--
+
+DROP TABLE IF EXISTS `ad_plan`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ad_plan` (
+                           `id` bigint NOT NULL AUTO_INCREMENT,
+                           `ad_form` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                           `budget` decimal(14,2) DEFAULT NULL,
+                           `ctr` decimal(5,2) DEFAULT NULL,
+                           `plan_name` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+                           `owner_name` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                           `paused` bit(1) DEFAULT NULL,
+                           `plan_no` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                           `scene` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                           `plan_status` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                           `used_amount` decimal(14,2) DEFAULT NULL,
+                           PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ad_plan`
+--
+
+LOCK TABLES `ad_plan` WRITE;
+/*!40000 ALTER TABLE `ad_plan` DISABLE KEYS */;
+INSERT INTO `ad_plan` VALUES (1,'AR 街景锁定',320000.00,6.82,'东京机场口岸 AR 实景导览','Danny',_binary '\0','PLAN-2026-1031','机场口岸 · 中→日','投放中',248600.00),(2,'Banner 信息流',180000.00,5.47,'出境医疗术语包联合推广','Danny',_binary '\0','PLAN-2026-1028','医疗就诊 · 中→英','投放中',152300.00),(3,'Banner 信息流',120000.00,4.28,'免税购物导购专场','Danny',_binary '\0','PLAN-2026-1044','免税购物 · 中→韩','预算预警',118800.00),(4,'AR 街景锁定',210000.00,NULL,'跨境电商商品出海计划','Danny',_binary '\0','PLAN-2026-1063','电商仓库 · 中→英','待审核',0.00);
+/*!40000 ALTER TABLE `ad_plan` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `ad_slot`
 --
 
@@ -23,14 +56,14 @@ DROP TABLE IF EXISTS `ad_slot`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ad_slot` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `color` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `slot_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `ratio` double DEFAULT NULL,
-  `remain` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sort_order` int DEFAULT NULL,
-  `slot_status` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`)
+                           `id` bigint NOT NULL AUTO_INCREMENT,
+                           `color` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                           `slot_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                           `ratio` double DEFAULT NULL,
+                           `remain` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                           `sort_order` int DEFAULT NULL,
+                           `slot_status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                           PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -52,17 +85,17 @@ DROP TABLE IF EXISTS `admin_user`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `admin_user` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `group_name` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `last_login` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `user_name` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `role_name` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `user_status` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `password_hash` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `username` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `UKlvod9bfm438ex1071ku1glb70` (`username`)
+                              `id` bigint NOT NULL AUTO_INCREMENT,
+                              `group_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                              `last_login` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                              `user_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                              `phone` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                              `role_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                              `user_status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                              `password_hash` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                              `username` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                              PRIMARY KEY (`id`),
+                              UNIQUE KEY `UKlvod9bfm438ex1071ku1glb70` (`username`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -72,7 +105,7 @@ CREATE TABLE `admin_user` (
 
 LOCK TABLES `admin_user` WRITE;
 /*!40000 ALTER TABLE `admin_user` DISABLE KEYS */;
-INSERT INTO `admin_user` VALUES (1,'集群运维组','2026-09-08 14:48','Danny','138****2043','超级管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','admin'),(2,'模型治理组','2026-09-03 13:41','陈默','139****8812','超级管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','chenmo'),(3,'内容审核组','2026-09-03 12:58','王倩','150****3391','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','wangqian'),(4,'广告运营组','2026-09-03 11:32','赵磊','186****7720','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','zhaolei'),(5,'商户与结算组','2026-09-03 10:05','孙奇','133****5590','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','sunqi'),(6,'合规审计组','2026-09-03 09:47','刘洋','187****1186','只读审计员','停用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','liuyang');
+INSERT INTO `admin_user` VALUES (1,'集群运维组','2026-09-08 16:15','Danny','138****2043','超级管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','admin'),(2,'模型治理组','2026-09-03 13:41','陈默','139****8812','超级管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','chenmo'),(3,'内容审核组','2026-09-03 12:58','王倩','150****3391','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','wangqian'),(4,'广告运营组','2026-09-03 11:32','赵磊','186****7720','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','zhaolei'),(5,'商户与结算组','2026-09-03 10:05','孙奇','133****5590','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','sunqi'),(6,'合规审计组','2026-09-03 09:47','刘洋','187****1186','只读审计员','停用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','liuyang');
 /*!40000 ALTER TABLE `admin_user` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -84,12 +117,12 @@ DROP TABLE IF EXISTS `alarm_event`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `alarm_event` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `level` varchar(8) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `message` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `result` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `event_time` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`)
+                               `id` bigint NOT NULL AUTO_INCREMENT,
+                               `level` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                               `message` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                               `result` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                               `event_time` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                               PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -111,9 +144,9 @@ DROP TABLE IF EXISTS `app_setting`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `app_setting` (
-  `setting_key` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `setting_value` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`setting_key`)
+                               `setting_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                               `setting_value` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                               PRIMARY KEY (`setting_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -135,17 +168,17 @@ DROP TABLE IF EXISTS `audit_log`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `audit_log` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `action` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `detail` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `group_name` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `hash` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `operator` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `result` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `role_name` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `source` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `log_time` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`)
+                             `id` bigint NOT NULL AUTO_INCREMENT,
+                             `action` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                             `detail` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                             `group_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                             `hash` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                             `operator` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                             `result` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                             `role_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                             `source` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                             `log_time` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                             PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -167,14 +200,14 @@ DROP TABLE IF EXISTS `auth_session`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `auth_session` (
-  `token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `expire_at` datetime(6) DEFAULT NULL,
-  `group_name` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `user_name` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `role_code` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `role_name` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `username` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`token`)
+                                `token` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                `expire_at` datetime(6) DEFAULT NULL,
+                                `group_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                `user_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                `role_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                `role_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                `username` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                PRIMARY KEY (`token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -196,11 +229,11 @@ DROP TABLE IF EXISTS `city_coord_cache`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `city_coord_cache` (
-  `city` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `lat` double NOT NULL,
-  `lon` double NOT NULL,
-  `source` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`city`)
+                                    `city` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                    `lat` double NOT NULL,
+                                    `lon` double NOT NULL,
+                                    `source` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                    PRIMARY KEY (`city`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -222,15 +255,15 @@ DROP TABLE IF EXISTS `cluster_node`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `cluster_node` (
-  `node_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `containers` int DEFAULT NULL,
-  `cpu` double DEFAULT NULL,
-  `gpu` double DEFAULT NULL,
-  `latency_ms` int DEFAULT NULL,
-  `role` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `zone` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`node_id`)
+                                `node_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                `containers` int DEFAULT NULL,
+                                `cpu` double DEFAULT NULL,
+                                `gpu` double DEFAULT NULL,
+                                `latency_ms` int DEFAULT NULL,
+                                `role` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                `status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                `zone` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                PRIMARY KEY (`node_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -252,15 +285,15 @@ DROP TABLE IF EXISTS `device_record`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `device_record` (
-  `fingerprint` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `banned` bit(1) DEFAULT NULL,
-  `ip` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `region` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `risk` int DEFAULT NULL,
-  `sessions` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sort_order` int DEFAULT NULL,
-  `verdict` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`fingerprint`)
+                                 `fingerprint` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                 `banned` bit(1) DEFAULT NULL,
+                                 `ip` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `region` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `risk` int DEFAULT NULL,
+                                 `sessions` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `sort_order` int DEFAULT NULL,
+                                 `verdict` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 PRIMARY KEY (`fingerprint`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -282,12 +315,12 @@ DROP TABLE IF EXISTS `frequency_cap`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `frequency_cap` (
-  `cap_name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `display` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `max_value` int DEFAULT NULL,
-  `sort_order` int DEFAULT NULL,
-  `cap_value` int DEFAULT NULL,
-  PRIMARY KEY (`cap_name`)
+                                 `cap_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                 `display` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `max_value` int DEFAULT NULL,
+                                 `sort_order` int DEFAULT NULL,
+                                 `cap_value` int DEFAULT NULL,
+                                 PRIMARY KEY (`cap_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -309,15 +342,15 @@ DROP TABLE IF EXISTS `glossary_task`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `glossary_task` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `column_name` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `due` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `meta` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `owner` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `priority` varchar(8) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sort_order` int DEFAULT NULL,
-  `title` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`)
+                                 `id` bigint NOT NULL AUTO_INCREMENT,
+                                 `column_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `due` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `meta` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `owner` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `priority` varchar(8) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `sort_order` int DEFAULT NULL,
+                                 `title` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -339,12 +372,12 @@ DROP TABLE IF EXISTS `material_asset`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `material_asset` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `confidence` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `asset_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sort_order` int DEFAULT NULL,
-  `verdict` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`)
+                                  `id` bigint NOT NULL AUTO_INCREMENT,
+                                  `confidence` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                  `asset_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                  `sort_order` int DEFAULT NULL,
+                                  `verdict` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -366,14 +399,14 @@ DROP TABLE IF EXISTS `membership_plan`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `membership_plan` (
-  `plan_name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `price` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `quota` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sort_order` int DEFAULT NULL,
-  `subscribers` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `usage_rate` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`plan_name`)
+                                   `plan_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                   `description` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                   `price` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                   `quota` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                   `sort_order` int DEFAULT NULL,
+                                   `subscribers` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                   `usage_rate` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                   PRIMARY KEY (`plan_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -388,6 +421,32 @@ INSERT INTO `membership_plan` VALUES ('会员年卡','按年订阅 · 立省 ¥ 
 UNLOCK TABLES;
 
 --
+-- Table structure for table `merchant_ab_config`
+--
+
+DROP TABLE IF EXISTS `merchant_ab_config`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `merchant_ab_config` (
+                                      `id` bigint NOT NULL AUTO_INCREMENT,
+                                      `material_a` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                      `material_b` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                      `ratio_b` int DEFAULT NULL,
+                                      PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `merchant_ab_config`
+--
+
+LOCK TABLES `merchant_ab_config` WRITE;
+/*!40000 ALTER TABLE `merchant_ab_config` DISABLE KEYS */;
+INSERT INTO `merchant_ab_config` VALUES (1,'东京机场导览_15s.mp4','东京机场导览_B版_15s.mp4',50);
+/*!40000 ALTER TABLE `merchant_ab_config` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `merchant_account`
 --
 
@@ -395,17 +454,17 @@ DROP TABLE IF EXISTS `merchant_account`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `merchant_account` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `code` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `contact` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `last_login` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `name` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `password_hash` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `UKahdtjj8d2rww1wmfikiwdan45` (`code`)
+                                    `id` bigint NOT NULL AUTO_INCREMENT,
+                                    `code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                    `contact` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                    `created_at` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                    `last_login` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                    `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                    `password_hash` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                    `phone` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                    `status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                    PRIMARY KEY (`id`),
+                                    UNIQUE KEY `UKahdtjj8d2rww1wmfikiwdan45` (`code`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -420,6 +479,122 @@ INSERT INTO `merchant_account` VALUES (1,'merchant','周敏','2026-09-08 14:52',
 UNLOCK TABLES;
 
 --
+-- Table structure for table `merchant_channel`
+--
+
+DROP TABLE IF EXISTS `merchant_channel`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `merchant_channel` (
+                                    `id` bigint NOT NULL AUTO_INCREMENT,
+                                    `channel_code` varchar(40) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                    `channel_name` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                    `click_count` bigint DEFAULT NULL,
+                                    `commission_amount` decimal(12,2) DEFAULT NULL,
+                                    `deal_count` bigint DEFAULT NULL,
+                                    `ratio_percent` int DEFAULT NULL,
+                                    PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `merchant_channel`
+--
+
+LOCK TABLES `merchant_channel` WRITE;
+/*!40000 ALTER TABLE `merchant_channel` DISABLE KEYS */;
+INSERT INTO `merchant_channel` VALUES (1,'DOUYIN-20875','抖音内容号',3842,9142.00,612,25),(2,'XHS-10243','小红书达人',1286,3260.00,198,20),(3,'TRAVEL-8861','旅行社直客',1298,2210.00,146,15),(4,'CAMPUS-3305','高校社团',432,486.00,52,12);
+/*!40000 ALTER TABLE `merchant_channel` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `merchant_daily_stat`
+--
+
+DROP TABLE IF EXISTS `merchant_daily_stat`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `merchant_daily_stat` (
+                                       `id` bigint NOT NULL AUTO_INCREMENT,
+                                       `click_count` bigint DEFAULT NULL,
+                                       `consume_amount` decimal(14,2) DEFAULT NULL,
+                                       `exposure` bigint DEFAULT NULL,
+                                       `gmv_amount` decimal(14,2) DEFAULT NULL,
+                                       `stat_date` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                       PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `merchant_daily_stat`
+--
+
+LOCK TABLES `merchant_daily_stat` WRITE;
+/*!40000 ALTER TABLE `merchant_daily_stat` DISABLE KEYS */;
+INSERT INTO `merchant_daily_stat` VALUES (1,31000,82400.00,620000,53360.00,'2026-08-26'),(2,34000,90300.00,660000,58880.00,'2026-08-27'),(3,32000,91000.00,640000,54920.00,'2026-08-28'),(4,38000,93200.00,710000,62780.00,'2026-08-29'),(5,40000,99900.00,740000,62720.00,'2026-08-30'),(6,42000,107800.00,780000,68240.00,'2026-08-31'),(7,49000,111200.00,860000,72080.00,'2026-09-01'),(8,46000,110700.00,830000,72140.00,'2026-09-02'),(9,50000,119800.00,880000,73640.00,'2026-09-03'),(10,54000,118400.00,920000,79160.00,'2026-09-04'),(11,52000,117900.00,890000,74420.00,'2026-09-05'),(12,57000,128200.00,950000,81500.00,'2026-09-06'),(13,60000,126800.00,990000,82220.00,'2026-09-07'),(14,64000,135900.00,1040000,88520.00,'2026-09-08');
+/*!40000 ALTER TABLE `merchant_daily_stat` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `merchant_material`
+--
+
+DROP TABLE IF EXISTS `merchant_material`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `merchant_material` (
+                                     `id` bigint NOT NULL AUTO_INCREMENT,
+                                     `ctr` decimal(5,2) DEFAULT NULL,
+                                     `exposure` bigint DEFAULT NULL,
+                                     `material_type` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                     `material_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                     `size_kb` bigint DEFAULT NULL,
+                                     `m_status` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                     PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `merchant_material`
+--
+
+LOCK TABLES `merchant_material` WRITE;
+/*!40000 ALTER TABLE `merchant_material` DISABLE KEYS */;
+INSERT INTO `merchant_material` VALUES (1,6.82,1864120,'视频','东京机场导览_15s.mp4',12800,'使用中'),(2,5.47,1610900,'视频','东京机场导览_B版_15s.mp4',12400,'测试中'),(3,4.28,986400,'图片','免税购物_kv_main.png',2400,'使用中'),(4,5.03,742600,'H5','医疗术语包_h5.html',180,'已停用');
+/*!40000 ALTER TABLE `merchant_material` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `merchant_order`
+--
+
+DROP TABLE IF EXISTS `merchant_order`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `merchant_order` (
+                                  `id` bigint NOT NULL AUTO_INCREMENT,
+                                  `amount` decimal(12,2) DEFAULT NULL,
+                                  `channel` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                  `commission` decimal(12,2) DEFAULT NULL,
+                                  `created_at` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                  `goods_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                  `order_no` varchar(40) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                  `settle_status` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `merchant_order`
+--
+
+LOCK TABLES `merchant_order` WRITE;
+/*!40000 ALTER TABLE `merchant_order` DISABLE KEYS */;
+INSERT INTO `merchant_order` VALUES (1,168.00,'抖音内容号',42.00,'2026-09-08 15:31','出境医疗急救术语包','ORD-20260903-001','待结算'),(2,128.00,'小红书达人',32.00,'2026-09-08 13:31','日本交通标志实景微课','ORD-20260903-002','待结算'),(3,88.00,'自有门店',0.00,'2026-09-08 10:31','东京机场口岸 AR 导览','ORD-20260903-003','已结算'),(4,88.00,'旅行社直客',22.00,'2026-09-07 16:31','中东商务礼仪文化包','ORD-20260902-012','已结算'),(5,45.00,'抖音内容号',11.25,'2026-09-07 10:31','跨境电商标题优化课','ORD-20260902-008','退款中'),(6,158.00,'跨境社群',39.50,'2026-09-06 15:31','欧盟通关申报术语库','ORD-20260901-006','已结算'),(7,38.00,'小红书达人',9.50,'2026-09-06 09:31','东南亚旅行实用会话包','ORD-20260901-003','已结算'),(8,25.00,'旅行社直客',6.25,'2026-09-05 11:31','璃月景区导览文化包','ORD-20260831-009','已结算');
+/*!40000 ALTER TABLE `merchant_order` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `merchant_session`
 --
 
@@ -427,13 +602,13 @@ DROP TABLE IF EXISTS `merchant_session`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `merchant_session` (
-  `token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `expire_at` datetime(6) DEFAULT NULL,
-  `merchant_code` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `merchant_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `role_code` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `role_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`token`)
+                                    `token` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                    `expire_at` datetime(6) DEFAULT NULL,
+                                    `merchant_code` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                    `merchant_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                    `role_code` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                    `role_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                    PRIMARY KEY (`token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -443,8 +618,40 @@ CREATE TABLE `merchant_session` (
 
 LOCK TABLES `merchant_session` WRITE;
 /*!40000 ALTER TABLE `merchant_session` DISABLE KEYS */;
-INSERT INTO `merchant_session` VALUES ('fdb908f84064441c87c71199490936d8-M','2026-09-08 22:53:47.552976','merchant','示例商户','MERCHANT','商户用户');
+INSERT INTO `merchant_session` VALUES ('f7a9334d7b6c460d851efb5907517873-M','2026-09-09 01:15:38.546451','merchant','示例商户','MERCHANT','商户用户');
 /*!40000 ALTER TABLE `merchant_session` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `merchant_video`
+--
+
+DROP TABLE IF EXISTS `merchant_video`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `merchant_video` (
+                                  `id` bigint NOT NULL AUTO_INCREMENT,
+                                  `duration_sec` bigint DEFAULT NULL,
+                                  `finish_rate` decimal(5,2) DEFAULT NULL,
+                                  `video_lang` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                  `video_name` varchar(160) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                  `plays` bigint DEFAULT NULL,
+                                  `region` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                  `size_gb` decimal(6,2) DEFAULT NULL,
+                                  `video_status` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                  `subtitle_langs` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `merchant_video`
+--
+
+LOCK TABLES `merchant_video` WRITE;
+/*!40000 ALTER TABLE `merchant_video` DISABLE KEYS */;
+INSERT INTO `merchant_video` VALUES (1,2538,68.40,'JA·JP','JP_Tokyo_Transit_4K_Master.mp4',1286420,'亚太',12.40,'已上架','中,英,日'),(2,4565,61.20,'DE·DE','DE_Munich_Expo_Day1.mp4',862940,'欧洲',21.86,'已就绪','中,德'),(3,1727,65.80,'FR·FR','FR_Paris_Art_Tour_EP03.mp4',604182,'全球',6.14,'已就绪','中,法'),(4,2120,NULL,'EN·US','EN_Medical_Onboarding_S01E02.mp4',0,'全球',7.92,'转码中','中,英'),(5,3156,59.40,'KO·KR','KR_Seoul_StreetFood_4K.mp4',728510,'亚太',15.30,'已上架','中,韩'),(6,1148,54.10,'AR·AE','AR_Dubai_Business_Etiquette.mp4',196835,'全球',4.05,'已上架','中,阿');
+/*!40000 ALTER TABLE `merchant_video` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -455,16 +662,16 @@ DROP TABLE IF EXISTS `metric_sample`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `metric_sample` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `bucket_label` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `c1` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `c2` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `metric_key` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `sample_date` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `seq_no` int DEFAULT NULL,
-  `sample_value` double DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_metric_key_date` (`metric_key`,`sample_date`)
+                                 `id` bigint NOT NULL AUTO_INCREMENT,
+                                 `bucket_label` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `c1` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `c2` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `metric_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                 `sample_date` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                 `seq_no` int DEFAULT NULL,
+                                 `sample_value` double DEFAULT NULL,
+                                 PRIMARY KEY (`id`),
+                                 KEY `idx_metric_key_date` (`metric_key`,`sample_date`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7962 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -486,14 +693,14 @@ DROP TABLE IF EXISTS `model_release`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `model_release` (
-  `model_name` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `coverage` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `gray_ratio` int DEFAULT NULL,
-  `precision_type` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `package_size` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `release_status` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `model_type` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`model_name`)
+                                 `model_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                 `coverage` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `gray_ratio` int DEFAULT NULL,
+                                 `precision_type` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `package_size` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `release_status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `model_type` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 PRIMARY KEY (`model_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -515,13 +722,13 @@ DROP TABLE IF EXISTS `monitor_point`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `monitor_point` (
-  `point_name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `lat` double DEFAULT NULL,
-  `level` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `lon` double DEFAULT NULL,
-  `sessions` int DEFAULT NULL,
-  `sort_order` int DEFAULT NULL,
-  PRIMARY KEY (`point_name`)
+                                 `point_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                 `lat` double DEFAULT NULL,
+                                 `level` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `lon` double DEFAULT NULL,
+                                 `sessions` int DEFAULT NULL,
+                                 `sort_order` int DEFAULT NULL,
+                                 PRIMARY KEY (`point_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -543,14 +750,14 @@ DROP TABLE IF EXISTS `nav_menu`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `nav_menu` (
-  `menu_id` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `icon` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sort_order` int DEFAULT NULL,
-  `sub` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `menu_text` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `title` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`menu_id`)
+                            `menu_id` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                            `description` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                            `icon` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                            `sort_order` int DEFAULT NULL,
+                            `sub` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                            `menu_text` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                            `title` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                            PRIMARY KEY (`menu_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -572,14 +779,14 @@ DROP TABLE IF EXISTS `perm_group`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `perm_group` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `members` int DEFAULT NULL,
-  `group_name` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sort_order` int DEFAULT NULL,
-  `role_code` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `FKqp7l43utcl07kital0uy2v4vd` (`role_code`),
-  CONSTRAINT `FKqp7l43utcl07kital0uy2v4vd` FOREIGN KEY (`role_code`) REFERENCES `security_role` (`role_code`)
+                              `id` bigint NOT NULL AUTO_INCREMENT,
+                              `members` int DEFAULT NULL,
+                              `group_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                              `sort_order` int DEFAULT NULL,
+                              `role_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                              PRIMARY KEY (`id`),
+                              KEY `FKqp7l43utcl07kital0uy2v4vd` (`role_code`),
+                              CONSTRAINT `FKqp7l43utcl07kital0uy2v4vd` FOREIGN KEY (`role_code`) REFERENCES `security_role` (`role_code`)
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -601,14 +808,14 @@ DROP TABLE IF EXISTS `permission_item`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `permission_item` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `permission_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sort_order` int DEFAULT NULL,
-  `state` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `group_id` bigint DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `FKjws0wduii5car634vwqfma416` (`group_id`),
-  CONSTRAINT `FKjws0wduii5car634vwqfma416` FOREIGN KEY (`group_id`) REFERENCES `perm_group` (`id`)
+                                   `id` bigint NOT NULL AUTO_INCREMENT,
+                                   `permission_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                   `sort_order` int DEFAULT NULL,
+                                   `state` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                   `group_id` bigint DEFAULT NULL,
+                                   PRIMARY KEY (`id`),
+                                   KEY `FKjws0wduii5car634vwqfma416` (`group_id`),
+                                   CONSTRAINT `FKjws0wduii5car634vwqfma416` FOREIGN KEY (`group_id`) REFERENCES `perm_group` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -630,15 +837,15 @@ DROP TABLE IF EXISTS `refund_record`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `refund_record` (
-  `record_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `advice` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `order_no` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `paid` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `reasons` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sla` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `ticket_status` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `suggest_refund` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`record_id`)
+                                 `record_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                 `advice` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `order_no` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `paid` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `reasons` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `sla` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `ticket_status` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `suggest_refund` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 PRIMARY KEY (`record_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -660,12 +867,12 @@ DROP TABLE IF EXISTS `release_event`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `release_event` (
-  `id` bigint NOT NULL AUTO_INCREMENT,
-  `description` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `event_time` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `title` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `tone` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`)
+                                 `id` bigint NOT NULL AUTO_INCREMENT,
+                                 `description` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `event_time` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `title` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `tone` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -687,12 +894,12 @@ DROP TABLE IF EXISTS `security_role`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `security_role` (
-  `role_code` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `icon` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `members` int DEFAULT NULL,
-  `role_name` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sort_order` int DEFAULT NULL,
-  PRIMARY KEY (`role_code`)
+                                 `role_code` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                 `icon` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `members` int DEFAULT NULL,
+                                 `role_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                 `sort_order` int DEFAULT NULL,
+                                 PRIMARY KEY (`role_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -714,11 +921,11 @@ DROP TABLE IF EXISTS `strategy_toggle`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `strategy_toggle` (
-  `toggle_name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `enabled` bit(1) DEFAULT NULL,
-  `group_name` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sort_order` int DEFAULT NULL,
-  PRIMARY KEY (`toggle_name`)
+                                   `toggle_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                                   `enabled` bit(1) DEFAULT NULL,
+                                   `group_name` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                                   `sort_order` int DEFAULT NULL,
+                                   PRIMARY KEY (`toggle_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -740,13 +947,13 @@ DROP TABLE IF EXISTS `ugc_hit`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ugc_hit` (
-  `record_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `rule_name` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `score` double DEFAULT NULL,
-  `sort_order` int NOT NULL,
-  PRIMARY KEY (`record_id`,`sort_order`),
-  CONSTRAINT `FKqf0vjwpkmcegksu1satshu8m5` FOREIGN KEY (`record_id`) REFERENCES `ugc_record` (`record_id`),
-  CONSTRAINT `ugc_hit_chk_1` CHECK ((`sort_order` >= 0))
+                           `record_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                           `rule_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                           `score` double DEFAULT NULL,
+                           `sort_order` int NOT NULL,
+                           PRIMARY KEY (`record_id`,`sort_order`),
+                           CONSTRAINT `FKqf0vjwpkmcegksu1satshu8m5` FOREIGN KEY (`record_id`) REFERENCES `ugc_record` (`record_id`),
+                           CONSTRAINT `ugc_hit_chk_1` CHECK ((`sort_order` >= 0))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -768,10 +975,10 @@ DROP TABLE IF EXISTS `ugc_record`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ugc_record` (
-  `record_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `level` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `verdict` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`record_id`)
+                              `record_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                              `level` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                              `verdict` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                              PRIMARY KEY (`record_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -793,13 +1000,13 @@ DROP TABLE IF EXISTS `ugc_segment`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ugc_segment` (
-  `record_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `seg_text` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `tone` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sort_order` int NOT NULL,
-  PRIMARY KEY (`record_id`,`sort_order`),
-  CONSTRAINT `FK50p9wk8s7s84qqy7m6kmus4t7` FOREIGN KEY (`record_id`) REFERENCES `ugc_record` (`record_id`),
-  CONSTRAINT `ugc_segment_chk_1` CHECK ((`sort_order` >= 0))
+                               `record_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                               `seg_text` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                               `tone` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+                               `sort_order` int NOT NULL,
+                               PRIMARY KEY (`record_id`,`sort_order`),
+                               CONSTRAINT `FK50p9wk8s7s84qqy7m6kmus4t7` FOREIGN KEY (`record_id`) REFERENCES `ugc_record` (`record_id`),
+                               CONSTRAINT `ugc_segment_chk_1` CHECK ((`sort_order` >= 0))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -812,14 +1019,6 @@ LOCK TABLES `ugc_segment` WRITE;
 INSERT INTO `ugc_segment` VALUES ('UGC-CURRENT','用户评论：「加我',NULL,0),('UGC-CURRENT','微信 xxx 领免费翻译','rose',1),('UGC-CURRENT','，比官方便宜一半」',NULL,2),('UGC-CURRENT','疑似人身攻击内容','amber',3);
 /*!40000 ALTER TABLE `ugc_segment` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Dumping events for database 'shixun'
---
-
---
--- Dumping routines for database 'shixun'
---
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -830,4 +1029,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-08 15:01:21
+-- Dump completed on 2026-09-08 17:56:05
