@@ -47,3 +47,108 @@ export function merchantLogout() {
 export function merchantMe() {
   return request.get('/merchant/me')
 }
+
+/* ------------------------------ 投放计划 CRUD ------------------------------ */
+
+/** 投放计划列表 */
+export function fetchPlans() {
+  return request.get('/merchant/plans')
+}
+
+/** 新建投放计划 */
+export function createPlan(payload) {
+  return request.post('/merchant/plans', payload)
+}
+
+/** 编辑投放计划 */
+export function updatePlan(id, payload) {
+  return request.put(`/merchant/plans/${id}`, payload)
+}
+
+/** 暂停投放 */
+export function pausePlan(id) {
+  return request.put(`/merchant/plans/${id}/pause`)
+}
+
+/** 恢复投放 */
+export function resumePlan(id) {
+  return request.put(`/merchant/plans/${id}/resume`)
+}
+
+/** 删除投放计划 */
+export function deletePlan(id) {
+  return request.delete(`/merchant/plans/${id}`)
+}
+
+/* ------------------------------ 经营概览 ------------------------------ */
+
+/** 经营概览:指标卡 + 近 7 日趋势 + 订单摘要 */
+export function fetchOverview() {
+  return request.get('/merchant/overview')
+}
+
+/* ------------------------------ 订单与结算 ------------------------------ */
+
+/** 订单列表(最新在前) */
+export function fetchOrders() {
+  return request.get('/merchant/orders')
+}
+
+/** 结算一笔待结算订单 */
+export function settleOrder(id) {
+  return request.put(`/merchant/orders/${id}/settle`)
+}
+
+/* ------------------------------ 素材管理(含 A/B) ------------------------------ */
+
+export function fetchMaterials() {
+  return request.get('/merchant/materials')
+}
+export function createMaterial(payload) {
+  return request.post('/merchant/materials', payload)
+}
+export function updateMaterial(id, payload) {
+  return request.put(`/merchant/materials/${id}`, payload)
+}
+export function deleteMaterial(id) {
+  return request.delete(`/merchant/materials/${id}`)
+}
+export function fetchAb() {
+  return request.get('/merchant/materials/ab')
+}
+export function saveAb(payload) {
+  return request.put('/merchant/materials/ab', payload)
+}
+
+/* ------------------------------ 视频接入 ------------------------------ */
+
+export function fetchVideos() {
+  return request.get('/merchant/videos')
+}
+export function createVideo(payload) {
+  return request.post('/merchant/videos', payload)
+}
+export function updateVideo(id, payload) {
+  return request.put(`/merchant/videos/${id}`, payload)
+}
+export function deleteVideo(id) {
+  return request.delete(`/merchant/videos/${id}`)
+}
+
+/* ------------------------------ 推广渠道与销售报表 ------------------------------ */
+
+export function fetchChannels() {
+  return request.get('/merchant/promotions')
+}
+export function createChannel(payload) {
+  return request.post('/merchant/promotions', payload)
+}
+export function updateChannel(id, payload) {
+  return request.put(`/merchant/promotions/${id}`, payload)
+}
+export function deleteChannel(id) {
+  return request.delete(`/merchant/promotions/${id}`)
+}
+export function fetchSales() {
+  return request.get('/merchant/sales')
+}
