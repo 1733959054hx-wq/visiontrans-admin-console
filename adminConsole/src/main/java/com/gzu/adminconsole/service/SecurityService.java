@@ -9,10 +9,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import com.gzu.adminconsole.common.BusinessException;
 import com.gzu.adminconsole.common.DateRange;
+import com.gzu.adminconsole.common.TrendUtils;
+import com.gzu.adminconsole.config.AdminContext;
 import com.gzu.adminconsole.config.AppProperties;
 import com.gzu.adminconsole.dto.common.KpiMetric;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
@@ -35,13 +41,10 @@ import com.gzu.adminconsole.repository.SecurityRepository;
 public class SecurityService {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    /** 演示用固定来源 IP / 地域。 */
-    private static final String OPERATOR_SOURCE = "203.208.60.12 · 上海";
-    /** 演示用当前操作人。 */
-    private static final String OPERATOR = "Danny";
-    /** 演示用当前操作人角色 / 权限组。 */
-    private static final String OPERATOR_ROLE = "超级管理员";
-    private static final String OPERATOR_GROUP = "安全审计组";
+    /** 无法从会话中识别操作人时的占位值（不再回退到写死的演示账号）。 */
+    private static final String UNKNOWN = "未知";
+    /** 反向代理透传客户端 IP 的请求头。 */
+    private static final String FORWARDED_FOR = "X-Forwarded-For";
 
     private final SecurityRepository repository;
     private final AppProperties properties;
@@ -192,25 +195,62 @@ public class SecurityService {
         return ActionResultVO.ok("管理员 " + user.name() + " 已新增", user.name());
     }
 
-    /** 更新管理员。 */
+    /** 更新管理员（降级 / 停用最后一个超级管理员会被拒绝）。 */
     public ActionResultVO updateAdmin(AdminUser user) {
-        if (user.id() == null || repository.findAdmin(user.id()) == null) {
+        AdminUser current = user.id() == null ? null : repository.findAdmin(user.id());
+        if (current == null) {
             throw new BusinessException("未找到该管理员");
+        }
+        boolean demoting = "超级管理员".equals(current.role())
+                && (!"超级管理员".equals(user.role()) || !"启用".equals(user.status()));
+        if (demoting) {
+            // 降级或停用唯一的超级管理员会让系统永久失去最高权限账号
+            requireLastSuperAdmin(user.id());
         }
         repository.updateAdmin(user);
         writeLog("管理员账号管理", "更新管理员 " + user.name() + "（状态 " + user.status() + "）");
         return ActionResultVO.ok("管理员 " + user.name() + " 已更新", user.name());
     }
 
-    /** 删除管理员。 */
+    /** 删除管理员（禁止删自己；必须保留至少一个启用状态的超级管理员）。 */
     public ActionResultVO deleteAdmin(Long id) {
         AdminUser user = repository.findAdmin(id);
         if (user == null) {
             throw new BusinessException("未找到该管理员");
         }
+        requireNotSelf(user);
+        if ("超级管理员".equals(user.role())) {
+            requireLastSuperAdmin(id);
+        }
         repository.deleteAdmin(id);
         writeLog("管理员账号管理", "删除管理员 " + user.name());
         return ActionResultVO.ok("管理员 " + user.name() + " 已删除", user.name());
+    }
+
+    /** 禁止对当前登录账号自身执行删除等危险操作。 */
+    private void requireNotSelf(AdminUser target) {
+        AdminContext.CurrentAdmin current = AdminContext.get();
+        if (current == null) {
+            return;
+        }
+        // 账号名为空的老数据退化为按姓名比对，避免漏判导致把自己删掉
+        boolean same = (current.username() != null && current.username().equalsIgnoreCase(target.username()))
+                || (current.name() != null && current.name().equals(target.name()));
+        if (same) {
+            throw new BusinessException("不能对当前登录的账号执行该操作");
+        }
+    }
+
+    /** 除 excludeId 之外，必须仍存在启用状态的超级管理员。 */
+    private void requireLastSuperAdmin(Long excludeId) {
+        long remaining = repository.findAdmins().stream()
+                .filter(u -> "超级管理员".equals(u.role()))
+                .filter(u -> !"停用".equals(u.status()))
+                .filter(u -> !u.id().equals(excludeId))
+                .count();
+        if (remaining == 0) {
+            throw new BusinessException("必须至少保留一个启用状态的超级管理员");
+        }
     }
 
     /* ---------------------------- 安全策略 ---------------------------- */
@@ -407,32 +447,19 @@ public class SecurityService {
         return values.size() > 12 ? values.subList(values.size() - 12, values.size()) : values;
     }
 
-    /** 由趋势序列首尾计算环比百分比文案。 */
+    /** 环比百分比文案（统一走 {@link TrendUtils}）。 */
     private static String deltaOf(List<Double> series) {
-        if (series.size() < 2) {
-            return "0.0%";
-        }
-        double first = series.get(0);
-        double last = series.get(series.size() - 1);
-        if (first <= 0) {
-            return "0.0%";
-        }
-        return String.format("%.1f%%", (last - first) * 100.0 / first);
+        return TrendUtils.deltaOf(series);
     }
 
-    /** 趋势方向：末尾值不低于起点即视为上升。 */
+    /** 趋势方向（统一走 {@link TrendUtils}）。 */
     private static boolean rising(List<Double> series) {
-        return series.size() < 2 || series.get(series.size() - 1) >= series.get(0);
+        return TrendUtils.rising(series);
     }
 
-    /** 由当前值生成收敛曲线，用于无时间维度数据（如账号 / 设备台账）的兜底趋势。 */
+    /** 收敛趋势迷你图（统一走 {@link TrendUtils}）。 */
     private static List<Double> trend(double current) {
-        double[] ratios = {0.58, 0.64, 0.70, 0.75, 0.80, 0.85, 0.89, 0.92, 0.95, 0.97, 0.99, 1.0};
-        List<Double> out = new ArrayList<>();
-        for (double ratio : ratios) {
-            out.add(Math.round(current * ratio * 100.0) / 100.0);
-        }
-        return out;
+        return TrendUtils.converge(current);
     }
 
     /** 角色人数分布文案。 */
@@ -446,9 +473,28 @@ public class SecurityService {
     }
 
     private void writeLog(String action, String detail) {
-        AuditLogEntry entry = AuditLogEntry.of(now(), OPERATOR, OPERATOR_ROLE, OPERATOR_GROUP, action, detail,
-                OPERATOR_SOURCE, "成功");
+        AdminContext.CurrentAdmin admin = AdminContext.get();
+        // 操作人与来源一律取真实会话 / 真实请求，保证审计可追溯
+        String name = admin == null ? UNKNOWN : admin.name();
+        String role = admin == null ? UNKNOWN : admin.roleName();
+        String group = admin == null ? UNKNOWN : admin.groupName();
+        AuditLogEntry entry = AuditLogEntry.of(now(), name, role, group, action, detail, clientIp(), "成功");
         repository.pushAuditLog(entry);
+    }
+
+    /** 真实来源 IP：优先取反向代理透传的 X-Forwarded-For 首段。 */
+    private String clientIp() {
+        ServletRequestAttributes attrs =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attrs == null) {
+            return UNKNOWN;
+        }
+        HttpServletRequest request = attrs.getRequest();
+        String forwarded = request.getHeader(FORWARDED_FOR);
+        if (forwarded == null || forwarded.isBlank()) {
+            return request.getRemoteAddr();
+        }
+        return forwarded.split(",")[0].trim();
     }
 
     private void requireText(String value, String label) {

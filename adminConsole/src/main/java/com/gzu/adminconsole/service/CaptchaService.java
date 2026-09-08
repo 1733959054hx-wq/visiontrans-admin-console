@@ -22,6 +22,8 @@ import javax.imageio.ImageIO;
 
 import org.springframework.stereotype.Service;
 
+import com.gzu.adminconsole.common.BusinessException;
+
 /**
  * 点击式图形验证码：动态绘制散落汉字，用户按提示顺序点击，后端按坐标 + 容差校验。
  *
@@ -57,8 +59,18 @@ public class CaptchaService {
 
     private final Map<String, Challenge> store = new ConcurrentHashMap<>();
 
+    /** 挑战驻留上限：超出先清理过期项，仍超限则拒绝下发，防止未登录刷接口打爆堆内存。 */
+    private static final int MAX_CHALLENGES = 2000;
+
     /** 生成新的验证码挑战。 */
     public CaptchaChallenge create() {
+        if (store.size() >= MAX_CHALLENGES) {
+            long now = System.currentTimeMillis();
+            store.values().removeIf(c -> c.expiresAt() < now);
+            if (store.size() >= MAX_CHALLENGES) {
+                throw new BusinessException("系统繁忙，请稍后再试");
+            }
+        }
         List<char[]> picked = new ArrayList<>();
         List<double[]> targets = new ArrayList<>();
         StringBuilder hint = new StringBuilder();

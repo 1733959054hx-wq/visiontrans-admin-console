@@ -68,6 +68,10 @@ public class AuthService {
             // 不区分"账号不存在"与"口令错误"，避免账号枚举
             throw new BusinessException("账号或口令不正确，" + recordFailure(account));
         }
+        // 历史弱哈希（SHA-256 固定盐 / 迭代次数过旧）在本次登录成功后静默升级
+        if (PasswordHasher.needsRehash(user.getPasswordHash())) {
+            authRepository.updatePasswordHash(account, PasswordHasher.hash(plainPassword));
+        }
         if (!"启用".equals(user.getStatus())) {
             throw new BusinessException("该账号已停用，请联系超级管理员");
         }
@@ -106,15 +110,18 @@ public class AuthService {
         if (max <= 0) {
             return "请重新输入";
         }
-        long[] state = attempts.computeIfAbsent(account, key -> new long[2]);
-        state[0] += 1;
-        if (state[0] >= max) {
+        // compute 对同一 key 的读-改-写在 ConcurrentHashMap 上是原子的，
+        // 避免并发登录请求读到同一个失败次数而绕过锁定阈值
+        long[] next = attempts.compute(account, (key, state) -> {
+            long base = (state == null || state[1] <= System.currentTimeMillis()) ? 0 : state[0];
+            return new long[] {base + 1, 0};
+        });
+        if (next[0] >= max) {
             // 达到阈值：锁定并重置计数，锁定结束后重新计数
             attempts.put(account, new long[] {0, System.currentTimeMillis() + lockSeconds * 1000L});
             throw new BusinessException("连续失败 " + max + " 次，账号已锁定 " + lockSeconds + " 秒");
         }
-        attempts.put(account, state);
-        return "还可尝试 " + (max - state[0]) + " 次";
+        return "还可尝试 " + (max - next[0]) + " 次";
     }
 
     /** 登出：删除会话。 */

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import com.gzu.adminconsole.common.BusinessException;
 import com.gzu.adminconsole.common.DateRange;
+import com.gzu.adminconsole.common.TrendUtils;
 import com.gzu.adminconsole.config.AppProperties;
 import com.gzu.adminconsole.dto.cluster.ClusterOverviewVO;
 import com.gzu.adminconsole.dto.common.KpiMetric;
@@ -437,40 +438,19 @@ public class ClusterService {
         return values.size() > 12 ? values.subList(values.size() - 12, values.size()) : values;
     }
 
-    /** 由趋势序列首尾计算环比百分比文案。 */
+    /** 环比百分比文案（统一走 {@link TrendUtils}）。 */
     private static String deltaOf(List<Double> series) {
-        if (series.size() < 2) {
-            return "0.0%";
-        }
-        double first = series.get(0);
-        double last = series.get(series.size() - 1);
-        if (first <= 0) {
-            return "0.0%";
-        }
-        return String.format("%.1f%%", (last - first) * 100.0 / first);
+        return TrendUtils.deltaOf(series);
     }
 
-    /** 趋势方向：末尾值不低于起点即视为上升。 */
+    /** 趋势方向（统一走 {@link TrendUtils}）。 */
     private static boolean rising(List<Double> series) {
-        return series.size() < 2 || series.get(series.size() - 1) >= series.get(0);
+        return TrendUtils.rising(series);
     }
 
-    /** 由当前值生成一条收敛到该值的趋势迷你图，用于无时间维度数据的兜底。 */
+    /** 收敛趋势迷你图（统一走 {@link TrendUtils}）。 */
     private static List<Double> trend(double current) {
-        double[] ratios = {0.58, 0.64, 0.70, 0.75, 0.80, 0.85, 0.89, 0.92, 0.95, 0.97, 0.99, 1.0};
-        List<Double> out = new ArrayList<>();
-        for (double ratio : ratios) {
-            out.add(Math.round(current * ratio * 100.0) / 100.0);
-        }
-        return out;
-    }
-
-    private static List<Double> spark(double... values) {
-        List<Double> list = new ArrayList<>();
-        for (double v : values) {
-            list.add(v);
-        }
-        return list;
+        return TrendUtils.converge(current);
     }
 
     private static double round1(double v) {

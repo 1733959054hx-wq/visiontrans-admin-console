@@ -33,6 +33,9 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        // 入口先清空：preHandle 抛异常时 Spring 不会回调 afterCompletion，
+        // 不清会让上一个请求的身份残留在 Tomcat 复用线程上
+        AdminContext.clear();
         if (HttpMethod.OPTIONS.matches(request.getMethod()) || !(handler instanceof HandlerMethod method)) {
             return true;
         }
@@ -58,7 +61,23 @@ public class AuthInterceptor implements HandlerInterceptor {
                 && !Arrays.asList(rule.value()).contains(session.getRoleCode())) {
             throw new BusinessException(403, "当前角色无此操作权限：" + session.getRoleName());
         }
+        // 最小权限兜底：写操作必须显式声明 @RequireRole，未声明视为配置遗漏直接拒绝，
+        // 防止新增接口忘记标注角色而被任意已登录用户（含只读审计员）调用
+        if (rule == null && isWriteMethod(request.getMethod())) {
+            throw new BusinessException(403, "该操作未配置角色策略，已按最小权限拒绝");
+        }
         return true;
+    }
+
+    /** 是否为会改变数据的写方法（GET / HEAD / OPTIONS 视为只读）。 */
+    private static boolean isWriteMethod(String method) {
+        if (method == null) {
+            return false;
+        }
+        return switch (method.toUpperCase(java.util.Locale.ROOT)) {
+            case "POST", "PUT", "PATCH", "DELETE" -> true;
+            default -> false;
+        };
     }
 
     @Override

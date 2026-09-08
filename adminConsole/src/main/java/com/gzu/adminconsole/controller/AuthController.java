@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.gzu.adminconsole.common.RsaKeyHolder;
 import com.gzu.adminconsole.common.Result;
 import com.gzu.adminconsole.config.AuthInterceptor;
+import com.gzu.adminconsole.config.RequireRole;
 import com.gzu.adminconsole.dto.meta.LoginResultVO;
 import com.gzu.adminconsole.service.AuthService;
 import com.gzu.adminconsole.service.CaptchaService;
@@ -56,7 +57,8 @@ public class AuthController {
         return Result.ok(rsaKeyHolder.publicKeyBase64());
     }
 
-    /** 登出。 */
+    /** 登出（仅需登录即可，任何角色都能退出自己）。 */
+    @RequireRole
     @PostMapping("/logout")
     public Result<Boolean> logout(HttpServletRequest request) {
         service.logout(request.getHeader(AuthInterceptor.TOKEN_HEADER));

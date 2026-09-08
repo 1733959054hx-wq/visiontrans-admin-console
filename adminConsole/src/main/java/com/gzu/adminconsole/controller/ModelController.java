@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.gzu.adminconsole.common.Result;
+import com.gzu.adminconsole.config.RequireRole;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
 import com.gzu.adminconsole.dto.model.ModelOverviewVO;
 import com.gzu.adminconsole.model.ModelRelease;
@@ -37,19 +38,22 @@ public class ModelController {
         return Result.ok(service.overview(start, end));
     }
 
-    /** 调整全局灰度比例。 */
+    /** 调整全局灰度比例（仅超级管理员：影响全量设备下发）。 */
+    @RequireRole("SUPER_ADMIN")
     @PutMapping("/grayscale")
     public Result<ActionResultVO> updateGrayscale(@RequestParam int ratio) {
         return Result.ok(service.updateGrayscale(ratio));
     }
 
-    /** 指定模型秒级热更到全量。 */
+    /** 指定模型秒级热更到全量（仅超级管理员）。 */
+    @RequireRole("SUPER_ADMIN")
     @PostMapping("/hot-update")
     public Result<ActionResultVO> hotUpdate(@RequestParam String name) {
         return Result.ok(service.hotUpdate(name));
     }
 
-    /** 指定模型一键回滚。 */
+    /** 指定模型一键回滚（仅超级管理员）。 */
+    @RequireRole("SUPER_ADMIN")
     @PostMapping("/rollback")
     public Result<ActionResultVO> rollback(@RequestParam String name) {
         return Result.ok(service.rollback(name));
@@ -57,25 +61,29 @@ public class ModelController {
 
     /* ------------------------------ 模型 CRUD ------------------------------ */
 
-    /** 登记新模型版本。 */
+    /** 登记新模型版本（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
     @PostMapping
     public Result<ActionResultVO> create(@RequestBody ModelRelease model) {
         return Result.ok(service.createModel(model));
     }
 
-    /** 修改模型配置。 */
+    /** 修改模型配置（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
     @PutMapping
     public Result<ActionResultVO> update(@RequestBody ModelRelease model) {
         return Result.ok(service.updateModel(model));
     }
 
-    /** 删除模型版本。 */
+    /** 删除模型版本（仅超级管理员）。 */
+    @RequireRole("SUPER_ADMIN")
     @DeleteMapping
     public Result<ActionResultVO> delete(@RequestParam String name) {
         return Result.ok(service.deleteModel(name));
     }
 
-    /** 切换灰度 / 热更策略开关。 */
+    /** 切换灰度 / 热更策略开关（仅超级管理员）。 */
+    @RequireRole("SUPER_ADMIN")
     @PutMapping("/strategies")
     public Result<ActionResultVO> updateStrategy(@RequestParam String name, @RequestParam boolean enabled) {
         return Result.ok(service.updateStrategy(name, enabled));

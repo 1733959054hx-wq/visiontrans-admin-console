@@ -66,6 +66,15 @@ public class AuthRepository {
         return session;
     }
 
+    /** 更新口令哈希（登录成功后的静默升级：历史弱哈希 → 当前算法）。 */
+    @Transactional
+    public void updatePasswordHash(String username, String hash) {
+        em.createQuery("update AdminUserEntity u set u.passwordHash = :h where u.username = :n")
+                .setParameter("h", hash)
+                .setParameter("n", username)
+                .executeUpdate();
+    }
+
     /** 删除会话（登出）。 */
     @Transactional
     public void deleteSession(String token) {

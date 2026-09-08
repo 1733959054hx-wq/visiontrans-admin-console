@@ -97,7 +97,8 @@ mysql -u root -p < D:\Java_code\adminConsole\adminConsole\db\init.sql
 ```
 
 脚本内容：把 `shixun` 库字符集校正为 utf8mb4、创建 `shixun` 账号并授予该库全部权限。
-表结构无需手工创建——应用启动时由 JPA（`ddl-auto=update`）自动建表，并自动灌入演示数据。
+表结构默认由 `ddl-auto=validate` 校验（生产推荐，应用账号不持有 DDL 权限）；
+本地开发设置 `ADMIN_DDL_AUTO=update` 后由 JPA 自动建表，并自动灌入演示数据。
 
 ### 1. 启动后端（端口 8080）
 
@@ -105,6 +106,14 @@ mysql -u root -p < D:\Java_code\adminConsole\adminConsole\db\init.sql
 # PowerShell
 $env:JAVA_HOME = 'C:\Program Files\Microsoft\jdk-21.0.4.7-hotspot'
 $env:Path = "$env:JAVA_HOME\bin;$env:Path"
+
+# 数据库账号 / 口令从环境变量注入（不再写进配置文件，避免凭据入库）
+$env:ADMIN_DB_URL = 'jdbc:mysql://localhost:3306/shixun?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai'
+$env:ADMIN_DB_USER = 'shixun'
+$env:ADMIN_DB_PASSWORD = '123456'
+# 本地开发需要 JPA 自动建表时设置；生产保持默认 validate，结构变更走迁移脚本
+$env:ADMIN_DDL_AUTO = 'update'
+
 cd D:\Java_code\adminConsole\adminConsole
 mvn spring-boot:run
 ```
@@ -159,8 +168,20 @@ npm run build          # 产物在 admin-front/dist
 | `admin-console.security.*` | 日志留存天数 |
 | `admin-console.data.randomize` | 开启后实时指标做轻微随机扰动，模拟推送效果 |
 | `admin-console.data.auto-init` | 启动期是否自动灌入演示数据（表非空则跳过） |
-| `spring.datasource.*` | MySQL 连接：库名、账号、密码、连接池 |
-| `spring.jpa.*` | Hibernate 行为（ddl-auto、show-sql 等） |
+| `spring.datasource.*` | MySQL 连接：库名由 `ADMIN_DB_URL` 注入，账号 / 口令由 `ADMIN_DB_USER` / `ADMIN_DB_PASSWORD` 注入（**不入库**） |
+| `spring.jpa.*` | Hibernate 行为（ddl-auto 由 `ADMIN_DDL_AUTO` 控制，默认 validate） |
+
+### 角色与接口权限
+
+登录令牌放在请求头 `X-Auth-Token`。所有接口默认需要登录，权限由接口上的 `@RequireRole` 声明：
+
+| 角色编码 | 中文名 | 权限 |
+|---|---|---|
+| `SUPER_ADMIN` | 超级管理员 | 全部接口，含删除与模型热更 / 回滚 / 灰度 |
+| `OPERATIONS` | 运营管理员 | 各模块新增 / 修改与业务动作，不含删除、不含 RBAC 授权 |
+| `AUDITOR` | 只读审计员 | 仅 `GET` 大盘数据 |
+
+未标注 `@RequireRole` 的写操作（POST / PUT / PATCH / DELETE）会被 `AuthInterceptor` 按最小权限直接拒绝，避免新增接口漏配角色。
 
 ## 六、数据持久化说明
 

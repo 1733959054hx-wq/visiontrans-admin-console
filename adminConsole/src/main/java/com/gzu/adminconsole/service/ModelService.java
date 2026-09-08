@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import com.gzu.adminconsole.common.BusinessException;
 import com.gzu.adminconsole.common.DateRange;
+import com.gzu.adminconsole.common.TrendUtils;
 import com.gzu.adminconsole.dto.common.KpiMetric;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
 import com.gzu.adminconsole.dto.model.ModelOverviewVO;
@@ -100,14 +101,9 @@ public class ModelService {
         }
     }
 
-    /** 由当前值生成一条收敛到该值的趋势迷你图，避免 KPI 与真实数据脱节。 */
+    /** 收敛趋势迷你图（统一走 {@link TrendUtils}）。 */
     private static List<Double> trend(double current) {
-        double[] ratios = {0.58, 0.64, 0.70, 0.75, 0.80, 0.85, 0.89, 0.92, 0.95, 0.97, 0.99, 1.0};
-        List<Double> out = new ArrayList<>();
-        for (double ratio : ratios) {
-            out.add(Math.round(current * ratio * 100.0) / 100.0);
-        }
-        return out;
+        return TrendUtils.converge(current);
     }
 
     /** 调整全局灰度比例。 */

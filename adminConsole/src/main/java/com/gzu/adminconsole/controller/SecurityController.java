@@ -42,7 +42,8 @@ public class SecurityController {
         return Result.ok(service.overview(page, start, end));
     }
 
-    /** 封禁异常设备。 */
+    /** 封禁异常设备（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
     @PostMapping("/devices/ban")
     public Result<ActionResultVO> banDevice(@RequestParam String fingerprint) {
         return Result.ok(service.banDevice(fingerprint));
@@ -64,19 +65,22 @@ public class SecurityController {
 
     /* ------------------------------ 设备 CRUD ------------------------------ */
 
-    /** 新增设备台账。 */
+    /** 新增设备台账（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
     @PostMapping("/devices")
     public Result<ActionResultVO> createDevice(@RequestBody DeviceRecord device) {
         return Result.ok(service.createDevice(device));
     }
 
-    /** 修改设备台账。 */
+    /** 修改设备台账（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
     @PutMapping("/devices")
     public Result<ActionResultVO> updateDevice(@RequestBody DeviceRecord device) {
         return Result.ok(service.updateDevice(device));
     }
 
-    /** 删除设备台账。 */
+    /** 删除设备台账（仅超级管理员）。 */
+    @RequireRole("SUPER_ADMIN")
     @DeleteMapping("/devices/{fingerprint}")
     public Result<ActionResultVO> deleteDevice(@PathVariable String fingerprint) {
         return Result.ok(service.deleteDevice(fingerprint));
@@ -84,19 +88,22 @@ public class SecurityController {
 
     /* ------------------------------ 套餐 CRUD ------------------------------ */
 
-    /** 新增会员套餐。 */
+    /** 新增会员套餐（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
     @PostMapping("/plans")
     public Result<ActionResultVO> createPlan(@RequestBody MembershipPlan plan) {
         return Result.ok(service.createPlan(plan));
     }
 
-    /** 修改会员套餐。 */
+    /** 修改会员套餐（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
     @PutMapping("/plans")
     public Result<ActionResultVO> updatePlan(@RequestBody MembershipPlan plan) {
         return Result.ok(service.updatePlan(plan));
     }
 
-    /** 删除会员套餐。 */
+    /** 删除会员套餐（仅超级管理员）。 */
+    @RequireRole("SUPER_ADMIN")
     @DeleteMapping("/plans/{name}")
     public Result<ActionResultVO> deletePlan(@PathVariable String name) {
         return Result.ok(service.deletePlan(name));
