@@ -349,6 +349,14 @@ public class AppProperties {
         private int loginMaxAttempts = 5;
         /** 触发风控后的锁定时长（秒）。 */
         private long loginLockSeconds = 300;
+        /**
+         * 应用启动（含每次重启）时是否清空全部登录会话。
+         *
+         * <p>会话持久化在 auth_session 表，重启本身并不会让令牌失效；开启此项后
+         * 每次启动都先清表，保证「重启 = 所有人重新登录」，避免长期挂起的令牌滞留。
+         * 生产环境若希望重启不踢人，改为 false 即可。
+         */
+        private boolean invalidateOnStartup = true;
 
         public int getLogRetentionDays() {
             return logRetentionDays;
@@ -380,6 +388,14 @@ public class AppProperties {
 
         public void setLoginLockSeconds(long loginLockSeconds) {
             this.loginLockSeconds = lockSecondsGuard(loginLockSeconds);
+        }
+
+        public boolean isInvalidateOnStartup() {
+            return invalidateOnStartup;
+        }
+
+        public void setInvalidateOnStartup(boolean invalidateOnStartup) {
+            this.invalidateOnStartup = invalidateOnStartup;
         }
 
         private static long lockSecondsGuard(long value) {

@@ -1,6 +1,7 @@
 package com.gzu.adminconsole.jingchen.repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,6 +33,9 @@ public class MerchantSessionRepository implements TokenResolver {
 
     /** 内存会话表：token → 会话。 */
     private final Map<String, MerchantSessionEntity> sessions = new ConcurrentHashMap<>();
+
+    /** 免鉴权公开路径（商户登录）。 */
+    private static final List<String> PUBLIC_PATH_SUFFIXES = List.of("/merchant/login");
 
     /** 按令牌取未过期会话；令牌无效或已过期返回 null。 */
     public MerchantSessionEntity findValid(String token) {
@@ -87,5 +91,15 @@ public class MerchantSessionRepository implements TokenResolver {
                 s.getToken(), s.getMerchantCode(), s.getMerchantName(),
                 s.getRoleCode(), s.getRoleName(), "商户"));
         return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>商户实现：登录接口免鉴权（改路由前缀时改这里即可，无需动主工程拦截器）。
+     */
+    @Override
+    public boolean isPublicPath(String uri) {
+        return uri != null && PUBLIC_PATH_SUFFIXES.stream().anyMatch(uri::endsWith);
     }
 }

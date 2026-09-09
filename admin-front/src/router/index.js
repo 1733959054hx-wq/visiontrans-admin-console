@@ -119,7 +119,14 @@ router.beforeEach(async (to) => {
   // 角色与页面不匹配：强制回到该角色的首页（前端兜底，后端另有 @RequireRole 拦截接口）
   const allowed = to.meta.roles
   if (allowed && allowed.length && !allowed.includes(auth.roleCode)) {
-    return { path: homeFor(auth.roleCode) }
+    const home = homeFor(auth.roleCode)
+    // 兜底页自身不满足该角色时（未知角色 / roleCode 为空）必须跳出，
+    // 否则会持续重定向到同一路径，触发路由死循环（无限重定向）导致白屏
+    if (home === to.path) {
+      await auth.logout()
+      return { path: '/login' }
+    }
+    return { path: home }
   }
   // 菜单权限兜底：后台页面必须出现在「当前角色可见的菜单」里。
   // 菜单由后端 GET /api/meta/nav 按角色过滤下发，前端不再硬编码可见范围。

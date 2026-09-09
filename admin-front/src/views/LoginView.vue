@@ -38,6 +38,10 @@ const isPasswordFocused = ref(false)
 const isBlinking = ref(false)
 const isTilting = ref(false)
 const loginStatus = ref('idle') // 'idle' | 'failed' | 'success'
+/** 校验中轮换的「工作台词」：让等待时段的译译有事可做，避免一动不动的呆滞感 */
+const VERIFY_LINES = ['正在解密身份凭证…', '正在核对账户口令…', '正在签发会话令牌…']
+const verifyLine = ref(VERIFY_LINES[0])
+let verifyTicker = null
 /** 依依不舍哭泣态：离开登录页 / 登出后回到本页 */
 const leaving = ref(false)
 const farewell = ref(false)
@@ -101,6 +105,15 @@ const mascotSpeech = computed(() => {
       tag: '好想你',
       type: 'warning',
       text: '您离开啦，译译好舍不得，快回来登录吧 😭',
+    }
+  }
+
+  // 校验中：台词轮换 + 眼珠扫视 + 身体轻摇，把"系统正在干活"演出来
+  if (gesture.value === 'focus') {
+    return {
+      tag: '校验中',
+      type: 'normal',
+      text: verifyLine.value,
     }
   }
 
@@ -296,6 +309,13 @@ const confirmLogin = async () => {
   formError.value = ''
   clearGesture()
   gesture.value = 'focus' // 校验中凝神屏息
+  // 台词轮换：每 0.9s 切一条「工作台词」，与眼珠扫视动画同节奏
+  let step = 0
+  verifyLine.value = VERIFY_LINES[0]
+  verifyTicker = setInterval(() => {
+    step = (step + 1) % VERIFY_LINES.length
+    verifyLine.value = VERIFY_LINES[step]
+  }, 900)
   try {
     // 按所选身份走各自独立的登录接口：商户签发商户令牌，管理员签发后台令牌
     const submit = identity.value === 'merchant'
@@ -324,6 +344,8 @@ const confirmLogin = async () => {
       if (loginStatus.value === 'failed') loginStatus.value = 'idle'
     }, 2800)
   } finally {
+    clearInterval(verifyTicker)
+    verifyTicker = null
     if (gesture.value === 'focus') gesture.value = ''
     loading.value = false
   }
@@ -440,6 +462,7 @@ onBeforeUnmount(() => {
             :class="{
               'animate-shake': mascotMood === 'dizzy',
               'animate-bounce-short': mascotMood === 'success',
+              'animate-think': mascotMood === 'focus',
               'anim-pop-a': gesture === 'popA',
               'anim-pop-b': gesture === 'popB',
             }"
@@ -573,8 +596,8 @@ onBeforeUnmount(() => {
                 <path d="M 164 121 Q 178 129 192 121" fill="none" stroke="#4B3A1E" stroke-width="5" stroke-linecap="round" />
               </g>
 
-              <!-- 凝神屏息：提交校验中 -->
-              <g v-else-if="mascotMood === 'focus'">
+              <!-- 凝神屏息：提交校验中（整组眼珠来回扫视，像在逐项核对凭证） -->
+              <g v-else-if="mascotMood === 'focus'" class="animate-eye-scan">
                 <circle cx="102" cy="120" r="9" fill="#4B3A1E" />
                 <circle cx="102" cy="120" r="9" fill="none" stroke="#06B6D4" stroke-width="1.8" opacity="0.6" />
                 <circle cx="99.5" cy="117" r="2.6" fill="#FFFFFF" />
@@ -1063,10 +1086,39 @@ onBeforeUnmount(() => {
   }
 }
 
+/* 校验中思考：身体小幅摇摆 + 眼珠来回扫视，把「正在核对」演出来（消除一动不动的诡异感） */
+.animate-think {
+  animation: owlThink 1.8s ease-in-out infinite;
+  transform-origin: 50% 92%;
+}
+@keyframes owlThink {
+  0%,
+  100% {
+    transform: rotate(-2.2deg) translateY(0);
+  }
+  50% {
+    transform: rotate(2.2deg) translateY(-5px);
+  }
+}
+.animate-eye-scan {
+  animation: eyeScan 1.8s ease-in-out infinite;
+}
+@keyframes eyeScan {
+  0%,
+  100% {
+    transform: translateX(-6px);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-shake,
   .animate-bounce-short,
   .animate-sweat,
+  .animate-think,
+  .animate-eye-scan,
   .comic-bubble,
   .anim-pop-a,
   .anim-pop-b,

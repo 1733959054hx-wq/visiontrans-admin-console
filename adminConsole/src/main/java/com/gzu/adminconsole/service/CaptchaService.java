@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.security.SecureRandom;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -107,6 +108,14 @@ public class CaptchaService {
     /** 挑战驻留上限：超出先清理过期项，仍超限则拒绝下发，防止未登录刷接口打爆堆内存。 */
     private static final int MAX_CHALLENGES = 2000;
 
+    /**
+     * 验证码是安全控制：随机源必须不可预测。
+     *
+     * <p>{@code RANDOM.nextDouble()} 底层是 48 位线性同余生成器，已知若干次输出即可推算后续序列，
+     * 攻击者可预先得知下一次验证码的字形与落位组合（配合固定 26px 容差会显著降低破解成本）。
+     */
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     /** 生成新的验证码挑战。 */
     public CaptchaChallenge create() {
         if (store.size() >= MAX_CHALLENGES) {
@@ -176,9 +185,9 @@ public class CaptchaService {
      * <p>字池容量远大于所需字数，guard 仅为兜底，避免极端情况下死循环。
      */
     private char pickDistinct(Set<Character> exclude) {
-        char ch = CHAR_POOL.charAt((int) (Math.random() * CHAR_POOL.length()));
+        char ch = CHAR_POOL.charAt((int) (RANDOM.nextDouble() * CHAR_POOL.length()));
         for (int guard = 0; exclude.contains(ch) && guard < 200; guard++) {
-            ch = CHAR_POOL.charAt((int) (Math.random() * CHAR_POOL.length()));
+            ch = CHAR_POOL.charAt((int) (RANDOM.nextDouble() * CHAR_POOL.length()));
         }
         return ch;
     }
@@ -209,8 +218,8 @@ public class CaptchaService {
         List<double[]> slots = new ArrayList<>();
         for (int i = 0; i < Math.min(count, cells.size()); i++) {
             int[] cell = cells.get(i);
-            double cx = (cell[0] + 0.5) * cellW + (Math.random() - 0.5) * jitterX;
-            double cy = (cell[1] + 0.5) * cellH + (Math.random() - 0.5) * jitterY;
+            double cx = (cell[0] + 0.5) * cellW + (RANDOM.nextDouble() - 0.5) * jitterX;
+            double cy = (cell[1] + 0.5) * cellH + (RANDOM.nextDouble() - 0.5) * jitterY;
             slots.add(new double[] {cx, cy});
         }
         return slots;
@@ -243,11 +252,11 @@ public class CaptchaService {
 
         // 干扰元素 1：随机噪点
         for (int i = 0; i < 200; i++) {
-            g.setColor(new Color(100 + (int) (Math.random() * 100),
-                    120 + (int) (Math.random() * 100), 160 + (int) (Math.random() * 90)));
-            int x = (int) (Math.random() * WIDTH);
-            int y = (int) (Math.random() * HEIGHT);
-            g.fillRect(x, y, 1 + (int) (Math.random() * 2), 1 + (int) (Math.random() * 2));
+            g.setColor(new Color(100 + (int) (RANDOM.nextDouble() * 100),
+                    120 + (int) (RANDOM.nextDouble() * 100), 160 + (int) (RANDOM.nextDouble() * 90)));
+            int x = (int) (RANDOM.nextDouble() * WIDTH);
+            int y = (int) (RANDOM.nextDouble() * HEIGHT);
+            g.fillRect(x, y, 1 + (int) (RANDOM.nextDouble() * 2), 1 + (int) (RANDOM.nextDouble() * 2));
         }
 
         // 干扰元素 2：贝塞尔曲线（比椭圆更自然、更难被脚本识别）
@@ -255,13 +264,13 @@ public class CaptchaService {
                 new Color(0x64, 0x74, 0x8B), new Color(0x38, 0xBD, 0xF8)};
         for (int i = 0; i < 4; i++) {
             g.setColor(lineColors[i % lineColors.length]);
-            g.setStroke(new BasicStroke(1.1f + (float) (Math.random() * 0.8),
+            g.setStroke(new BasicStroke(1.1f + (float) (RANDOM.nextDouble() * 0.8),
                     BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             Path2D path = new Path2D.Double();
-            path.moveTo(Math.random() * WIDTH * 0.2, Math.random() * HEIGHT);
-            path.curveTo(Math.random() * WIDTH, Math.random() * HEIGHT,
-                    Math.random() * WIDTH, Math.random() * HEIGHT,
-                    WIDTH * (0.8 + Math.random() * 0.2), Math.random() * HEIGHT);
+            path.moveTo(RANDOM.nextDouble() * WIDTH * 0.2, RANDOM.nextDouble() * HEIGHT);
+            path.curveTo(RANDOM.nextDouble() * WIDTH, RANDOM.nextDouble() * HEIGHT,
+                    RANDOM.nextDouble() * WIDTH, RANDOM.nextDouble() * HEIGHT,
+                    WIDTH * (0.8 + RANDOM.nextDouble() * 0.2), RANDOM.nextDouble() * HEIGHT);
             g.draw(path);
         }
 
@@ -271,10 +280,10 @@ public class CaptchaService {
             // 干扰字不得与目标字 / 其它干扰字重复：同一个字若在图中出现两次，点击位置将产生歧义
             char decoy = pickDistinct(taken);
             taken.add(decoy);
-            int size = FONT_MIN - 6 + (int) (Math.random() * 5);
+            int size = FONT_MIN - 6 + (int) (RANDOM.nextDouble() * 5);
             g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, size));
             g.setColor(new Color(0xC7, 0xD2, 0xE3));
-            double rotate = (Math.random() - 0.5) * 0.8;
+            double rotate = (RANDOM.nextDouble() - 0.5) * 0.8;
             g.rotate(rotate, p[0], p[1]);
             drawCentered(g, String.valueOf(decoy), p[0], p[1], size);
             g.rotate(-rotate, p[0], p[1]);
@@ -285,9 +294,9 @@ public class CaptchaService {
                 new Color(0x0B, 0x1E, 0x4D), new Color(0x0E, 0x74, 0x90), new Color(0xBE, 0x12, 0x3C)};
         for (int i = 0; i < chars.size(); i++) {
             double[] p = positions.get(i);
-            Color color = textColors[(int) (Math.random() * textColors.length)];
-            int size = FONT_MIN + (int) (Math.random() * (FONT_MAX - FONT_MIN + 1));
-            double rotate = (Math.random() - 0.5) * 0.5;
+            Color color = textColors[(int) (RANDOM.nextDouble() * textColors.length)];
+            int size = FONT_MIN + (int) (RANDOM.nextDouble() * (FONT_MAX - FONT_MIN + 1));
+            double rotate = (RANDOM.nextDouble() - 0.5) * 0.5;
             g.rotate(rotate, p[0], p[1]);
             g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, size));
             // 投影

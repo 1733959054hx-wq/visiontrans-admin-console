@@ -19,4 +19,17 @@ public interface TokenResolver {
      * @return true = 命中并已写入上下文；false = 本解析器不认识该令牌，交给下一个
      */
     boolean resolveAndBind(String token);
+
+    /**
+     * 该请求路径是否属于本实现负责的「免鉴权公开路径」（登录、验证码、公钥下发 …）。
+     *
+     * <p>主干 {@code AuthInterceptor} 依次询问各实现，命中即放行；默认不公开。
+     * 由此「谁提供接口、谁声明放行」，主干不再写死任何业务模块的 URL。
+     *
+     * @param uri 当前请求的 URI（可能为 null）
+     * @return true = 无需令牌即可访问
+     */
+    default boolean isPublicPath(String uri) {
+        return false;
+    }
 }

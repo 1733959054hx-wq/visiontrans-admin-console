@@ -1,6 +1,8 @@
 package com.gzu.adminconsole.service;
 
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -128,11 +130,16 @@ public class DependencyService {
         int timeout = Math.max(500, timeoutMs);
         long begin = System.nanoTime();
         try {
+            URI uri = URI.create(endpoint);
+            if (!isProbeAllowed(uri)) {
+                return new ProbeResult(false, 0, "拨测地址不在允许范围内（仅公网 http/https）");
+            }
             HttpClient client = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofMillis(timeout))
-                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    // 不跟随跳转：否则服务端可用 302 把请求引向内网 / 元数据服务，绕过上面的地址校验
+                    .followRedirects(HttpClient.Redirect.NEVER)
                     .build();
-            HttpRequest head = HttpRequest.newBuilder(URI.create(endpoint))
+            HttpRequest head = HttpRequest.newBuilder(uri)
                     .timeout(Duration.ofMillis(timeout))
                     .method("HEAD", HttpRequest.BodyPublishers.noBody())
                     .build();
@@ -140,7 +147,7 @@ public class DependencyService {
             int code = response.statusCode();
             if (code == 405 || code == 501 || code >= 400) {
                 // 不支持 HEAD 或以 4xx 拒绝：改用 GET 再探一次，避免误判
-                HttpRequest get = HttpRequest.newBuilder(URI.create(endpoint))
+                HttpRequest get = HttpRequest.newBuilder(uri)
                         .timeout(Duration.ofMillis(timeout))
                         .GET()
                         .build();
@@ -157,6 +164,31 @@ public class DependencyService {
                 detail += " · " + e.getMessage();
             }
             return new ProbeResult(false, latency, detail.length() > 80 ? detail.substring(0, 80) : detail);
+        }
+    }
+
+    /**
+     * 拨测地址准入校验（SSRF 防护）：仅允许公网 http/https，
+     * 拒绝回环、私有网段、链路本地（含云服务元数据 169.254.169.254）地址。
+     *
+     * <p>注：域名解析与真正发起请求之间存在 TOCTOU 窗口（DNS rebinding）；
+     * 若将来开放「用户可自行配置拨测地址」，应改为服务端白名单下发可选服务。
+     */
+    private static boolean isProbeAllowed(URI uri) {
+        String scheme = uri.getScheme();
+        if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+            return false;
+        }
+        String host = uri.getHost();
+        if (host == null) {
+            return false;
+        }
+        try {
+            InetAddress address = InetAddress.getByName(host);
+            return !(address.isLoopbackAddress() || address.isLinkLocalAddress() || address.isSiteLocalAddress()
+                    || address.isAnyLocalAddress());
+        } catch (UnknownHostException e) {
+            return false;
         }
     }
 

@@ -25,6 +25,9 @@ import com.gzu.adminconsole.jingchen.service.MerchantAuthService;
  */
 @RestController
 @RequestMapping("${admin-console.api.base-path:/api}" + MerchantConstants.API_PREFIX)
+// 类级兜底：本控制器一律只服务商户令牌；未来在此新增接口时默认即收敛，避免 GET 对管理员开放。
+// 注意 /login 不会因此被拦截 —— 拦截器在角色校验之前就按 isPublicPath 放行了。
+@RequireRole(MerchantConstants.ROLE_CODE)
 public class MerchantAuthController {
 
     private final MerchantAuthService service;

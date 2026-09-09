@@ -6,9 +6,13 @@
  * @param {Array<Array<string|number>>} rows 数据行
  */
 export function exportCsv(filename, headers, rows) {
+  // 危险前缀（= + - @ Tab CR）会被 Excel / WPS 当作公式执行（CSV 公式注入 · CWE-1236），
+  // 导出的 UGC 内容、用户名等字段由外部用户可控，统一前置单引号中和
+  const RISKY = /^[=+\-@\t\r]/
   const escape = (value) => {
-    const text = value === null || value === undefined ? '' : String(value)
-    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+    const raw = value === null || value === undefined ? '' : String(value)
+    const text = RISKY.test(raw) ? `'${raw}` : raw
+    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
   }
   // BOM 保证 Excel 打开中文不乱码
   const bom = '\uFEFF'

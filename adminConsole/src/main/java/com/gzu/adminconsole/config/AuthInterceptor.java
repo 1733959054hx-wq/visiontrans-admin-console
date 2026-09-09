@@ -41,11 +41,13 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 登录相关接口（登录 / 验证码 / 公钥下发）不需要令牌
+        // 免鉴权路径改为「谁提供、谁声明」：由各 TokenResolver 实现自行申报，
+        // 主干不再写死具体模块路径（早期在这里 hardcode /merchant/login 造成主干反向依赖业务模块）
         String uri = request.getRequestURI();
-        if (uri.endsWith("/auth/login") || uri.endsWith("/auth/captcha") || uri.endsWith("/auth/public-key")
-                || uri.endsWith("/merchant/login")) {
-            return true;
+        for (TokenResolver resolver : resolvers) {
+            if (resolver.isPublicPath(uri)) {
+                return true;
+            }
         }
 
         // 其余所有接口必须携带有效令牌（即：未登录无法访问任何后台接口）。
