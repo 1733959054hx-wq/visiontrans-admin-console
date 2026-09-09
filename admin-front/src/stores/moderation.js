@@ -2,14 +2,19 @@ import { defineStore } from 'pinia'
 
 import {
   createAsset,
+  createPackage,
   createTask,
   decideUgc,
   deleteAsset,
+  deletePackage,
   deleteTask,
   fetchModerationOverview,
   moveTask,
   processRefund,
+  reviewAsset,
+  reviewPackage,
   updateAsset,
+  updatePackage,
   updateTask,
 } from '@/api/moderation'
 import { useAppStore } from './app'
@@ -79,6 +84,23 @@ export const useModerationStore = defineStore('moderation', {
     },
     removeAsset(id) {
       return this.run(() => deleteAsset(id))
+    },
+    /** 素材人工复审（decision = pass / reject）。 */
+    reviewAsset(id, decision) {
+      return this.run(() => reviewAsset(id, decision))
+    },
+    createPackage(payload) {
+      return this.run(() => createPackage(payload))
+    },
+    updatePackage(payload) {
+      return this.run(() => updatePackage(payload))
+    },
+    removePackage(id) {
+      return this.run(() => deletePackage(id))
+    },
+    /** 知识包审核（decision = pass / reject）。 */
+    reviewPackage(id, decision) {
+      return this.run(() => reviewPackage(id, decision))
     },
   },
 })

@@ -37,3 +37,21 @@ export const createAdmin = (payload) => request.post('/security/admins', payload
 export const updateAdmin = (payload) => request.put('/security/admins', payload)
 
 export const deleteAdmin = (id) => request.delete(`/security/admins/${id}`)
+
+/* ------------------------------ C 端用户 ------------------------------ */
+
+/** 更新 C 端用户（会员状态 / 账号状态，body 同 appUser 对象含 id）。 */
+export const updateUser = (payload) => request.put('/security/app-users', payload)
+
+/* ------------------------------ 系统配置 ------------------------------ */
+
+/** 系统配置：运行参数 + 功能开关。 */
+export const fetchSysConfig = () => request.get('/security/sysconfig')
+
+/** 更新系统参数（value 为数字字符串）。 */
+export const updateSysParam = (name, value) =>
+  request.put('/security/sysparams', null, { params: { name, value } })
+
+/** 切换系统功能开关。 */
+export const updateFeature = (name, enabled) =>
+  request.put('/security/sysfeatures', null, { params: { name, enabled } })

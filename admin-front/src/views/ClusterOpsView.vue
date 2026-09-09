@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import CrudDialog from '@/components/CrudDialog.vue'
@@ -10,6 +10,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import ProgressBar from '@/components/ProgressBar.vue'
 import RankList from '@/components/RankList.vue'
 import StatusPill from '@/components/StatusPill.vue'
+import ToggleSwitch from '@/components/ToggleSwitch.vue'
 import { exportCsv, stamp } from '@/utils/csv'
 import { useAppStore } from '@/stores/app'
 import { useClusterStore } from '@/stores/cluster'
@@ -43,6 +44,9 @@ const shapeWave = (samples, p) => {
 
 onMounted(() => {
   if (!data.value) store.load()
+  // 运维管理与系统日志为独立区块：并行拉取，失败不影响主大盘
+  if (!store.ops) store.loadOps()
+  if (!store.sysLogs) store.loadSysLogs()
 })
 
 /* ------------------------------ 图表配置 ------------------------------ */
@@ -354,6 +358,68 @@ const exportNodes = () => {
     ['节点 ID', '可用区', '服务角色', '容器数', 'CPU 利用率', 'GPU / 显存', '平均延迟', '状态'],
     filteredNodes.value.map((n) => [n.id, n.zone, n.role, n.containers, `${n.cpu}%`, `${n.gpu}%`, n.latency, n.status]))
 }
+
+/* ------------------------------ 运维管理（熔断 / 备份 / 阈值） ------------------------------ */
+
+/** 熔断器状态配色：熔断红 / 降级琥珀 / 其余绿 */
+const breakerTone = (state) =>
+  String(state || '').includes('熔断') ? 'red' : String(state || '').includes('降级') ? 'amber' : 'green'
+
+/** 切换熔断器启用（state 保持原值提交） */
+const toggleBreaker = (breaker) => {
+  store.setBreaker({ id: breaker.id, state: breaker.state, enabled: !breaker.enabled }).catch(() => {})
+}
+
+/** 切换备份策略启用 */
+const toggleBackup = (backup) => {
+  store.setBackup({ id: backup.id, enabled: !backup.enabled }).catch(() => {})
+}
+
+/** 告警阈值本地编辑值（cpu / mem / gpu），失焦或保存时提交 */
+const thresholdValues = reactive({ cpu: 0, mem: 0, gpu: 0 })
+const THRESHOLD_ITEMS = [
+  { key: 'cpu', label: 'CPU' },
+  { key: 'mem', label: '内存' },
+  { key: 'gpu', label: 'GPU' },
+]
+watch(
+  () => store.ops?.thresholds,
+  (t) => {
+    if (!t) return
+    thresholdValues.cpu = t.cpu
+    thresholdValues.mem = t.mem
+    thresholdValues.gpu = t.gpu
+  },
+  { immediate: true },
+)
+
+/** 阈值有变化才提交，避免失焦空请求 */
+const commitThresholds = () => {
+  const t = store.ops?.thresholds
+  if (!t) return
+  if (Number(thresholdValues.cpu) === Number(t.cpu)
+    && Number(thresholdValues.mem) === Number(t.mem)
+    && Number(thresholdValues.gpu) === Number(t.gpu)) return
+  store.setThresholds(thresholdValues.cpu, thresholdValues.mem, thresholdValues.gpu).catch(() => {})
+}
+
+/* ------------------------------ 系统日志检索 ------------------------------ */
+
+const LOG_LEVELS = ['全部', 'INFO', 'WARN', 'ERROR']
+const LOG_CATEGORIES = ['全部', '应用日志', '错误日志', '模型推理']
+const logLevel = ref('全部')
+const logCategory = ref('全部')
+
+/** 级别 / 分类下拉变更：全部传空串，其余原样传给后端 */
+const queryLogs = () => {
+  store.loadSysLogs({
+    level: logLevel.value === '全部' ? '' : logLevel.value,
+    category: logCategory.value === '全部' ? '' : logCategory.value,
+  })
+}
+
+const filteredLogs = computed(() => (store.sysLogs?.logs || [])
+  .filter((l) => matchKeyword(l.time, l.level, l.category, l.source, l.message)))
 </script>
 
 <template>
@@ -601,6 +667,162 @@ const exportNodes = () => {
               </tr>
               <tr v-if="!filteredNodes.length">
                 <td colspan="9" class="py-8 text-center text-[12px] text-sub">没有匹配的节点</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 运维管理 -->
+      <div class="card anim mt-4">
+        <div class="card-h">
+          <div>
+            <div class="card-t">运维管理</div>
+            <div class="card-s">熔断降级策略、异地备份策略与资源告警阈值在线调优 · 保存后热生效</div>
+          </div>
+          <StatusPill text="热生效" tone="amber" />
+        </div>
+        <div class="card-b grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <!-- 熔断降级 -->
+          <div class="overflow-hidden rounded-xl border border-line">
+            <div class="flex items-center gap-2 px-3 py-2.5" style="background: linear-gradient(90deg, #f0f7ff, #f8fafc)">
+              <i class="fa-solid fa-bolt text-[12px] text-electric"></i>
+              <span class="text-[13px] font-semibold text-ink">熔断降级</span>
+              <span class="pill pill-blue ml-auto !text-[10.5px]">{{ store.ops?.breakers?.length || 0 }} 条策略</span>
+            </div>
+            <table class="tb !border-0">
+              <thead>
+                <tr>
+                  <th>服务</th>
+                  <th>策略</th>
+                  <th>阈值</th>
+                  <th>状态</th>
+                  <th class="text-right">启用</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="breaker in store.ops?.breakers || []" :key="breaker.id">
+                  <td class="text-[12px] font-medium">{{ breaker.service }}</td>
+                  <td class="text-[12px]">{{ breaker.strategy }}</td>
+                  <td class="num text-[12px]">{{ breaker.threshold }}</td>
+                  <td><StatusPill :text="breaker.state" :tone="breakerTone(breaker.state)" /></td>
+                  <td class="text-right">
+                    <ToggleSwitch
+                      :model-value="breaker.enabled"
+                      :disabled="store.acting"
+                      @update:model-value="() => toggleBreaker(breaker)"
+                    />
+                  </td>
+                </tr>
+                <tr v-if="!store.ops?.breakers?.length">
+                  <td colspan="5" class="py-6 text-center text-[12px] text-sub">暂无熔断策略</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 备份策略 -->
+          <div class="overflow-hidden rounded-xl border border-line">
+            <div class="flex items-center gap-2 px-3 py-2.5" style="background: linear-gradient(90deg, #f0f7ff, #f8fafc)">
+              <i class="fa-solid fa-database-backup text-[12px] text-electric"></i>
+              <span class="text-[13px] font-semibold text-ink">备份策略</span>
+              <span class="pill pill-blue ml-auto !text-[10.5px]">{{ store.ops?.backups?.length || 0 }} 条策略</span>
+            </div>
+            <table class="tb !border-0">
+              <thead>
+                <tr>
+                  <th>对象</th>
+                  <th>周期</th>
+                  <th>保留</th>
+                  <th>异地存储</th>
+                  <th class="text-right">启用</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="backup in store.ops?.backups || []" :key="backup.id">
+                  <td class="text-[12px] font-medium">{{ backup.target }}</td>
+                  <td class="text-[12px]">{{ backup.cycle }}</td>
+                  <td class="num text-[12px]">{{ backup.retention }}</td>
+                  <td class="text-[12px] text-sub">{{ backup.storage }}</td>
+                  <td class="text-right">
+                    <ToggleSwitch
+                      :model-value="backup.enabled"
+                      :disabled="store.acting"
+                      @update:model-value="() => toggleBackup(backup)"
+                    />
+                  </td>
+                </tr>
+                <tr v-if="!store.ops?.backups?.length">
+                  <td colspan="5" class="py-6 text-center text-[12px] text-sub">暂无备份策略</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- 资源告警阈值 -->
+        <div class="card-h flex-wrap !border-b-0 !border-t border-line">
+          <div class="flex flex-wrap items-center gap-3 text-[12px]">
+            <span class="text-sub"><i class="fa-solid fa-bell mr-1 text-ice"></i>资源告警阈值</span>
+            <label v-for="item in THRESHOLD_ITEMS" :key="item.key" class="inline-flex items-center gap-1.5">
+              <span class="text-sub">{{ item.label }}</span>
+              <span class="relative inline-block">
+                <input
+                  v-model.number="thresholdValues[item.key]"
+                  type="number"
+                  min="0"
+                  max="100"
+                  class="field num !w-20 !py-1 pr-6 text-right text-[12px]"
+                  @blur="commitThresholds"
+                />
+                <span
+                  class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 select-none text-[11px] text-slate-400"
+                >%</span>
+              </span>
+            </label>
+          </div>
+          <button class="btn btn-primary btn-sm" :disabled="store.acting" @click="commitThresholds">
+            <i class="fa-solid fa-floppy-disk"></i>保存阈值
+          </button>
+        </div>
+      </div>
+
+      <!-- 系统日志检索 -->
+      <div class="card anim mt-4">
+        <div class="card-h flex-wrap">
+          <div>
+            <div class="card-t">系统日志检索</div>
+            <div class="card-s">应用 / 错误 / 模型推理日志聚合检索 · 支持顶栏关键字过滤</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <select v-model="logLevel" class="field !w-28 !py-1 text-[12px]" @change="queryLogs">
+              <option v-for="level in LOG_LEVELS" :key="level" :value="level">{{ level }}</option>
+            </select>
+            <select v-model="logCategory" class="field !w-32 !py-1 text-[12px]" @change="queryLogs">
+              <option v-for="category in LOG_CATEGORIES" :key="category" :value="category">{{ category }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="tb">
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>级别</th>
+                <th>分类</th>
+                <th>来源</th>
+                <th>内容</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="log in filteredLogs" :key="log.id">
+                <td class="num text-[12px]">{{ log.time }}</td>
+                <td><StatusPill :text="log.level" :tone="log.levelTone || 'slate'" /></td>
+                <td class="text-[12px]">{{ log.category }}</td>
+                <td class="num text-[11.5px] text-sub">{{ log.source }}</td>
+                <td class="text-[12px]">{{ log.message }}</td>
+              </tr>
+              <tr v-if="!filteredLogs.length">
+                <td colspan="5" class="py-8 text-center text-[12px] text-sub">没有匹配的日志</td>
               </tr>
             </tbody>
           </table>

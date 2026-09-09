@@ -18,11 +18,15 @@ import com.gzu.adminconsole.dto.common.ToggleItem;
 import com.gzu.adminconsole.model.AdSlot;
 import com.gzu.adminconsole.model.AdminUser;
 import com.gzu.adminconsole.model.AlarmEvent;
+import com.gzu.adminconsole.model.AppUser;
 import com.gzu.adminconsole.model.AuditLogEntry;
+import com.gzu.adminconsole.model.AuditPackage;
 import com.gzu.adminconsole.model.ClusterNode;
+import com.gzu.adminconsole.model.CustomerOrder;
 import com.gzu.adminconsole.model.DeviceRecord;
 import com.gzu.adminconsole.model.FrequencyCap;
 import com.gzu.adminconsole.model.GlossaryTask;
+import com.gzu.adminconsole.model.InvoiceApplication;
 import com.gzu.adminconsole.model.MaterialAsset;
 import com.gzu.adminconsole.model.MembershipPlan;
 import com.gzu.adminconsole.model.ModelRelease;
@@ -32,14 +36,20 @@ import com.gzu.adminconsole.model.Permission;
 import com.gzu.adminconsole.model.RefundRecord;
 import com.gzu.adminconsole.model.ReleaseEvent;
 import com.gzu.adminconsole.model.RoleDomain;
+import com.gzu.adminconsole.model.SettlementRecord;
 import com.gzu.adminconsole.model.UgcRecord;
+import com.gzu.adminconsole.entity.BackupPolicyEntity;
+import com.gzu.adminconsole.entity.CircuitBreakerEntity;
 import com.gzu.adminconsole.entity.MetricSampleEntity;
+import com.gzu.adminconsole.entity.SystemLogEntity;
 import com.gzu.adminconsole.repository.AdRepository;
 import com.gzu.adminconsole.repository.ClusterRepository;
+import com.gzu.adminconsole.repository.FinanceRepository;
 import com.gzu.adminconsole.repository.MetricRepository;
 import com.gzu.adminconsole.repository.ModerationRepository;
 import com.gzu.adminconsole.repository.ModelRepository;
 import com.gzu.adminconsole.repository.NavRepository;
+import com.gzu.adminconsole.repository.OpsRepository;
 import com.gzu.adminconsole.repository.SecurityRepository;
 
 /**
@@ -61,6 +71,8 @@ public class DataInitializer implements ApplicationRunner {
     private final SecurityRepository securityRepository;
     private final NavRepository navRepository;
     private final MetricRepository metricRepository;
+    private final FinanceRepository financeRepository;
+    private final OpsRepository opsRepository;
 
     public DataInitializer(AppProperties properties,
                            ClusterRepository clusterRepository,
@@ -69,7 +81,9 @@ public class DataInitializer implements ApplicationRunner {
                            AdRepository adRepository,
                            SecurityRepository securityRepository,
                            NavRepository navRepository,
-                           MetricRepository metricRepository) {
+                           MetricRepository metricRepository,
+                           FinanceRepository financeRepository,
+                           OpsRepository opsRepository) {
         this.properties = properties;
         this.clusterRepository = clusterRepository;
         this.modelRepository = modelRepository;
@@ -78,6 +92,8 @@ public class DataInitializer implements ApplicationRunner {
         this.securityRepository = securityRepository;
         this.navRepository = navRepository;
         this.metricRepository = metricRepository;
+        this.financeRepository = financeRepository;
+        this.opsRepository = opsRepository;
     }
 
     @Override
@@ -91,8 +107,13 @@ public class DataInitializer implements ApplicationRunner {
         initAlarms();
         initModels();
         initModeration();
+        initAuditPackages();
         initAds();
         initSecurity();
+        initAppUsers();
+        initFinance();
+        initOps();
+        initSysConfig();
         // 时序指标采样：KPI / 波形 / 曲线全部改为由这些落库数据统计得出
         initMetrics();
         // 历史演示数据迁移：管理员显示名 张小雨 → Danny（幂等）
@@ -193,26 +214,36 @@ public class DataInitializer implements ApplicationRunner {
     }
 
     private void initNav() {
-        if (!navRepository.isEmpty()) {
+        if (navRepository.isEmpty()) {
+            navRepository.saveAll(List.of(
+                    new NavMenu("a6", "fa-satellite-dish", "集群态势感知", "Cluster Ops",
+                            "集群态势感知与推演监控大盘",
+                            "全网实时并发、端到端延迟拆解、QPS 吞吐与节点健康度 · 采样周期 5s · 数据时延 < 1s"),
+                    new NavMenu("a7", "fa-brain", "AI 模型与热更", "Model Lifecycle",
+                            "AI 模型生命周期与热更中心",
+                            "端侧量化模型（INT8/FP16，最小 0.9MB）与云端大模型统一纳管 · 秒级热更 · 一键回滚"),
+                    new NavMenu("a8", "fa-language", "术语库与 UGC 风控", "Moderation",
+                            "语种术语库审核与 UGC 风控中台",
+                            "多语种术语库审核、AR 广告素材机审与 UGC 违规高亮拦截 · 平均处置耗时 82 ms"),
+                    new NavMenu("a9", "fa-calendar-day", "广告位排期引擎", "Scheduler",
+                            "全网广告位排期与调度引擎",
+                            "12 类广告位库存甘特排期 · 场景×语种 eCPM 策略矩阵 · 单用户跨广告位联合频控"),
+                    new NavMenu("a10", "fa-shield-halved", "安全风控与 RBAC", "Security & RBAC",
+                            "安全风控、设备审计与 RBAC 权限",
+                            "管理员分级授权、异常设备地理监控与不可篡改的审计日志 · 日志留存 180 天"),
+                    new NavMenu("a11", "fa-file-invoice-dollar", "财务订单", "Finance & Orders",
+                            "财务订单与商户结算中心",
+                            "C 端订单、异常订单处理、商户周期结算对账与 B 端发票审核 · 对账周期 T+1")));
+            log.info("[初始化] nav_menu 已写入 {} 条菜单", 6);
             return;
         }
-        navRepository.saveAll(List.of(
-                new NavMenu("a6", "fa-satellite-dish", "集群态势感知", "Cluster Ops",
-                        "集群态势感知与推演监控大盘",
-                        "全网实时并发、端到端延迟拆解、QPS 吞吐与节点健康度 · 采样周期 5s · 数据时延 < 1s"),
-                new NavMenu("a7", "fa-brain", "AI 模型与热更", "Model Lifecycle",
-                        "AI 模型生命周期与热更中心",
-                        "端侧量化模型（INT8/FP16，最小 0.9MB）与云端大模型统一纳管 · 秒级热更 · 一键回滚"),
-                new NavMenu("a8", "fa-language", "术语库与 UGC 风控", "Moderation",
-                        "语种术语库审核与 UGC 风控中台",
-                        "多语种术语库审核、AR 广告素材机审与 UGC 违规高亮拦截 · 平均处置耗时 82 ms"),
-                new NavMenu("a9", "fa-calendar-day", "广告位排期引擎", "Scheduler",
-                        "全网广告位排期与调度引擎",
-                        "12 类广告位库存甘特排期 · 场景×语种 eCPM 策略矩阵 · 单用户跨广告位联合频控"),
-                new NavMenu("a10", "fa-shield-halved", "安全风控与 RBAC", "Security & RBAC",
-                        "安全风控、设备审计与 RBAC 权限",
-                        "管理员分级授权、异常设备地理监控与不可篡改的审计日志 · 日志留存 180 天")));
-        log.info("[初始化] nav_menu 已写入 {} 条菜单", 5);
+        // 老数据幂等补齐：仅缺 a11 时单独插入，不重建全表
+        if (!navRepository.existsById("a11")) {
+            navRepository.insertOne(new NavMenu("a11", "fa-file-invoice-dollar", "财务订单", "Finance & Orders",
+                    "财务订单与商户结算中心",
+                    "C 端订单、异常订单处理、商户周期结算对账与 B 端发票审核 · 对账周期 T+1"), 5);
+            log.info("[初始化] nav_menu 已补齐菜单 a11（财务订单）");
+        }
     }
 
     private void initCluster() {
@@ -379,18 +410,18 @@ public class DataInitializer implements ApplicationRunner {
             return;
         }
         List<AdSlot> slots = List.of(
-                new AdSlot(null, "开屏 · 全站冷启动首帧", "已售罄", "#EF4444", "100%", 100),
-                new AdSlot(null, "信息流 · 首页第 3 位", "部分售出", "#F59E0B", "76%", 76),
-                new AdSlot(null, "AR 街景 · 南京路商圈", "部分售出", "#F59E0B", "68%", 68),
-                new AdSlot(null, "激励视频 · 游戏联运", "预售锁定", "#2563EB", "预售", -1),
-                new AdSlot(null, "Banner · 教育季专题", "空闲可购", "#10B981", "0%", 0),
-                new AdSlot(null, "贴片 · 影视宣发", "已售罄", "#EF4444", "100%", 100),
-                new AdSlot(null, "搜索 · 品牌专区", "部分售出", "#F59E0B", "54%", 54),
-                new AdSlot(null, "Push · 时区推送", "空闲可购", "#10B981", "0%", 0),
-                new AdSlot(null, "暂停位 · A/B 实验", "部分售出", "#F59E0B", "41%", 41),
-                new AdSlot(null, "直播 · 带货挂件商品", "预售锁定", "#2563EB", "预售", -1),
-                new AdSlot(null, "会员 · 免广告权益", "已售罄", "#EF4444", "100%", 100),
-                new AdSlot(null, "海外 · 多语种联运", "空闲可购", "#10B981", "0%", 0));
+                new AdSlot(null, "开屏 · 全站冷启动首帧", "已售罄", "#EF4444", "100%", 100, true),
+                new AdSlot(null, "信息流 · 首页第 3 位", "部分售出", "#F59E0B", "76%", 76, true),
+                new AdSlot(null, "AR 街景 · 南京路商圈", "部分售出", "#F59E0B", "68%", 68, true),
+                new AdSlot(null, "激励视频 · 游戏联运", "预售锁定", "#2563EB", "预售", -1, true),
+                new AdSlot(null, "Banner · 教育季专题", "空闲可购", "#10B981", "0%", 0, true),
+                new AdSlot(null, "贴片 · 影视宣发", "已售罄", "#EF4444", "100%", 100, true),
+                new AdSlot(null, "搜索 · 品牌专区", "部分售出", "#F59E0B", "54%", 54, true),
+                new AdSlot(null, "Push · 时区推送", "空闲可购", "#10B981", "0%", 0, true),
+                new AdSlot(null, "暂停位 · A/B 实验", "部分售出", "#F59E0B", "41%", 41, true),
+                new AdSlot(null, "直播 · 带货挂件商品", "预售锁定", "#2563EB", "预售", -1, true),
+                new AdSlot(null, "会员 · 免广告权益", "已售罄", "#EF4444", "100%", 100, true),
+                new AdSlot(null, "海外 · 多语种联运", "空闲可购", "#10B981", "0%", 0, false));
         List<FrequencyCap> caps = List.of(
                 new FrequencyCap("单用户日上限", "5 次 / 天", 10, 5),
                 new FrequencyCap("单用户周上限", "20 次 / 周", 40, 20),
@@ -518,5 +549,201 @@ public class DataInitializer implements ApplicationRunner {
                 new ToggleItem("审计日志区块链存证", true),
                 new ToggleItem("导出脱敏", false)));
         log.info("[初始化] security 策略开关已写入 5 条");
+    }
+
+    /** 近 days 天前的 "yyyy-MM-dd HH:mm" 时间文案。 */
+    private static String daysAgo(int days, String hm) {
+        return LocalDate.now().minusDays(days).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + " " + hm;
+    }
+
+    /** 初始化财务订单 / 商户结算 / 发票申请演示数据。 */
+    private void initFinance() {
+        if (financeRepository.ordersEmpty()) {
+            List<CustomerOrder> orders = List.of(
+                    new CustomerOrder(null, "ORD-20260907-0001", "林晚晴", "会员", "¥ 28.00",
+                            CustomerOrder.STATUS_PAID, daysAgo(2, "09:12"), "会员月卡 · 微信支付"),
+                    new CustomerOrder(null, "ORD-20260906-0002", "沈亦舟", "课程", "¥ 199.00",
+                            CustomerOrder.STATUS_PAID, daysAgo(3, "14:35"), "AR 开发实战营 · 第 3 期"),
+                    new CustomerOrder(null, "ORD-20260905-0003", "顾清欢", "数字内容", "¥ 12.00",
+                            CustomerOrder.STATUS_PAID, daysAgo(4, "20:08"), "离线翻译包 · 日语"),
+                    new CustomerOrder(null, "ORD-20260904-0004", "苏念", "会员", "¥ 268.00",
+                            CustomerOrder.STATUS_PAID, daysAgo(5, "11:47"), "会员年卡 · 支付宝"),
+                    new CustomerOrder(null, "ORD-20260906-0005", "陆之遥", "课程", "¥ 99.00",
+                            CustomerOrder.STATUS_PAID, daysAgo(3, "08:22"), "术语库共建课"),
+                    new CustomerOrder(null, "ORD-20260903-0006", "江辞", "数字内容", "¥ 30.00",
+                            CustomerOrder.STATUS_PAID, daysAgo(6, "18:55"), "AR 滤镜素材包"),
+                    new CustomerOrder(null, "ORD-20260908-0007", "温叙", "会员", "¥ 28.00",
+                            CustomerOrder.STATUS_PENDING, daysAgo(1, "22:31"), "会员月卡 · 待唤起支付"),
+                    new CustomerOrder(null, "ORD-20260907-0008", "纪云深", "课程", "¥ 199.00",
+                            CustomerOrder.STATUS_ABNORMAL, daysAgo(2, "16:40"), "支付回调超时待核查"),
+                    new CustomerOrder(null, "ORD-20260905-0009", "许栀", "数字内容", "¥ 18.00",
+                            CustomerOrder.STATUS_ABNORMAL, daysAgo(4, "13:02"), "疑似重复扣款已冻结"),
+                    new CustomerOrder(null, "ORD-20260904-0010", "黎照", "会员", "¥ 28.00",
+                            CustomerOrder.STATUS_REFUNDING, daysAgo(5, "10:18"), "7 天无理由退款申请中"));
+            financeRepository.saveOrders(orders);
+            log.info("[初始化] customer_order 已写入 {} 条", orders.size());
+        }
+        if (financeRepository.settlementsEmpty()) {
+            List<SettlementRecord> settlements = List.of(
+                    new SettlementRecord(null, "晨曦文化", "2026-08", 1286, "¥ 86,240.00", "¥ 4,312.00",
+                            SettlementRecord.STATUS_PENDING),
+                    new SettlementRecord(null, "星野动漫", "2026-08", 862, "¥ 52,180.00", "¥ 2,609.00",
+                            SettlementRecord.STATUS_PENDING),
+                    new SettlementRecord(null, "蓝湾科技", "2026-08", 512, "¥ 33,412.00", "¥ 1,670.60",
+                            SettlementRecord.STATUS_PENDING),
+                    new SettlementRecord(null, "青禾教育", "2026-07", 428, "¥ 28,905.00", "¥ 1,445.25",
+                            SettlementRecord.STATUS_RECONCILED),
+                    new SettlementRecord(null, "云梦互娱", "2026-07", 356, "¥ 21,360.00", "¥ 1,068.00",
+                            SettlementRecord.STATUS_SETTLED));
+            financeRepository.saveSettlements(settlements);
+            log.info("[初始化] settlement_record 已写入 {} 条", settlements.size());
+        }
+        if (financeRepository.invoicesEmpty()) {
+            List<InvoiceApplication> invoices = List.of(
+                    new InvoiceApplication(null, "INV-20260901-001", "晨曦文化传媒有限公司", "增值税专用发票",
+                            "91330106MA2H3K7X0A", "¥ 86,240.00", InvoiceApplication.STATUS_PENDING,
+                            daysAgo(6, "10:20")),
+                    new InvoiceApplication(null, "INV-20260902-002", "星野动漫工作室", "增值税普通发票",
+                            "91350211M0001WQ25B", "¥ 52,180.00", InvoiceApplication.STATUS_PENDING,
+                            daysAgo(5, "15:46")),
+                    new InvoiceApplication(null, "INV-20260828-011", "蓝湾科技有限公司", "增值税专用发票",
+                            "91440300MA5DKQ8L7C", "¥ 33,412.00", InvoiceApplication.STATUS_ISSUED,
+                            daysAgo(12, "09:31")),
+                    new InvoiceApplication(null, "INV-20260830-015", "青禾教育咨询有限公司", "增值税专用发票",
+                            "91330106TAXNO0FAIL", "¥ 28,905.00", InvoiceApplication.STATUS_REJECTED,
+                            daysAgo(10, "17:05")));
+            financeRepository.saveInvoices(invoices);
+            log.info("[初始化] invoice_apply 已写入 {} 条", invoices.size());
+        }
+    }
+
+    /** 初始化 C 端用户演示数据（注册来源 / 会员状态全覆盖，含 1 条停用）。 */
+    private void initAppUsers() {
+        if (!securityRepository.appUsersEmpty()) {
+            return;
+        }
+        List<AppUser> users = List.of(
+                new AppUser(null, "林晚晴", "手机号", "会员月卡", daysAgo(230, "10:12"), daysAgo(0, "09:26"), "正常"),
+                new AppUser(null, "沈亦舟", "微信", "会员年卡", daysAgo(412, "21:40"), daysAgo(0, "08:57"), "正常"),
+                new AppUser(null, "顾清欢", "QQ", "免费体验", daysAgo(12, "19:05"), daysAgo(1, "22:31"), "正常"),
+                new AppUser(null, "苏念", "Apple", "会员月卡", daysAgo(96, "08:33"), daysAgo(1, "20:14"), "正常"),
+                new AppUser(null, "陆之遥", "手机号", "免费体验", daysAgo(5, "13:27"), daysAgo(2, "18:46"), "正常"),
+                new AppUser(null, "江辞", "微信", "会员过期", daysAgo(300, "16:59"), daysAgo(6, "11:08"), "正常"),
+                new AppUser(null, "温叙", "手机号", "会员年卡", daysAgo(520, "11:22"), daysAgo(0, "07:41"), "正常"),
+                new AppUser(null, "纪云深", "QQ", "会员月卡", daysAgo(154, "23:48"), daysAgo(3, "15:52"), "正常"),
+                new AppUser(null, "许栀", "微信", "免费体验", daysAgo(28, "12:15"), daysAgo(1, "19:37"), "正常"),
+                new AppUser(null, "黎照", "Apple", "会员过期", daysAgo(365, "17:26"), daysAgo(14, "09:03"), "正常"),
+                new AppUser(null, "洛白", "手机号", "会员月卡", daysAgo(77, "09:54"), daysAgo(0, "21:19"), "正常"),
+                new AppUser(null, "闻人夏", "QQ", "免费体验", daysAgo(41, "14:41"), daysAgo(20, "10:30"), "停用"));
+        securityRepository.saveAppUsers(users);
+        log.info("[初始化] app_user 已写入 {} 条", users.size());
+    }
+
+    /** 初始化语种包 / 课程知识包审核演示数据。 */
+    private void initAuditPackages() {
+        if (!moderationRepository.packagesEmpty()) {
+            return;
+        }
+        List<AuditPackage> packages = List.of(
+                new AuditPackage(null, "语种包", "英语种翻译包 EN-Core v5.2", "端侧团队",
+                        "词条 12,480 · 覆盖日常场景", AuditPackage.STATUS_PUBLISHED),
+                new AuditPackage(null, "语种包", "日语种翻译包 JA-Edge v3.8", "术语组",
+                        "词条 9,120 · 新增动漫拟声词", AuditPackage.STATUS_PUBLISHED),
+                new AuditPackage(null, "语种包", "韩语种翻译包 KO-Beta v1.2", "众包平台",
+                        "词条 3,640 · 待复核 128", AuditPackage.STATUS_PENDING),
+                new AuditPackage(null, "课程知识包", "航空出行知识包 v2.1", "内容运营",
+                        "知识点 486 · 场景：机场/机舱", AuditPackage.STATUS_PENDING),
+                new AuditPackage(null, "课程知识包", "医疗问诊知识包 v1.6", "合规审核",
+                        "知识点 320 · 敏感词已过滤", AuditPackage.STATUS_PUBLISHED),
+                new AuditPackage(null, "课程知识包", "餐饮美食知识包 v0.9", "众包平台",
+                        "知识点 154 · 术语置信度 82%", AuditPackage.STATUS_REJECTED));
+        moderationRepository.savePackages(packages);
+        log.info("[初始化] audit_package 已写入 {} 条", packages.size());
+    }
+
+    /** 初始化监控运维演示数据：系统日志 / 熔断降级策略 / 备份策略。 */
+    private void initOps() {
+        if (opsRepository.countSysLogs() == 0L) {
+            List<SystemLogEntity> logs = buildSysLogs();
+            opsRepository.saveSysLogs(logs);
+            log.info("[初始化] system_log 已写入 {} 条", logs.size());
+        }
+        if (opsRepository.countBreakers() == 0L) {
+            List<CircuitBreakerEntity> breakers = List.of(
+                    new CircuitBreakerEntity("NMT 翻译服务", "慢调用比例", "错误率 > 0.5%", "关闭", true, 0),
+                    new CircuitBreakerEntity("OCR 检测服务", "异常比例", "错误率 > 1.0%", "开启", true, 1),
+                    new CircuitBreakerEntity("ASR 语音识别", "慢调用比例", "P99 > 800 ms", "半开", true, 2),
+                    new CircuitBreakerEntity("API 网关", "并发控制", "并发 > 5,000", "降级中", true, 3),
+                    new CircuitBreakerEntity("空间渲染服务", "异常数", "每分钟异常 > 50", "关闭", false, 4));
+            opsRepository.saveBreakers(breakers);
+            log.info("[初始化] circuit_breaker 已写入 {} 条", breakers.size());
+        }
+        if (opsRepository.countBackups() == 0L) {
+            List<BackupPolicyEntity> backups = List.of(
+                    new BackupPolicyEntity("集群配置快照", "每日", "保留 30 天", "对象存储 OSS", true, 0),
+                    new BackupPolicyEntity("审计日志归档", "每周", "保留 180 天", "冷归档存储", true, 1),
+                    new BackupPolicyEntity("模型产物备份", "每次发布", "保留最近 5 版", "对象存储 OSS", true, 2),
+                    new BackupPolicyEntity("业务数据库全量", "每日", "保留 7 天", "本地 NAS", false, 3));
+            opsRepository.saveBackups(backups);
+            log.info("[初始化] backup_policy 已写入 {} 条", backups.size());
+        }
+    }
+
+    /** 构造近 3 天的系统日志（应用日志 / 错误日志 / 模型推理 三类各 6 条）。 */
+    private List<SystemLogEntity> buildSysLogs() {
+        record LogSeed(int day, String hm, String level, String category, String source, String message) {
+        }
+        List<LogSeed> seeds = List.of(
+                new LogSeed(0, "09:41:22", "INFO", "应用日志", "api-gateway", "GET /api/cluster/overview 200 · 42 ms"),
+                new LogSeed(0, "09:38:07", "INFO", "应用日志", "auth-service", "管理员 Danny 登录成功（双因子校验通过）"),
+                new LogSeed(0, "08:55:40", "WARN", "应用日志", "task-scheduler", "夜间低峰窗口任务延迟 3 分钟执行"),
+                new LogSeed(1, "22:10:18", "INFO", "应用日志", "api-gateway", "GET /api/ads/overview 200 · 55 ms"),
+                new LogSeed(1, "20:44:51", "INFO", "应用日志", "export-worker", "审计日志导出任务完成（1,286 条）"),
+                new LogSeed(2, "18:32:09", "WARN", "应用日志", "api-gateway", "华东 1 节点连接池使用率 82%，接近阈值"),
+                new LogSeed(0, "09:12:33", "ERROR", "错误日志", "payment-callback", "订单回调处理超时（ORD-20260907-0008）"),
+                new LogSeed(0, "07:58:14", "ERROR", "错误日志", "model-dispatch", "NMT-Edge 批次 B 推理错误率 0.42% 超阈值"),
+                new LogSeed(1, "21:26:45", "WARN", "错误日志", "cdn-edge", "AR 素材回源率 6.8%，已触发缓存预热"),
+                new LogSeed(1, "14:03:29", "ERROR", "错误日志", "payment-callback", "疑似重复扣款已冻结（ORD-20260905-0009）"),
+                new LogSeed(2, "11:47:02", "ERROR", "错误日志", "storage-sync", "备份同步失败 1 次，已自动重试成功"),
+                new LogSeed(2, "03:15:57", "WARN", "错误日志", "api-gateway", "越权访问拦截 4 次，来源 112.17.68.42"),
+                new LogSeed(0, "09:30:11", "INFO", "模型推理", "nmt-edge", "v3.8.4 INT8 推理平均耗时 61 ms · QPS 486"),
+                new LogSeed(0, "08:20:36", "INFO", "模型推理", "ocr-tiny", "DBNet-Tiny v4.2.1 灰度批次识别准确率 98.4%"),
+                new LogSeed(1, "19:52:44", "WARN", "模型推理", "asr-whisper", "Whisper-AR v2.3.0 噪声场景置信度下降至 81%"),
+                new LogSeed(1, "10:15:23", "INFO", "模型推理", "nmt-cloud", "云端双语对 BLEU +1.8 · 热更耗时 5.6 s"),
+                new LogSeed(2, "16:38:50", "INFO", "模型推理", "spatial-ar", "空间渲染模型 v3.0.1 帧率稳定 60 fps"),
+                new LogSeed(2, "05:04:12", "ERROR", "模型推理", "nmt-edge", "v3.8.2 灰度批次自动回滚（耗时 4.2 s）"));
+        List<SystemLogEntity> logs = new ArrayList<>();
+        for (LogSeed seed : seeds) {
+            logs.add(new SystemLogEntity(daysAgo(seed.day, seed.hm), seed.level, seed.category, seed.source,
+                    seed.message, logs.size()));
+        }
+        return logs;
+    }
+
+    /** 初始化系统配置：运行参数（缺省才写入，不覆盖运营调整）+ C 端功能开关。 */
+    private void initSysConfig() {
+        initSettingIfAbsent(SecurityRepository.KEY_RATE_LIMIT, SecurityRepository.DEFAULT_RATE_LIMIT);
+        initSettingIfAbsent(SecurityRepository.KEY_SESSION_TTL, SecurityRepository.DEFAULT_SESSION_TTL);
+        initSettingIfAbsent(OpsRepository.KEY_THRESHOLD_CPU, "85");
+        initSettingIfAbsent(OpsRepository.KEY_THRESHOLD_MEM, "80");
+        initSettingIfAbsent(OpsRepository.KEY_THRESHOLD_GPU, "90");
+        log.info("[初始化] app_setting 系统参数已就绪（sys.rate_limit=600 · sys.session_ttl=24 · ops.threshold=85/80/90）");
+        if (securityRepository.togglesEmpty(SecurityRepository.GROUP_FEATURES)) {
+            securityRepository.saveToggles(SecurityRepository.GROUP_FEATURES, List.of(
+                    new ToggleItem("实时画面翻译", true),
+                    new ToggleItem("AR 虚实融合", true),
+                    new ToggleItem("广告调度引擎", true),
+                    new ToggleItem("会议翻译", true),
+                    new ToggleItem("悬浮翻译窗", true),
+                    new ToggleItem("语音播报", false)));
+            log.info("[初始化] features 功能开关已写入 6 条");
+        }
+    }
+
+    /** 设置项缺省时写入默认值（已存在则保留运营修改，幂等）。 */
+    private void initSettingIfAbsent(String key, String defaultValue) {
+        if (securityRepository.getSetting(key) == null) {
+            securityRepository.setSetting(key, defaultValue);
+        }
     }
 }

@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { fetchNav, fetchSystem } from '@/api/meta'
 import { useAdStore } from './ads'
 import { useClusterStore } from './cluster'
+import { useFinanceStore } from './finance'
 import { useModelStore } from './models'
 import { useModerationStore } from './moderation'
 import { useSecurityStore } from './security'
@@ -73,7 +74,7 @@ export const useAppStore = defineStore('app', {
       }
       this.rangeVersion++
       // 已加载过的页面立即按新范围重新拉取；统一回到第 1 页，避免停留在超出新总页数的页码
-      const loaded = [useClusterStore(), useModelStore(), useModerationStore(), useAdStore(), useSecurityStore()]
+      const loaded = [useClusterStore(), useModelStore(), useModerationStore(), useAdStore(), useSecurityStore(), useFinanceStore()]
       loaded.forEach((store) => {
         if (store.data) store.load(1)
       })

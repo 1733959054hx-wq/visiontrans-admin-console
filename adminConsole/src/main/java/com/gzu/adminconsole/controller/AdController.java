@@ -3,6 +3,7 @@ package com.gzu.adminconsole.controller;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -76,5 +77,12 @@ public class AdController {
     @DeleteMapping("/slots/{id}")
     public Result<ActionResultVO> deleteSlot(@PathVariable Long id) {
         return Result.ok(service.deleteSlot(id));
+    }
+
+    /** 上线 / 下线广告位：online = true 上线 / false 下线（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
+    @PatchMapping("/slots/{id}/online")
+    public Result<ActionResultVO> toggleSlotOnline(@PathVariable Long id, @RequestParam boolean online) {
+        return Result.ok(service.toggleSlotOnline(id, online));
     }
 }

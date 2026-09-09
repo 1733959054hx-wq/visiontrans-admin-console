@@ -16,6 +16,7 @@ import com.gzu.adminconsole.common.Result;
 import com.gzu.adminconsole.config.RequireRole;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
 import com.gzu.adminconsole.dto.moderation.ModerationOverviewVO;
+import com.gzu.adminconsole.model.AuditPackage;
 import com.gzu.adminconsole.model.GlossaryTask;
 import com.gzu.adminconsole.model.MaterialAsset;
 import com.gzu.adminconsole.service.ModerationService;
@@ -108,5 +109,43 @@ public class ModerationController {
     @DeleteMapping("/assets/{id}")
     public Result<ActionResultVO> deleteAsset(@PathVariable Long id) {
         return Result.ok(service.deleteAsset(id));
+    }
+
+    /** 素材人工复审：decision = pass 通过 / reject 驳回（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
+    @PatchMapping("/assets/{id}/review")
+    public Result<ActionResultVO> reviewAsset(@PathVariable Long id, @RequestParam String decision) {
+        return Result.ok(service.reviewAsset(id, decision));
+    }
+
+    /* ------------------------------ 语种包 / 课程知识包 ------------------------------ */
+
+    /** 新增审核包（语种包 / 课程知识包，运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
+    @PostMapping("/packages")
+    public Result<ActionResultVO> createPackage(@RequestBody AuditPackage pkg) {
+        return Result.ok(service.createPackage(pkg));
+    }
+
+    /** 修改审核包（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
+    @PutMapping("/packages")
+    public Result<ActionResultVO> updatePackage(@RequestBody AuditPackage pkg) {
+        return Result.ok(service.updatePackage(pkg));
+    }
+
+    /** 删除审核包（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
+    @DeleteMapping("/packages/{id}")
+    public Result<ActionResultVO> deletePackage(@PathVariable Long id) {
+        return Result.ok(service.deletePackage(id));
+    }
+
+    /** 审核包复核：decision = pass 发布 / reject 驳回（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
+    @PatchMapping("/packages/{id}/review")
+    public Result<ActionResultVO> reviewPackage(@PathVariable Long id,
+                                                @RequestParam String decision) {
+        return Result.ok(service.reviewPackage(id, decision));
     }
 }

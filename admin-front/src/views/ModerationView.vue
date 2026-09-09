@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import CrudDialog from '@/components/CrudDialog.vue'
@@ -40,6 +40,14 @@ const ASSET_FIELDS = [
   { key: 'verdict', label: '判定结果', type: 'select', options: ['通过', '人工复审', '驳回'] },
 ]
 
+/** 语种包 / 课程知识包表单 */
+const PACKAGE_FIELDS = [
+  { key: 'type', label: '类型', type: 'select', options: ['语种包', '课程知识包'] },
+  { key: 'name', label: '名称', type: 'text', required: true, placeholder: '西班牙语 · 商务合同语种包' },
+  { key: 'source', label: '来源', type: 'text', placeholder: '内容合作方 · 上传' },
+  { key: 'meta', label: '说明', type: 'text', placeholder: '含 1200 条术语 · 领域：法律' },
+]
+
 const dialog = reactive({ open: false, title: '', fields: [], record: {}, mode: 'task' })
 
 const openTaskCreate = (column = '待初审') => {
@@ -74,6 +82,22 @@ const openAssetEdit = (row) => {
   dialog.record = { ...row }
 }
 
+const openPackageCreate = () => {
+  dialog.open = true
+  dialog.mode = 'pkg-create'
+  dialog.title = '新增语种包 / 课程知识包'
+  dialog.fields = PACKAGE_FIELDS
+  dialog.record = { type: '语种包', name: '', source: '', meta: '' }
+}
+
+const openPackageEdit = (row) => {
+  dialog.open = true
+  dialog.mode = 'pkg-edit'
+  dialog.title = `编辑知识包 · ${row.name}`
+  dialog.fields = PACKAGE_FIELDS
+  dialog.record = { ...row }
+}
+
 const submitDialog = async (form) => {
   const mode = dialog.mode
   dialog.open = false
@@ -82,6 +106,8 @@ const submitDialog = async (form) => {
     else if (mode === 'task-edit') await store.updateTask(form)
     else if (mode === 'asset-create') await store.createAsset(form)
     else if (mode === 'asset-edit') await store.updateAsset(form)
+    else if (mode === 'pkg-create') await store.createPackage(form)
+    else if (mode === 'pkg-edit') await store.updatePackage({ ...dialog.record, ...form })
   } catch {
     /* 提示已在 store 统一处理 */
   }
@@ -100,6 +126,41 @@ const removeTask = async (card) => {
 const removeAsset = async (row) => {
   if (await askConfirm(`确定删除素材「${row.name}」？`, '删除素材')) {
     await store.removeAsset(row.id).catch(() => {})
+  }
+}
+
+/** 素材人工复审（仅「人工复审」行可操作） */
+const reviewAsset = async (row, decision) => {
+  const label = decision === 'pass' ? '通过' : '驳回'
+  if (await askConfirm(`确定将素材「${row.name}」人工复审为「${label}」？`, '素材复审')) {
+    await store.reviewAsset(row.id, decision).catch(() => {})
+  }
+}
+
+/* ------------------------------ 知识包审核 ------------------------------ */
+
+const PKG_TYPES = ['全部', '语种包', '课程知识包']
+const pkgFilter = ref('全部')
+
+const filteredPackages = computed(() => (data.value?.packages || [])
+  .filter((p) => pkgFilter.value === '全部' || p.type === pkgFilter.value)
+  .filter((p) => matchKeyword(p.type, p.name, p.source, p.meta, p.status)))
+
+const passPackage = async (row) => {
+  if (await askConfirm(`确定通过「${row.name}」的审核并发布？`, '知识包审核通过')) {
+    await store.reviewPackage(row.id, 'pass').catch(() => {})
+  }
+}
+
+const rejectPackage = async (row) => {
+  if (await askConfirm(`确定驳回「${row.name}」？驳回后需重新提交审核。`, '知识包审核驳回')) {
+    await store.reviewPackage(row.id, 'reject').catch(() => {})
+  }
+}
+
+const removePackage = async (row) => {
+  if (await askConfirm(`确定删除知识包「${row.name}」？`, '删除知识包')) {
+    await store.removePackage(row.id).catch(() => {})
   }
 }
 
@@ -214,6 +275,82 @@ const exportAssets = () => {
         </div>
       </div>
 
+      <!-- 语种包 / 课程知识包审核 -->
+      <div class="card anim mt-4">
+        <div class="card-h flex-wrap">
+          <div>
+            <div class="card-t">语种包 / 课程知识包审核</div>
+            <div class="card-s">语种包与课程知识包发布审核 · 通过后全量下发</div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button
+              v-for="t in PKG_TYPES"
+              :key="t"
+              class="btn btn-sm !px-2.5"
+              :class="pkgFilter === t ? 'btn-primary' : 'btn-ghost'"
+              @click="pkgFilter = t"
+            >
+              {{ t }}
+            </button>
+            <button class="btn btn-primary btn-sm ml-2" @click="openPackageCreate">
+              <i class="fa-solid fa-plus"></i>新增
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="tb">
+            <thead>
+              <tr>
+                <th>类型</th>
+                <th>名称</th>
+                <th>来源</th>
+                <th>说明</th>
+                <th>状态</th>
+                <th class="text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="pkg in filteredPackages" :key="pkg.id">
+                <td><StatusPill :text="pkg.type" tone="blue" /></td>
+                <td class="text-[12.5px] font-medium">{{ pkg.name }}</td>
+                <td class="text-[12px]">{{ pkg.source }}</td>
+                <td class="text-[12px] text-sub">{{ pkg.meta }}</td>
+                <td><StatusPill :text="pkg.status" :tone="pkg.statusTone || 'slate'" /></td>
+                <td class="whitespace-nowrap text-right">
+                  <template v-if="pkg.status === '待审核'">
+                    <button
+                      class="btn btn-ghost btn-sm !px-2 !py-1"
+                      title="通过"
+                      :disabled="store.acting"
+                      @click="passPackage(pkg)"
+                    >
+                      <i class="fa-solid fa-check text-emerald-600"></i>通过
+                    </button>
+                    <button
+                      class="btn btn-ghost btn-sm !px-2 !py-1"
+                      title="驳回"
+                      :disabled="store.acting"
+                      @click="rejectPackage(pkg)"
+                    >
+                      <i class="fa-solid fa-ban text-rose-500"></i>驳回
+                    </button>
+                  </template>
+                  <button class="btn btn-ghost btn-sm !px-2 !py-1" title="编辑" @click="openPackageEdit(pkg)">
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button class="btn btn-ghost btn-sm !px-2 !py-1" title="删除" @click="removePackage(pkg)">
+                    <i class="fa-solid fa-trash text-rose-500"></i>
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="!filteredPackages.length">
+                <td colspan="6" class="py-8 text-center text-[12px] text-sub">没有匹配的知识包</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- 素材机审 + UGC 高亮拦截 -->
       <div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div class="card anim">
@@ -252,6 +389,23 @@ const exportAssets = () => {
               >
                 {{ asset.verdict }}
               </span>
+              <!-- 人工复审：仅「人工复审」行可操作 -->
+              <template v-if="asset.verdict === '人工复审'">
+                <button
+                  class="text-[11px] text-slate-300 transition hover:text-emerald-600"
+                  title="复审通过"
+                  @click="reviewAsset(asset, 'pass')"
+                >
+                  <i class="fa-solid fa-check"></i>
+                </button>
+                <button
+                  class="text-[11px] text-slate-300 transition hover:text-rose-500"
+                  title="复审驳回"
+                  @click="reviewAsset(asset, 'reject')"
+                >
+                  <i class="fa-solid fa-ban"></i>
+                </button>
+              </template>
               <button class="text-[11px] text-slate-300 transition hover:text-electric" title="编辑" @click="openAssetEdit(asset)">
                 <i class="fa-solid fa-pen"></i>
               </button>

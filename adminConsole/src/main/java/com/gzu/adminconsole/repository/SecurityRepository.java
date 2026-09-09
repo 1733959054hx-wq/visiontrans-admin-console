@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.gzu.adminconsole.common.PasswordHasher;
 import com.gzu.adminconsole.dto.common.ToggleItem;
 import com.gzu.adminconsole.entity.AdminUserEntity;
+import com.gzu.adminconsole.entity.AppSetting;
+import com.gzu.adminconsole.entity.AppUserEntity;
 import com.gzu.adminconsole.entity.AuditLogEntity;
 import com.gzu.adminconsole.entity.DeviceEntity;
 import com.gzu.adminconsole.entity.MembershipPlanEntity;
@@ -26,6 +28,7 @@ import com.gzu.adminconsole.entity.PermissionEntity;
 import com.gzu.adminconsole.entity.RoleEntity;
 import com.gzu.adminconsole.entity.StrategyToggleEntity;
 import com.gzu.adminconsole.model.AdminUser;
+import com.gzu.adminconsole.model.AppUser;
 import com.gzu.adminconsole.model.AuditLogEntry;
 import com.gzu.adminconsole.model.DeviceRecord;
 import com.gzu.adminconsole.model.MembershipPlan;
@@ -43,6 +46,18 @@ public class SecurityRepository {
 
     /** 开关分组：安全策略。 */
     public static final String GROUP_SECURITY = "security";
+
+    /** 开关分组：C 端功能开关。 */
+    public static final String GROUP_FEATURES = "features";
+
+    /** 系统参数键：C 端接口限流阈值（次/分钟）。 */
+    public static final String KEY_RATE_LIMIT = "sys.rate_limit";
+    /** 系统参数默认值：接口限流阈值。 */
+    public static final String DEFAULT_RATE_LIMIT = "600";
+    /** 系统参数键：会话超时时间（小时）。 */
+    public static final String KEY_SESSION_TTL = "sys.session_ttl";
+    /** 系统参数默认值：会话超时时间。 */
+    public static final String DEFAULT_SESSION_TTL = "24";
 
     /** 审计日志默认页大小。 */
     public static final int AUDIT_PAGE_SIZE = 8;
@@ -294,6 +309,114 @@ public class SecurityRepository {
         for (ToggleItem item : policies) {
             em.persist(new StrategyToggleEntity(item.name(), GROUP_SECURITY, item.enabled(), order++));
         }
+    }
+
+    /* ---------------------------- C 端功能开关 ---------------------------- */
+
+    /** 按分组读取开关（复用 strategy_toggle 表）。 */
+    public List<ToggleItem> findToggles(String group) {
+        return em.createQuery(
+                        "select s from StrategyToggleEntity s where s.groupName = :g order by s.sortOrder",
+                        StrategyToggleEntity.class)
+                .setParameter("g", group)
+                .getResultList().stream()
+                .map(s -> new ToggleItem(s.getName(), s.isEnabled()))
+                .toList();
+    }
+
+    /** 指定分组的开关是否为空。 */
+    public boolean togglesEmpty(String group) {
+        Long count = em.createQuery(
+                        "select count(s) from StrategyToggleEntity s where s.groupName = :g", Long.class)
+                .setParameter("g", group)
+                .getSingleResult();
+        return count == null || count == 0L;
+    }
+
+    @Transactional
+    public void saveToggles(String group, List<ToggleItem> items) {
+        int order = 0;
+        for (ToggleItem item : items) {
+            em.persist(new StrategyToggleEntity(item.name(), group, item.enabled(), order++));
+        }
+    }
+
+    /** 按名称切换开关状态（开关名全局唯一，跨分组生效）。 */
+    @Transactional
+    public void updateToggle(String name, boolean enabled) {
+        StrategyToggleEntity entity = em.find(StrategyToggleEntity.class, name);
+        if (entity != null) {
+            entity.setEnabled(enabled);
+            em.merge(entity);
+        }
+    }
+
+    /* ------------------------------ 系统配置 ------------------------------ */
+
+    /** 读取设置项（不存在时返回 null）。 */
+    public String getSetting(String key) {
+        AppSetting setting = em.find(AppSetting.class, key);
+        return setting == null ? null : setting.getSettingValue();
+    }
+
+    /** 写入设置项（幂等 upsert）。 */
+    @Transactional
+    public void setSetting(String key, String value) {
+        AppSetting setting = em.find(AppSetting.class, key);
+        if (setting == null) {
+            em.persist(new AppSetting(key, value));
+        } else {
+            setting.setSettingValue(value);
+            em.merge(setting);
+        }
+    }
+
+    /* ------------------------------ C 端用户 ------------------------------ */
+
+    /** 全部 C 端用户。 */
+    public List<AppUser> findAppUsers() {
+        return em.createQuery("select u from AppUserEntity u order by u.id", AppUserEntity.class)
+                .getResultList().stream().map(this::toAppUserModel).toList();
+    }
+
+    /** 按主键查找 C 端用户。 */
+    public AppUser findAppUser(Long id) {
+        AppUserEntity entity = em.find(AppUserEntity.class, id);
+        return entity == null ? null : toAppUserModel(entity);
+    }
+
+    /** C 端用户总数。 */
+    public long countAppUsers() {
+        Long count = em.createQuery("select count(u) from AppUserEntity u", Long.class).getSingleResult();
+        return count == null ? 0L : count;
+    }
+
+    /** C 端用户表是否为空。 */
+    public boolean appUsersEmpty() {
+        return countAppUsers() == 0L;
+    }
+
+    @Transactional
+    public void saveAppUsers(List<AppUser> users) {
+        users.forEach(u -> em.persist(new AppUserEntity(u.account(), u.regSource(), u.membership(),
+                u.registered(), u.lastActive(), u.status())));
+    }
+
+    /** 更新 C 端用户（会员状态 / 启停用）。 */
+    @Transactional
+    public void updateAppUser(AppUser user) {
+        AppUserEntity entity = em.find(AppUserEntity.class, user.id());
+        if (entity == null) {
+            return;
+        }
+        entity.setMembership(user.membership());
+        entity.setStatus(user.status());
+        em.merge(entity);
+    }
+
+    private AppUser toAppUserModel(AppUserEntity u) {
+        return new AppUser(u.getId(), u.getAccount(), u.getRegSource(), u.getMembership(), u.getRegistered(),
+                u.getLastActive(), u.getStatus());
     }
 
     /* ------------------------------ 审计日志 ------------------------------ */

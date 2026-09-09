@@ -16,7 +16,9 @@ import com.gzu.adminconsole.config.RequireRole;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
 import com.gzu.adminconsole.dto.security.PermissionUpdateRequest;
 import com.gzu.adminconsole.dto.security.SecurityOverviewVO;
+import com.gzu.adminconsole.dto.security.SysConfigVO;
 import com.gzu.adminconsole.model.AdminUser;
+import com.gzu.adminconsole.model.AppUser;
 import com.gzu.adminconsole.model.DeviceRecord;
 import com.gzu.adminconsole.model.MembershipPlan;
 import com.gzu.adminconsole.service.SecurityService;
@@ -108,6 +110,37 @@ public class SecurityController {
     @DeleteMapping("/plans/{name}")
     public Result<ActionResultVO> deletePlan(@PathVariable String name) {
         return Result.ok(service.deletePlan(name));
+    }
+
+    /* ------------------------------ C 端用户 ------------------------------ */
+
+    /** 修改 C 端用户（会员状态 / 启停用，运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
+    @PutMapping("/app-users")
+    public Result<ActionResultVO> updateAppUser(@RequestBody AppUser user) {
+        return Result.ok(service.updateAppUser(user));
+    }
+
+    /* ------------------------------ 系统配置 ------------------------------ */
+
+    /** 系统配置：运行参数 + C 端功能开关。 */
+    @GetMapping("/sysconfig")
+    public Result<SysConfigVO> sysConfig() {
+        return Result.ok(service.sysConfig());
+    }
+
+    /** 修改运行参数（仅超级管理员）。 */
+    @RequireRole("SUPER_ADMIN")
+    @PutMapping("/sysparams")
+    public Result<ActionResultVO> updateSysParam(@RequestParam String name, @RequestParam String value) {
+        return Result.ok(service.updateSysParam(name, value));
+    }
+
+    /** 切换 C 端功能开关（仅超级管理员）。 */
+    @RequireRole("SUPER_ADMIN")
+    @PutMapping("/sysfeatures")
+    public Result<ActionResultVO> updateFeature(@RequestParam String name, @RequestParam boolean enabled) {
+        return Result.ok(service.updateFeature(name, enabled));
     }
 
     /* ------------------------------ 管理员 CRUD ------------------------------ */

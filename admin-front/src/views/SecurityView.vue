@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -24,6 +24,8 @@ const data = computed(() => store.data)
 
 onMounted(() => {
   if (!data.value) store.load(1)
+  // 系统配置（参数 / 功能开关）独立于大盘数据，进入页面即顺带拉取
+  if (!store.sysConfig) store.loadSysConfig()
 })
 
 const STATE_ORDER = ['GRANTED', 'PARTIAL', 'NONE']
@@ -89,6 +91,16 @@ const ADMIN_FIELDS = [
   { key: 'lastLogin', label: '最近登录', type: 'datetime-local' },
 ]
 
+/** C 端用户调整：仅会员状态与账号状态可改，其余只读展示 */
+const APP_USER_FIELDS = [
+  { key: 'account', label: '账号', type: 'text', disabled: true },
+  { key: 'regSource', label: '注册方式', type: 'text', disabled: true },
+  { key: 'membership', label: '会员状态', type: 'select', options: ['免费体验', '会员月卡', '会员年卡', '会员过期'] },
+  { key: 'registered', label: '注册时间', type: 'text', disabled: true },
+  { key: 'lastActive', label: '最近活跃', type: 'text', disabled: true },
+  { key: 'status', label: '账号状态', type: 'select', options: ['正常', '停用'] },
+]
+
 const dialog = reactive({ open: false, title: '', fields: [], record: {}, mode: 'device-create' })
 
 const openDeviceCreate = () => {
@@ -139,6 +151,14 @@ const openAdminEdit = (row) => {
   dialog.record = { ...row }
 }
 
+const openAppUserEdit = (row) => {
+  dialog.open = true
+  dialog.mode = 'appuser-edit'
+  dialog.title = `调整 C 端用户 · ${row.account}`
+  dialog.fields = APP_USER_FIELDS
+  dialog.record = { ...row }
+}
+
 const submitDialog = async (form) => {
   const mode = dialog.mode
   dialog.open = false
@@ -149,6 +169,7 @@ const submitDialog = async (form) => {
     else if (mode === 'plan-edit') await store.updatePlan(form)
     else if (mode === 'admin-create') await store.createAdmin(form)
     else if (mode === 'admin-edit') await store.updateAdmin(form)
+    else if (mode === 'appuser-edit') await store.updateUser({ ...dialog.record, ...form })
   } catch {
     /* 提示已在 store 统一处理 */
   }
@@ -181,6 +202,29 @@ const banOne = (device) => {
 const policyOpen = ref(false)
 const togglePolicy = (item) => store.setPolicy(item.name, !item.enabled).catch(() => {})
 
+/* ------------------------------ 系统配置 ------------------------------ */
+
+/** 参数编辑本地值（name → 数字字符串），保存后回读覆盖 */
+const paramValues = reactive({})
+watch(
+  () => store.sysConfig?.params,
+  (list) => {
+    if (!list) return
+    list.forEach((param) => {
+      if (!(param.name in paramValues)) paramValues[param.name] = param.value
+    })
+  },
+  { immediate: true },
+)
+
+const saveParam = (param) => {
+  const value = String(paramValues[param.name] ?? '').trim()
+  if (value === '' || value === String(param.value)) return
+  store.setSysParam(param.name, value).catch(() => {})
+}
+
+const toggleFeature = (feature) => store.setFeature(feature.name, !feature.enabled).catch(() => {})
+
 /* ------------------------------ 列表 / 搜索 ------------------------------ */
 
 const deviceTone = { 正常: 'green', 可疑: 'amber', 异常: 'red', 已封禁: 'slate' }
@@ -197,6 +241,8 @@ const filteredDevices = computed(() => (data.value?.devices || [])
   .filter((d) => matchKeyword(d.region, d.ip, d.fingerprint, d.verdict)))
 const filteredAdmins = computed(() => (data.value?.admins || [])
   .filter((u) => matchKeyword(u.name, u.role, u.group, u.phone, u.status)))
+const filteredAppUsers = computed(() => (data.value?.appUsers || [])
+  .filter((u) => matchKeyword(u.account, u.regSource, u.membership, u.status)))
 const filteredLogs = computed(() => (data.value?.auditLogs || [])
   .filter((l) => matchKeyword(l.time, l.operator, l.action, l.detail, l.source, l.result)))
 
@@ -467,6 +513,114 @@ const gotoModeration = () => router.push({ name: 'a8' })
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- C 端用户管理 -->
+      <div class="card anim mt-4">
+        <div class="card-h">
+          <div>
+            <div class="card-t">C 端用户管理</div>
+            <div class="card-s">会员状态与账号状态在线调整 · 注册来源与活跃度一览</div>
+          </div>
+          <StatusPill :text="`${filteredAppUsers.length} 个用户`" tone="blue" />
+        </div>
+        <div class="overflow-x-auto">
+          <table class="tb">
+            <thead>
+              <tr>
+                <th>账号</th>
+                <th>注册方式</th>
+                <th>会员状态</th>
+                <th>注册时间</th>
+                <th>最近活跃</th>
+                <th>状态</th>
+                <th class="text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in filteredAppUsers" :key="user.id">
+                <td class="text-[12.5px] font-medium">{{ user.account }}</td>
+                <td class="text-[12px]">{{ user.regSource }}</td>
+                <td>
+                  <StatusPill
+                    :text="user.membership"
+                    :tone="user.membership === '会员过期' ? 'slate' : 'blue'"
+                  />
+                </td>
+                <td class="num text-[11.5px] text-sub">{{ user.registered }}</td>
+                <td class="num text-[11.5px] text-sub">{{ user.lastActive }}</td>
+                <td><StatusPill :text="user.status" :tone="user.status === '正常' ? 'green' : 'slate'" /></td>
+                <td class="text-right">
+                  <button class="btn btn-ghost btn-sm !px-2 !py-1" title="调整" @click="openAppUserEdit(user)">
+                    <i class="fa-solid fa-sliders"></i>调整
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="!filteredAppUsers.length">
+                <td colspan="7" class="py-8 text-center text-[12px] text-sub">没有匹配的用户</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 系统配置 -->
+      <div class="card anim mt-4">
+        <div class="card-h">
+          <div>
+            <div class="card-t">系统参数与功能开关</div>
+            <div class="card-s">运行参数在线调优 · 功能开关保存后即时生效</div>
+          </div>
+          <StatusPill text="热更新" tone="amber" />
+        </div>
+        <div class="card-b grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <!-- 运行参数 -->
+          <div class="space-y-2">
+            <div
+              v-for="param in store.sysConfig?.params || []"
+              :key="param.name"
+              class="flex items-center gap-2 rounded-lg border border-line px-3 py-2"
+            >
+              <span class="text-[12.5px] text-ink">{{ param.label }}</span>
+              <input
+                v-model="paramValues[param.name]"
+                type="number"
+                min="0"
+                class="field num ml-auto !w-24 !py-1 text-right text-[12px]"
+                @blur="saveParam(param)"
+              />
+              <span v-if="param.unit" class="w-8 text-[11px] text-sub">{{ param.unit }}</span>
+              <button
+                class="btn btn-primary btn-sm !px-2 !py-1"
+                :disabled="store.acting || String(paramValues[param.name] ?? '').trim() === String(param.value)"
+                @click="saveParam(param)"
+              >
+                保存
+              </button>
+            </div>
+            <div v-if="!store.sysConfig?.params?.length" class="py-4 text-center text-[12px] text-sub">
+              参数加载中…
+            </div>
+          </div>
+          <!-- 功能开关 -->
+          <div class="space-y-2">
+            <div
+              v-for="feature in store.sysConfig?.features || []"
+              :key="feature.name"
+              class="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-[12.5px]"
+            >
+              <span class="text-ink">{{ feature.name }}</span>
+              <ToggleSwitch
+                :model-value="feature.enabled"
+                :disabled="store.acting"
+                @update:model-value="() => toggleFeature(feature)"
+              />
+            </div>
+            <div v-if="!store.sysConfig?.features?.length" class="py-4 text-center text-[12px] text-sub">
+              开关加载中…
+            </div>
+          </div>
         </div>
       </div>
 

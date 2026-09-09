@@ -36,6 +36,10 @@ public class AdSlotEntity {
     @Column(name = "sort_order")
     private int sortOrder;
 
+    /** 上下线状态：null 视为上线（兼容老数据）。 */
+    @Column(name = "online")
+    private Boolean online = true;
+
     protected AdSlotEntity() {
     }
 
@@ -59,6 +63,8 @@ public class AdSlotEntity {
     public void setRemain(String remain) { this.remain = remain; }
     public double getRatio() { return ratio; }
     public void setRatio(double ratio) { this.ratio = ratio; }
+    public Boolean getOnline() { return online; }
+    public void setOnline(Boolean online) { this.online = online; }
     public int getSortOrder() { return sortOrder; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
 }

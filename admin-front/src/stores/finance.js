@@ -1,19 +1,17 @@
 import { defineStore } from 'pinia'
 
 import {
-  adoptAdvice,
-  createSlot,
-  deleteSlot,
-  fetchAdOverview,
-  updateFrequency,
-  updateSlot,
-  updateSlotOnline,
-} from '@/api/ads'
+  fetchFinanceOverview,
+  handleOrder,
+  reconcileSettlement,
+  reviewInvoice,
+  settleSettlement,
+} from '@/api/finance'
 import { useAppStore } from './app'
 import { useUiStore } from './ui'
 
-/** 广告位排期与调度引擎（页面 a9）视图模型。 */
-export const useAdStore = defineStore('ads', {
+/** 财务订单与商户结算中心（页面 a11）视图模型。 */
+export const useFinanceStore = defineStore('finance', {
   state: () => ({
     loading: false,
     error: '',
@@ -21,6 +19,7 @@ export const useAdStore = defineStore('ads', {
     acting: false,
   }),
   actions: {
+    /** 统一执行：处理成功提示 / 失败提示 / 自动刷新大盘。 */
     async run(action) {
       const ui = useUiStore()
       this.acting = true
@@ -42,32 +41,27 @@ export const useAdStore = defineStore('ads', {
       this.loading = true
       this.error = ''
       try {
-        this.data = await fetchAdOverview(app.rangeParams)
+        this.data = await fetchFinanceOverview(app.rangeParams)
       } catch (error) {
         this.error = error.message
-        ui.error(`广告排期加载失败：${error.message}`)
+        ui.error(`财务数据加载失败：${error.message}`)
       } finally {
         this.loading = false
       }
     },
-    setFrequency(name, value) {
-      return this.run(() => updateFrequency(name, value))
+    /** 订单处置（markPaid / refund / close）。 */
+    handle(id, action) {
+      return this.run(() => handleOrder(id, action))
     },
-    adopt() {
-      return this.run(() => adoptAdvice())
+    reconcile(id) {
+      return this.run(() => reconcileSettlement(id))
     },
-    createSlot(payload) {
-      return this.run(() => createSlot(payload))
+    settle(id) {
+      return this.run(() => settleSettlement(id))
     },
-    updateSlot(payload) {
-      return this.run(() => updateSlot(payload))
-    },
-    removeSlot(id) {
-      return this.run(() => deleteSlot(id))
-    },
-    /** 上架 / 下架广告位。 */
-    setOnline(id, online) {
-      return this.run(() => updateSlotOnline(id, online))
+    /** 发票审核（approved = true / false）。 */
+    review(id, approved) {
+      return this.run(() => reviewInvoice(id, approved))
     },
   },
 })

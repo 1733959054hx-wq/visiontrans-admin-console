@@ -18,7 +18,7 @@ public record AdOverviewVO(List<KpiMetric> kpis,
 
     /** 广告位库存甘特行。 */
     public record AdSlotRow(Long id, String name, String status, String color, String remain, String remainTone,
-                            List<Boolean> cells) {
+                            List<Boolean> cells, boolean online) {
     }
 
     /** 单用户频次限制项。 */

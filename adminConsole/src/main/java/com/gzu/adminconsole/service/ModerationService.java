@@ -1,21 +1,31 @@
 package com.gzu.adminconsole.service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import com.gzu.adminconsole.common.BusinessException;
 import com.gzu.adminconsole.common.DateRange;
 import com.gzu.adminconsole.common.TrendUtils;
+import com.gzu.adminconsole.config.AdminContext;
 import com.gzu.adminconsole.dto.common.KpiMetric;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
 import com.gzu.adminconsole.dto.moderation.ModerationOverviewVO;
+import com.gzu.adminconsole.model.AuditLogEntry;
+import com.gzu.adminconsole.model.AuditPackage;
 import com.gzu.adminconsole.model.GlossaryTask;
 import com.gzu.adminconsole.model.MaterialAsset;
 import com.gzu.adminconsole.model.RefundRecord;
 import com.gzu.adminconsole.model.UgcRecord;
 import com.gzu.adminconsole.repository.ModerationRepository;
+import com.gzu.adminconsole.repository.SecurityRepository;
 
 /**
  * 语种术语库审核与 UGC 风控中台 ViewModel 层。
@@ -26,10 +36,18 @@ public class ModerationService {
     /** 看板列固定顺序（与前端 COLUMNS 保持一致）。 */
     public static final List<String> KANBAN_COLUMNS = List.of("待初审", "术语复核", "已发布");
 
-    private final ModerationRepository repository;
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    /** 无法从会话中识别操作人时的占位值。 */
+    private static final String UNKNOWN = "未知";
+    /** 反向代理透传客户端 IP 的请求头。 */
+    private static final String FORWARDED_FOR = "X-Forwarded-For";
 
-    public ModerationService(ModerationRepository repository) {
+    private final ModerationRepository repository;
+    private final SecurityRepository securityRepository;
+
+    public ModerationService(ModerationRepository repository, SecurityRepository securityRepository) {
         this.repository = repository;
+        this.securityRepository = securityRepository;
     }
 
     /** 审核与风控中台视图模型（可按任务截止时间范围过滤，yyyy-MM-dd；无截止时间的任务始终保留）。 */
@@ -70,7 +88,7 @@ public class ModerationService {
                         "当前样本命中风控规则数",
                         trend(ugcHits)));
 
-        return new ModerationOverviewVO(kpis, kanban(tasks), assets(), ugcCard(), refundCard());
+        return new ModerationOverviewVO(kpis, kanban(tasks), assets(), packages(), ugcCard(), refundCard());
     }
 
     /** 置信度文案 "91.2%" → 数值，无法解析时按 0 计。 */
@@ -239,6 +257,122 @@ public class ModerationService {
             rows.add(new ModerationOverviewVO.MaterialRow(a.id(), a.name(), a.confidence(), a.verdict(), tone));
         }
         return rows;
+    }
+
+    /* ------------------------------ 语种包 / 课程知识包 ------------------------------ */
+
+    /** 新增审核包（未指定状态时进入待审核队列）。 */
+    public ActionResultVO createPackage(AuditPackage pkg) {
+        if (pkg == null || pkg.name() == null || pkg.name().isBlank()) {
+            throw new BusinessException("审核包名称不能为空");
+        }
+        String status = pkg.status() == null || pkg.status().isBlank()
+                ? AuditPackage.STATUS_PENDING : pkg.status();
+        repository.insertPackage(new AuditPackage(null, pkg.type(), pkg.name(), pkg.source(), pkg.meta(), status));
+        writeLog("审核包维护", "新增" + pkg.type() + "「" + pkg.name() + "」（" + status + "）");
+        return ActionResultVO.ok("审核包「" + pkg.name() + "」已加入" + status + "队列", pkg.name());
+    }
+
+    /** 更新审核包。 */
+    public ActionResultVO updatePackage(AuditPackage pkg) {
+        if (pkg == null || pkg.id() == null) {
+            throw new BusinessException("缺少审核包主键，无法更新");
+        }
+        AuditPackage current = repository.findPackage(pkg.id());
+        if (current == null) {
+            throw new BusinessException("未找到审核包 #" + pkg.id());
+        }
+        repository.updatePackage(pkg);
+        writeLog("审核包维护", "更新审核包「" + pkg.name() + "」（" + pkg.status() + "）");
+        return ActionResultVO.ok("审核包「" + pkg.name() + "」已更新", pkg.name());
+    }
+
+    /** 删除审核包。 */
+    public ActionResultVO deletePackage(Long id) {
+        AuditPackage current = repository.findPackage(id);
+        if (current == null) {
+            throw new BusinessException("未找到审核包 #" + id);
+        }
+        repository.deletePackage(id);
+        writeLog("审核包维护", "删除审核包「" + current.name() + "」");
+        return ActionResultVO.ok("审核包「" + current.name() + "」已删除", current.name());
+    }
+
+    /** 审核包复核：decision = pass 发布 / reject 驳回（仅待审核可审）。 */
+    public ActionResultVO reviewPackage(Long id, String decision) {
+        AuditPackage current = repository.findPackage(id);
+        if (current == null) {
+            throw new BusinessException("未找到审核包 #" + id);
+        }
+        if (!AuditPackage.STATUS_PENDING.equals(current.status())) {
+            throw new BusinessException("审核包「" + current.name() + "」已处理：" + current.status());
+        }
+        String target = "pass".equalsIgnoreCase(decision)
+                ? AuditPackage.STATUS_PUBLISHED : AuditPackage.STATUS_REJECTED;
+        repository.updatePackage(new AuditPackage(current.id(), current.type(), current.name(), current.source(),
+                current.meta(), target));
+        writeLog("审核包复核", "审核包「" + current.name() + "」复核结果：" + target);
+        return ActionResultVO.ok("审核包「" + current.name() + "」已" + target, current.name());
+    }
+
+    /** 素材人工复审：decision = pass 通过 / reject 驳回（仅人工复审可审）。 */
+    public ActionResultVO reviewAsset(Long id, String decision) {
+        MaterialAsset current = repository.findAsset(id);
+        if (current == null) {
+            throw new BusinessException("未找到素材 #" + id);
+        }
+        if (!"人工复审".equals(current.verdict())) {
+            throw new BusinessException("素材「" + current.name() + "」不在人工复审队列：" + current.verdict());
+        }
+        String target = "pass".equalsIgnoreCase(decision) ? "通过" : "驳回";
+        repository.updateAsset(new MaterialAsset(current.id(), current.name(), current.confidence(), target));
+        writeLog("素材机审复核", "素材「" + current.name() + "」复核结果：" + target);
+        return ActionResultVO.ok("素材「" + current.name() + "」复核完成：" + target, current.name());
+    }
+
+    /** 语种包 / 课程知识包审核行（状态配映射：待审核 amber、已发布 green、已驳回 red）。 */
+    private List<ModerationOverviewVO.PackageRow> packages() {
+        return repository.findPackages().stream()
+                .map(p -> new ModerationOverviewVO.PackageRow(p.id(), p.type(), p.name(), p.source(), p.meta(),
+                        p.status(), packageTone(p.status())))
+                .toList();
+    }
+
+    /** 审核包状态配映射。 */
+    private String packageTone(String status) {
+        return switch (status) {
+            case AuditPackage.STATUS_PENDING -> "amber";
+            case AuditPackage.STATUS_PUBLISHED -> "green";
+            default -> "red";
+        };
+    }
+
+    private void writeLog(String action, String detail) {
+        AdminContext.CurrentAdmin admin = AdminContext.get();
+        String name = admin == null ? UNKNOWN : admin.name();
+        String role = admin == null ? UNKNOWN : admin.roleName();
+        String group = admin == null ? UNKNOWN : admin.groupName();
+        AuditLogEntry entry = AuditLogEntry.of(now(), name, role, group, action, detail, clientIp(), "成功");
+        securityRepository.pushAuditLog(entry);
+    }
+
+    /** 真实来源 IP：优先取反向代理透传的 X-Forwarded-For 首段。 */
+    private String clientIp() {
+        ServletRequestAttributes attrs =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attrs == null) {
+            return UNKNOWN;
+        }
+        HttpServletRequest request = attrs.getRequest();
+        String forwarded = request.getHeader(FORWARDED_FOR);
+        if (forwarded == null || forwarded.isBlank()) {
+            return request.getRemoteAddr();
+        }
+        return forwarded.split(",")[0].trim();
+    }
+
+    private static String now() {
+        return LocalDateTime.now().format(FORMATTER);
     }
 
     private ModerationOverviewVO.UgcCard ugcCard() {

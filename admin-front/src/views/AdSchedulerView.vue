@@ -87,6 +87,11 @@ const removeSlot = async (row) => {
   }
 }
 
+/** 上架 / 下架广告位（后端 PATCH /ads/slots/{id}/online） */
+const setOnline = (slot, online) => {
+  if (!!slot.online !== online) store.setOnline(slot.id, online).catch(() => {})
+}
+
 /** eCPM 矩阵单元格配色 */
 const cellStyle = (value) => {
   const t = value / (data.value?.matrix?.max || 92)
@@ -160,6 +165,7 @@ const exportSlots = () => {
                   <th class="py-1.5 pr-3 text-left font-medium">广告位</th>
                   <th v-for="day in data.days" :key="day" class="px-1 font-medium">{{ day }}</th>
                   <th class="pl-3 font-medium">剩余库存</th>
+                  <th class="pl-3 text-center font-medium">上线</th>
                   <th class="pl-3 text-right font-medium">操作</th>
                 </tr>
               </thead>
@@ -175,6 +181,13 @@ const exportSlots = () => {
                   </td>
                   <td class="num pl-3 font-semibold" :class="remainTone[slot.remain] || 'text-amber-600'">
                     {{ slot.remain }}
+                  </td>
+                  <td class="pl-3 text-center">
+                    <ToggleSwitch
+                      :model-value="!!slot.online"
+                      :disabled="store.acting"
+                      @update:model-value="(v) => setOnline(slot, v)"
+                    />
                   </td>
                   <td class="pl-3 text-right">
                     <button
@@ -194,7 +207,7 @@ const exportSlots = () => {
                   </td>
                 </tr>
                 <tr v-if="!filteredSlots.length">
-                  <td :colspan="data.days.length + 3" class="py-8 text-center text-[12px] text-sub">
+                  <td :colspan="data.days.length + 4" class="py-8 text-center text-[12px] text-sub">
                     没有匹配的广告位
                   </td>
                 </tr>

@@ -9,6 +9,8 @@ package com.gzu.adminconsole.model;
  * @param color  状态色
  * @param remain 剩余库存文案（"预售" 表示锁定中）
  * @param ratio  占用比例，-1 表示预售锁定（无比例）
+ * @param online 是否上线（下线后不参与调度与曝光）
  */
-public record AdSlot(Long id, String name, String status, String color, String remain, double ratio) {
+public record AdSlot(Long id, String name, String status, String color, String remain, double ratio,
+                     boolean online) {
 }

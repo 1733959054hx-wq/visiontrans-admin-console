@@ -9,11 +9,15 @@ import {
   deleteDevice,
   deletePlan,
   fetchSecurityOverview,
+  fetchSysConfig,
   updateAdmin,
   updateDevice,
+  updateFeature,
   updatePermission,
   updatePlan,
   updatePolicy,
+  updateSysParam,
+  updateUser,
 } from '@/api/security'
 import { useAppStore } from './app'
 import { useUiStore } from './ui'
@@ -27,6 +31,8 @@ export const useSecurityStore = defineStore('security', {
     acting: false,
     /** 审计日志当前页码 */
     page: 1,
+    /** 系统配置（运行参数 + 功能开关） */
+    sysConfig: null,
   }),
   actions: {
     /**
@@ -99,6 +105,34 @@ export const useSecurityStore = defineStore('security', {
     },
     savePermission(payload) {
       return this.run(() => updatePermission(payload))
+    },
+    /** 更新 C 端用户（会员状态 / 账号状态）。 */
+    updateUser(payload) {
+      return this.run(() => updateUser(payload))
+    },
+    /** 拉取系统配置（参数 / 功能开关），独立于大盘数据。 */
+    async loadSysConfig() {
+      try {
+        this.sysConfig = await fetchSysConfig()
+      } catch {
+        // 系统配置为辅助区块：失败静默，避免干扰主页面
+      }
+    },
+    /** 更新单个系统参数（value 为数字字符串），成功后回读最新配置。 */
+    setSysParam(name, value) {
+      return this.run(async () => {
+        const result = await updateSysParam(name, value)
+        await this.loadSysConfig()
+        return result
+      }, false)
+    },
+    /** 切换单个功能开关，成功后回读最新配置。 */
+    setFeature(name, enabled) {
+      return this.run(async () => {
+        const result = await updateFeature(name, enabled)
+        await this.loadSysConfig()
+        return result
+      }, false)
     },
     /** 批量保存权限（只刷新一次，避免逐条请求重复拉取大盘） */
     savePermissionBatch(payloads) {

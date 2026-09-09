@@ -12,6 +12,7 @@ public record SecurityOverviewVO(List<KpiMetric> kpis,
                                  List<RoleNode> roleTree,
                                  List<DeviceRow> devices,
                                  List<PlanRow> plans,
+                                 List<AppUserRow> appUsers,
                                  List<AuditLogRow> auditLogs,
                                  List<AdminUserRow> admins,
                                  List<ToggleItem> policies,
@@ -21,6 +22,11 @@ public record SecurityOverviewVO(List<KpiMetric> kpis,
     /** 后台管理员账号。 */
     public record AdminUserRow(Long id, String name, String role, String group, String phone, String status,
                                String lastLogin) {
+    }
+
+    /** C 端用户账号行。 */
+    public record AppUserRow(Long id, String account, String regSource, String membership,
+                             String registered, String lastActive, String status) {
     }
 
     /** 角色域。 */

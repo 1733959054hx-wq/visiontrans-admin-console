@@ -38,6 +38,18 @@ public class NavRepository {
         return count == null || count == 0L;
     }
 
+    /** 按菜单 ID 判断是否存在（用于幂等补齐单个菜单）。 */
+    public boolean existsById(String id) {
+        return em.find(NavMenuEntity.class, id) != null;
+    }
+
+    /** 追加单个菜单项（指定排序号，用于老数据幂等补齐）。 */
+    @Transactional
+    public void insertOne(NavMenu menu, int sortOrder) {
+        em.persist(new NavMenuEntity(menu.id(), menu.icon(), menu.text(), menu.sub(), menu.title(), menu.desc(),
+                sortOrder));
+    }
+
     @Transactional
     public void saveAll(List<NavMenu> menus) {
         int order = 0;

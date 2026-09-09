@@ -10,8 +10,18 @@ import com.gzu.adminconsole.dto.common.KpiMetric;
 public record ModerationOverviewVO(List<KpiMetric> kpis,
                                    List<KanbanColumn> kanban,
                                    List<MaterialRow> assets,
+                                   List<PackageRow> packages,
                                    UgcCard ugc,
                                    RefundCard refund) {
+
+    /**
+     * 语种包 / 课程知识包审核行。
+     *
+     * @param id 主键，编辑 / 删除 / 审核时回传
+     */
+    public record PackageRow(Long id, String type, String name, String source, String meta,
+                             String status, String statusTone) {
+    }
 
     /** 审核看板列。 */
     public record KanbanColumn(String title, String countLabel, String tone, List<KanbanCard> cards) {

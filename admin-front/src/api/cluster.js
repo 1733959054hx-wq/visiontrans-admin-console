@@ -19,3 +19,21 @@ export const deleteNode = (id) => request.delete(`/cluster/nodes/${encodeURIComp
 export const createAlarm = (payload) => request.post('/cluster/alarms', payload)
 
 export const deleteAlarm = (id) => request.delete(`/cluster/alarms/${id}`)
+
+/* ------------------------------ 运维管理（熔断 / 备份 / 阈值） ------------------------------ */
+
+/** 运维管理数据：熔断降级策略、备份策略与资源告警阈值。 */
+export const fetchClusterOps = () => request.get('/cluster/ops')
+
+/** 系统日志检索：level（INFO/WARN/ERROR）与 category 均可空。 */
+export const fetchClusterSysLogs = (params) => request.get('/cluster/syslogs', { params })
+
+/** 更新熔断器状态与启用（body {id, state, enabled}）。 */
+export const updateBreaker = (payload) => request.put('/cluster/ops/breakers', payload)
+
+/** 更新备份策略启用（body {id, enabled}）。 */
+export const updateBackup = (payload) => request.put('/cluster/ops/backups', payload)
+
+/** 更新资源告警阈值（cpu / mem / gpu）。 */
+export const updateThresholds = (cpu, mem, gpu) =>
+  request.put('/cluster/ops/thresholds', null, { params: { cpu, mem, gpu } })

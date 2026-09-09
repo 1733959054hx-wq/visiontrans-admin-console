@@ -9,12 +9,14 @@ import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.gzu.adminconsole.entity.AuditPackageEntity;
 import com.gzu.adminconsole.entity.GlossaryTaskEntity;
 import com.gzu.adminconsole.entity.MaterialAssetEntity;
 import com.gzu.adminconsole.entity.RefundRecordEntity;
 import com.gzu.adminconsole.entity.UgcHitEmb;
 import com.gzu.adminconsole.entity.UgcRecordEntity;
 import com.gzu.adminconsole.entity.UgcSegmentEmb;
+import com.gzu.adminconsole.model.AuditPackage;
 import com.gzu.adminconsole.model.GlossaryTask;
 import com.gzu.adminconsole.model.MaterialAsset;
 import com.gzu.adminconsole.model.RefundRecord;
@@ -189,6 +191,77 @@ public class ModerationRepository {
         entity.setReasons(record.reasons());
         entity.setStatus(record.status());
         em.merge(entity);
+    }
+
+    /* ------------------------ 语种包 / 课程知识包 ------------------------ */
+
+    /** 全部审核包（语种包 / 课程知识包）。 */
+    public List<AuditPackage> findPackages() {
+        return em.createQuery("select p from AuditPackageEntity p order by p.sortOrder",
+                AuditPackageEntity.class).getResultList().stream().map(this::toPackageModel).toList();
+    }
+
+    /** 按主键查找审核包。 */
+    public AuditPackage findPackage(Long id) {
+        AuditPackageEntity entity = em.find(AuditPackageEntity.class, id);
+        return entity == null ? null : toPackageModel(entity);
+    }
+
+    /** 新增审核包。 */
+    @Transactional
+    public void insertPackage(AuditPackage pkg) {
+        Integer max = em.createQuery("select max(p.sortOrder) from AuditPackageEntity p", Integer.class)
+                .getSingleResult();
+        em.persist(new AuditPackageEntity(pkg.type(), pkg.name(), pkg.source(), pkg.meta(), pkg.status(),
+                max == null ? 0 : max + 1));
+    }
+
+    /** 更新审核包（整行覆盖）。 */
+    @Transactional
+    public void updatePackage(AuditPackage pkg) {
+        AuditPackageEntity entity = em.find(AuditPackageEntity.class, pkg.id());
+        if (entity == null) {
+            return;
+        }
+        entity.setType(pkg.type());
+        entity.setName(pkg.name());
+        entity.setSource(pkg.source());
+        entity.setMeta(pkg.meta());
+        entity.setStatus(pkg.status());
+        em.merge(entity);
+    }
+
+    /** 删除审核包。 */
+    @Transactional
+    public void deletePackage(Long id) {
+        AuditPackageEntity entity = em.find(AuditPackageEntity.class, id);
+        if (entity != null) {
+            em.remove(entity);
+        }
+    }
+
+    /** 审核包总数。 */
+    public long countPackages() {
+        Long count = em.createQuery("select count(p) from AuditPackageEntity p", Long.class).getSingleResult();
+        return count == null ? 0L : count;
+    }
+
+    /** 审核包表是否为空。 */
+    public boolean packagesEmpty() {
+        return countPackages() == 0L;
+    }
+
+    @Transactional
+    public void savePackages(List<AuditPackage> packages) {
+        int order = 0;
+        for (AuditPackage pkg : packages) {
+            em.persist(new AuditPackageEntity(pkg.type(), pkg.name(), pkg.source(), pkg.meta(), pkg.status(),
+                    order++));
+        }
+    }
+
+    private AuditPackage toPackageModel(AuditPackageEntity p) {
+        return new AuditPackage(p.getId(), p.getType(), p.getName(), p.getSource(), p.getMeta(), p.getStatus());
     }
 
     /** 数据是否已初始化。 */

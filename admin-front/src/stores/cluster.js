@@ -5,9 +5,14 @@ import {
   createNode,
   deleteAlarm,
   deleteNode,
+  fetchClusterOps,
   fetchClusterOverview,
+  fetchClusterSysLogs,
   simulateCapacity,
+  updateBackup,
+  updateBreaker,
   updateNode,
+  updateThresholds,
 } from '@/api/cluster'
 import { useAppStore } from './app'
 import { useUiStore } from './ui'
@@ -19,6 +24,11 @@ export const useClusterStore = defineStore('cluster', {
     error: '',
     data: null,
     acting: false,
+    /** 运维管理数据：熔断降级 / 备份策略 / 告警阈值 */
+    ops: null,
+    /** 系统日志检索结果 { logs: [...] } */
+    sysLogs: null,
+    logsLoading: false,
   }),
   actions: {
     /** 统一执行：处理 loading / 成功提示 / 失败提示 / 自动刷新。 */
@@ -71,6 +81,44 @@ export const useClusterStore = defineStore('cluster', {
     },
     removeAlarm(id) {
       return this.run(() => deleteAlarm(id))
+    },
+    /* ------------------------------ 运维管理 / 系统日志 ------------------------------ */
+    /** 拉取运维管理数据（熔断 / 备份 / 阈值），独立于主大盘。 */
+    async loadOps() {
+      try {
+        this.ops = await fetchClusterOps()
+      } catch {
+        // 辅助区块：失败静默，保留空态
+      }
+    },
+    /** 按级别 / 分类检索系统日志（均可空）。 */
+    async loadSysLogs(params = {}) {
+      this.logsLoading = true
+      try {
+        this.sysLogs = await fetchClusterSysLogs(params)
+      } catch (error) {
+        useUiStore().error(`系统日志加载失败：${error.message}`)
+      } finally {
+        this.logsLoading = false
+      }
+    },
+    /** 更新熔断器状态与启用，成功后回读运维数据。 */
+    async setBreaker(payload) {
+      const result = await this.run(() => updateBreaker(payload))
+      await this.loadOps()
+      return result
+    },
+    /** 更新备份策略启用，成功后回读运维数据。 */
+    async setBackup(payload) {
+      const result = await this.run(() => updateBackup(payload))
+      await this.loadOps()
+      return result
+    },
+    /** 更新资源告警阈值（cpu / mem / gpu），成功后回读运维数据。 */
+    async setThresholds(cpu, mem, gpu) {
+      const result = await this.run(() => updateThresholds(cpu, mem, gpu))
+      await this.loadOps()
+      return result
     },
   },
 })

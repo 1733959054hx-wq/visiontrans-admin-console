@@ -16,3 +16,7 @@ export const createSlot = (payload) => request.post('/ads/slots', payload)
 export const updateSlot = (payload) => request.put('/ads/slots', payload)
 
 export const deleteSlot = (id) => request.delete(`/ads/slots/${id}`)
+
+/** 上架 / 下架广告位。 */
+export const updateSlotOnline = (id, online) =>
+  request.patch(`/ads/slots/${id}/online`, null, { params: { online } })

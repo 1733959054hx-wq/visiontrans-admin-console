@@ -1,21 +1,30 @@
 package com.gzu.adminconsole.service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import com.gzu.adminconsole.common.BusinessException;
 import com.gzu.adminconsole.common.DateRange;
 import com.gzu.adminconsole.common.TrendUtils;
+import com.gzu.adminconsole.config.AdminContext;
 import com.gzu.adminconsole.dto.ads.AdOverviewVO;
 import com.gzu.adminconsole.dto.ads.FrequencyUpdateRequest;
 import com.gzu.adminconsole.dto.common.KpiMetric;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
 import com.gzu.adminconsole.model.AdSlot;
+import com.gzu.adminconsole.model.AuditLogEntry;
 import com.gzu.adminconsole.model.FrequencyCap;
 import com.gzu.adminconsole.repository.AdRepository;
 import com.gzu.adminconsole.repository.MetricRepository;
+import com.gzu.adminconsole.repository.SecurityRepository;
 
 /**
  * 全网广告位排期与调度引擎 ViewModel 层。
@@ -25,13 +34,25 @@ public class AdService {
 
     /** eCPM 矩阵最大值（用于色阶归一化）。 */
     private static final int MAX_ECPM = 92;
+    /** 每次调度请求折算的素材曝光次数。 */
+    private static final long IMPRESSIONS_PER_REQUEST = 3;
+    /** 行业基准点击率（用于折算点击量）。 */
+    private static final double BASE_CTR = 0.068;
+
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    /** 无法从会话中识别操作人时的占位值。 */
+    private static final String UNKNOWN = "未知";
+    /** 反向代理透传客户端 IP 的请求头。 */
+    private static final String FORWARDED_FOR = "X-Forwarded-For";
 
     private final AdRepository repository;
     private final MetricRepository metrics;
+    private final SecurityRepository securityRepository;
 
-    public AdService(AdRepository repository, MetricRepository metrics) {
+    public AdService(AdRepository repository, MetricRepository metrics, SecurityRepository securityRepository) {
         this.repository = repository;
         this.metrics = metrics;
+        this.securityRepository = securityRepository;
     }
 
     /** 广告排期大盘视图模型（可按排期日期范围过滤甘特图，yyyy-MM-dd）。 */
@@ -52,6 +73,10 @@ public class AdService {
                 .filter(s -> "已售罄".equals(s.status()) || s.ratio() >= 90)
                 .count();
 
+        // 曝光 / 点击 / 点击率：以真实调度请求数按确定性系数折算（每次调度 3 次曝光 · 点击率 6.8%）
+        long impressions = requests * IMPRESSIONS_PER_REQUEST;
+        long clicks = Math.round(impressions * BASE_CTR);
+
         List<KpiMetric> kpis = List.of(
                 new KpiMetric("在售广告位", String.format("%,d", onSale), null, "fa-rectangle-ad", "#1E3A8A",
                         "#2563EB", null, null, null,
@@ -70,7 +95,20 @@ public class AdService {
                         "#10B981", deltaOf(requestTrend), rising(requestTrend), "green",
                         "平均决策 " + String.format("%.1f", decisionMs) + "ms · 填充率 "
                                 + String.format("%.1f", fillRate) + "%",
-                        requestTrend));
+                        requestTrend),
+                new KpiMetric("曝光量", String.format("%,d", impressions), null, "fa-eye", "#1E3A8A",
+                        "#0EA5E9", null, null, null,
+                        "调度请求 × " + IMPRESSIONS_PER_REQUEST + " 次素材曝光折算",
+                        trend(impressions)),
+                new KpiMetric("点击量", String.format("%,d", clicks), null, "fa-mouse-pointer", "#065F46",
+                        "#10B981", null, null, null,
+                        "按行业基准点击率 " + String.format("%.1f", BASE_CTR * 100) + "% 估算",
+                        trend(clicks)),
+                new KpiMetric("点击率", String.format("%.2f", clicks * 100.0 / Math.max(1, impressions)), " %",
+                        "fa-chart-line", "#B45309", "#F59E0B", null, null, null,
+                        "点击量 / 曝光量 · 在线广告位 "
+                                + slots.stream().filter(AdSlot::online).count() + " 个",
+                        trend(clicks * 100.0 / Math.max(1, impressions))));
 
         List<String> days = repository.findDays(start, end);
         return new AdOverviewVO(kpis, days, slotRows(days.size()), caps(),
@@ -114,12 +152,14 @@ public class AdService {
             throw new BusinessException("取值超出范围：0 ~ " + cap.max());
         }
         repository.updateCap(cap.withValue(request.value()));
+        writeLog("广告频控配置", "「" + cap.name() + "」更新为 " + request.value());
         return ActionResultVO.ok("「" + cap.name() + "」已更新为 " + request.value(), cap.name());
     }
 
     /** 采纳 AI 调优建议。 */
     public ActionResultVO adoptAdvice() {
         repository.setAdviceAdopted(true);
+        writeLog("AI 调优建议", "采纳建议：「机场 × EN↔ZH」溢价 12%");
         return ActionResultVO.ok("已采纳 AI 建议：「机场 × EN↔ZH」溢价 12%", "机场 × EN↔ZH");
     }
 
@@ -129,6 +169,7 @@ public class AdService {
             throw new BusinessException("广告位名称不能为空");
         }
         repository.insertSlot(slot);
+        writeLog("广告位排期维护", "新增广告位「" + slot.name() + "」");
         return ActionResultVO.ok("广告位「" + slot.name() + "」已创建", slot.name());
     }
 
@@ -138,13 +179,29 @@ public class AdService {
             throw new BusinessException("缺少广告位主键，无法更新");
         }
         repository.updateSlot(slot);
+        writeLog("广告位排期维护", "更新广告位「" + slot.name() + "」");
         return ActionResultVO.ok("广告位「" + slot.name() + "」已更新", slot.name());
     }
 
     /** 删除广告位。 */
     public ActionResultVO deleteSlot(Long id) {
         repository.deleteSlot(id);
+        writeLog("广告位排期维护", "删除广告位 #" + id);
         return ActionResultVO.ok("广告位 #" + id + " 已删除", String.valueOf(id));
+    }
+
+    /** 上线 / 下线广告位：online = true 上线 / false 下线（重复操作时拒绝）。 */
+    public ActionResultVO toggleSlotOnline(Long id, boolean online) {
+        AdSlot slot = repository.findSlot(id);
+        if (slot == null) {
+            throw new BusinessException("未找到广告位 #" + id);
+        }
+        if (slot.online() == online) {
+            throw new BusinessException("广告位「" + slot.name() + "」已处于" + (online ? "上线" : "下线") + "状态");
+        }
+        repository.updateSlotOnline(id, online);
+        writeLog("广告位上下线", "广告位「" + slot.name() + "」已" + (online ? "上线" : "下线"));
+        return ActionResultVO.ok("广告位「" + slot.name() + "」已" + (online ? "上线" : "下线"), slot.name());
     }
 
     private List<AdOverviewVO.AdSlotRow> slotRows(int dayCount) {
@@ -168,7 +225,7 @@ public class AdService {
                 default -> "amber";
             };
             rows.add(new AdOverviewVO.AdSlotRow(slot.id(), slot.name(), slot.status(), slot.color(),
-                    slot.remain(), tone, cells));
+                    slot.remain(), tone, cells, slot.online()));
         }
         return rows;
     }
@@ -203,5 +260,33 @@ public class AdService {
         return new AdOverviewVO.AdviceCard(
                 "「机场 × EN↔ZH」eCPM 指数最高，建议提升该组合溢价 12% 并追加预算",
                 repository.isAdviceAdopted());
+    }
+
+    private void writeLog(String action, String detail) {
+        AdminContext.CurrentAdmin admin = AdminContext.get();
+        String name = admin == null ? UNKNOWN : admin.name();
+        String role = admin == null ? UNKNOWN : admin.roleName();
+        String group = admin == null ? UNKNOWN : admin.groupName();
+        AuditLogEntry entry = AuditLogEntry.of(now(), name, role, group, action, detail, clientIp(), "成功");
+        securityRepository.pushAuditLog(entry);
+    }
+
+    /** 真实来源 IP：优先取反向代理透传的 X-Forwarded-For 首段。 */
+    private String clientIp() {
+        ServletRequestAttributes attrs =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attrs == null) {
+            return UNKNOWN;
+        }
+        HttpServletRequest request = attrs.getRequest();
+        String forwarded = request.getHeader(FORWARDED_FOR);
+        if (forwarded == null || forwarded.isBlank()) {
+            return request.getRemoteAddr();
+        }
+        return forwarded.split(",")[0].trim();
+    }
+
+    private static String now() {
+        return LocalDateTime.now().format(FORMATTER);
     }
 }

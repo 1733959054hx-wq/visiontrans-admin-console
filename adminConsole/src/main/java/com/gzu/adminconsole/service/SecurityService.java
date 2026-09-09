@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,10 +22,14 @@ import com.gzu.adminconsole.common.TrendUtils;
 import com.gzu.adminconsole.config.AdminContext;
 import com.gzu.adminconsole.config.AppProperties;
 import com.gzu.adminconsole.dto.common.KpiMetric;
+import com.gzu.adminconsole.dto.common.ToggleItem;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
 import com.gzu.adminconsole.dto.security.PermissionUpdateRequest;
 import com.gzu.adminconsole.dto.security.SecurityOverviewVO;
+import com.gzu.adminconsole.dto.security.SysConfigVO;
+import com.gzu.adminconsole.dto.security.SysConfigVO.ParamItem;
 import com.gzu.adminconsole.model.AdminUser;
+import com.gzu.adminconsole.model.AppUser;
 import com.gzu.adminconsole.model.AuditLogEntry;
 import com.gzu.adminconsole.model.DeviceRecord;
 import com.gzu.adminconsole.model.MembershipPlan;
@@ -32,6 +37,7 @@ import com.gzu.adminconsole.model.PermGroup;
 import com.gzu.adminconsole.model.Permission;
 import com.gzu.adminconsole.model.RoleDomain;
 import com.gzu.adminconsole.repository.MetricRepository;
+import com.gzu.adminconsole.repository.OpsRepository;
 import com.gzu.adminconsole.repository.SecurityRepository;
 
 /**
@@ -105,8 +111,9 @@ public class SecurityService {
                         "区块链存证 · 累计 " + formatCount(repository.totalLogs(null, null)) + " 条",
                         logTrend));
 
-        return new SecurityOverviewVO(kpis, roleTree(), deviceRows(devices), plans(), auditLogs(page, size, start, end),
-                admins(), repository.findPolicies(), mapCard(), pagination(page, size, start, end));
+        return new SecurityOverviewVO(kpis, roleTree(), deviceRows(devices), plans(), appUsers(),
+                auditLogs(page, size, start, end), admins(), repository.findPolicies(), mapCard(),
+                pagination(page, size, start, end));
     }
 
     /* ------------------------------ 设备 ------------------------------ */
@@ -262,6 +269,74 @@ public class SecurityService {
         return ActionResultVO.ok("安全策略「" + name + "」已" + (enabled ? "开启" : "关闭"), name);
     }
 
+    /* ---------------------------- C 端用户管理 ---------------------------- */
+
+    /** 修改 C 端用户（会员状态 / 启停用）。 */
+    public ActionResultVO updateAppUser(AppUser user) {
+        if (user == null || user.id() == null) {
+            throw new BusinessException("缺少用户主键，无法更新");
+        }
+        AppUser current = repository.findAppUser(user.id());
+        if (current == null) {
+            throw new BusinessException("未找到 C 端用户 #" + user.id());
+        }
+        repository.updateAppUser(new AppUser(current.id(), current.account(), current.regSource(),
+                user.membership(), current.registered(), current.lastActive(), user.status()));
+        writeLog("C 端用户管理", "更新用户「" + current.account() + "」（会员 " + user.membership()
+                + " · 状态 " + user.status() + "）");
+        return ActionResultVO.ok("用户「" + current.account() + "」已更新", current.account());
+    }
+
+    /* ---------------------------- 系统配置 ---------------------------- */
+
+    /** 系统配置视图：运行参数 + C 端功能开关。 */
+    public SysConfigVO sysConfig() {
+        List<SysConfigVO.ParamItem> params = List.of(
+                new SysConfigVO.ParamItem(SecurityRepository.KEY_RATE_LIMIT, "接口限流阈值",
+                        settingOrDefault(SecurityRepository.KEY_RATE_LIMIT), "次/分钟"),
+                new SysConfigVO.ParamItem(SecurityRepository.KEY_SESSION_TTL, "会话超时时间",
+                        settingOrDefault(SecurityRepository.KEY_SESSION_TTL), "小时"),
+                new SysConfigVO.ParamItem(OpsRepository.KEY_THRESHOLD_CPU, "CPU 利用率告警阈值",
+                        settingOrDefault(OpsRepository.KEY_THRESHOLD_CPU), "%"),
+                new SysConfigVO.ParamItem(OpsRepository.KEY_THRESHOLD_MEM, "内存利用率告警阈值",
+                        settingOrDefault(OpsRepository.KEY_THRESHOLD_MEM), "%"),
+                new SysConfigVO.ParamItem(OpsRepository.KEY_THRESHOLD_GPU, "GPU 利用率告警阈值",
+                        settingOrDefault(OpsRepository.KEY_THRESHOLD_GPU), "%"));
+        return new SysConfigVO(params, repository.findToggles(SecurityRepository.GROUP_FEATURES));
+    }
+
+    /** 修改运行参数（仅超级管理员，参数名必须在白名单内且值为整数）。 */
+    public ActionResultVO updateSysParam(String name, String value) {
+        Set<String> allowed = Set.of(SecurityRepository.KEY_RATE_LIMIT, SecurityRepository.KEY_SESSION_TTL,
+                OpsRepository.KEY_THRESHOLD_CPU, OpsRepository.KEY_THRESHOLD_MEM, OpsRepository.KEY_THRESHOLD_GPU);
+        if (!allowed.contains(name)) {
+            throw new BusinessException("不支持的运行参数：" + name);
+        }
+        requireText(value, "参数值");
+        String trimmed = value.trim();
+        try {
+            Integer.parseInt(trimmed);
+        } catch (NumberFormatException e) {
+            throw new BusinessException("参数值必须为整数：" + value);
+        }
+        repository.setSetting(name, trimmed);
+        writeLog("系统配置维护", "运行参数 " + name + " 调整为 " + trimmed);
+        return ActionResultVO.ok("参数 " + name + " 已更新为 " + trimmed, name);
+    }
+
+    /** 切换 C 端功能开关（仅超级管理员）。 */
+    public ActionResultVO updateFeature(String name, boolean enabled) {
+        repository.updateToggle(name, enabled);
+        writeLog("系统配置维护", (enabled ? "开启" : "关闭") + "C 端功能「" + name + "」");
+        return ActionResultVO.ok("功能「" + name + "」已" + (enabled ? "开启" : "关闭"), name);
+    }
+
+    /** 设置项缺省时显示占位值，避免前端渲染出 null。 */
+    private String settingOrDefault(String key) {
+        String value = repository.getSetting(key);
+        return value == null || value.isBlank() ? "-" : value;
+    }
+
     /* ---------------------------- RBAC 授权 ---------------------------- */
 
     /** 更新 RBAC 三态授权。 */
@@ -347,6 +422,14 @@ public class SecurityService {
         return repository.findPlans().stream()
                 .map(p -> new SecurityOverviewVO.PlanRow(p.name(), p.price(), p.desc(), p.quota(),
                         p.subscribers(), p.usage()))
+                .toList();
+    }
+
+    /** C 端用户账号行。 */
+    private List<SecurityOverviewVO.AppUserRow> appUsers() {
+        return repository.findAppUsers().stream()
+                .map(u -> new SecurityOverviewVO.AppUserRow(u.id(), u.account(), u.regSource(), u.membership(),
+                        u.registered(), u.lastActive(), u.status()))
                 .toList();
     }
 

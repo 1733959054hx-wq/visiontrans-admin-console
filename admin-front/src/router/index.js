@@ -66,6 +66,12 @@ const router = createRouter({
       meta: { title: '安全风控、设备审计与 RBAC 权限', roles: ADMIN_ROLES },
     },
     {
+      path: '/finance',
+      name: 'a11',
+      component: () => import('@/views/FinanceOrderView.vue'),
+      meta: { title: '财务订单与商户结算中心', roles: ADMIN_ROLES },
+    },
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/cluster',
     },

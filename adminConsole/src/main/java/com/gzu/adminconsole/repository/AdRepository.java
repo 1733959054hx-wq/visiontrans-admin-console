@@ -96,6 +96,17 @@ public class AdRepository {
         }
     }
 
+    /** 上线 / 下线广告位（幂等覆盖）。 */
+    @Transactional
+    public void updateSlotOnline(Long id, boolean online) {
+        AdSlotEntity entity = em.find(AdSlotEntity.class, id);
+        if (entity == null) {
+            return;
+        }
+        entity.setOnline(online);
+        em.merge(entity);
+    }
+
     /** 全部频控项。 */
     public List<FrequencyCap> findCaps() {
         return em.createQuery("select c from FrequencyCapEntity c order by c.sortOrder", FrequencyCapEntity.class)
@@ -181,6 +192,7 @@ public class AdRepository {
     }
 
     private AdSlot toSlotModel(AdSlotEntity s) {
-        return new AdSlot(s.getId(), s.getName(), s.getStatus(), s.getColor(), s.getRemain(), s.getRatio());
+        return new AdSlot(s.getId(), s.getName(), s.getStatus(), s.getColor(), s.getRemain(), s.getRatio(),
+                s.getOnline() == null || s.getOnline());
     }
 }
