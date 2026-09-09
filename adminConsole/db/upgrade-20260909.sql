@@ -1,11 +1,18 @@
 -- 2026-09-09 功能补齐数据库迁移：后台管理端对齐三级功能清单
 -- 用法：mysql -ushixun -p shixun < upgrade-20260909.sql
--- 幂等性说明：新表用 CREATE TABLE IF NOT EXISTS；ad_slot.online 加列前先查列是否存在（MySQL 8 不支持 ADD COLUMN IF NOT EXISTS，重复执行请忽略 Duplicate column 报错）
+-- 幂等性说明：整份脚本可安全重复执行（新表 IF NOT EXISTS，加列前自动判断列是否存在）
 
 USE shixun;
 
--- 1. 广告位上下线字段（P4）
-ALTER TABLE `ad_slot` ADD COLUMN `online` bit(1) DEFAULT b'1';
+-- 1. 广告位上下线字段（P4）：列已存在时自动跳过
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = 'shixun' AND TABLE_NAME = 'ad_slot' AND COLUMN_NAME = 'online');
+SET @ddl = IF(@col_exists = 0,
+    'ALTER TABLE `ad_slot` ADD COLUMN `online` bit(1) DEFAULT b''1''',
+    'SELECT ''ad_slot.online 已存在，跳过''');
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 UPDATE `ad_slot` SET `online` = b'1' WHERE `online` IS NULL;
 
 -- 2. C 端订单（P1）
