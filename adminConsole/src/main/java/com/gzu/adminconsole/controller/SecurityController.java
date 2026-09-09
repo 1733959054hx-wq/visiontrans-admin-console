@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.gzu.adminconsole.common.Result;
 import com.gzu.adminconsole.config.RequireRole;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
+import com.gzu.adminconsole.dto.security.AppUserPageVO;
+import com.gzu.adminconsole.dto.security.MenuAccessVO;
 import com.gzu.adminconsole.dto.security.PermissionUpdateRequest;
 import com.gzu.adminconsole.dto.security.SecurityOverviewVO;
 import com.gzu.adminconsole.dto.security.SysConfigVO;
@@ -89,6 +91,13 @@ public class SecurityController {
         return Result.ok(service.deleteDevice(fingerprint));
     }
 
+    /** 移除指定设备的登录态（踢下线，运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
+    @PostMapping("/devices/{fingerprint}/kick")
+    public Result<ActionResultVO> kickDevice(@PathVariable String fingerprint) {
+        return Result.ok(service.kickDevice(fingerprint));
+    }
+
     /* ------------------------------ 套餐 CRUD ------------------------------ */
 
     /** 新增会员套餐（运营管理员及以上）。 */
@@ -114,11 +123,38 @@ public class SecurityController {
 
     /* ------------------------------ C 端用户 ------------------------------ */
 
+    /** C 端用户列表（服务端条件筛选 + 分页）。 */
+    @GetMapping("/app-users")
+    public Result<AppUserPageVO> appUsers(@RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String regSource,
+            @RequestParam(required = false) String membership,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return Result.ok(service.appUsers(keyword, regSource, membership, status, page, size));
+    }
+
     /** 修改 C 端用户（会员状态 / 启停用，运营管理员及以上）。 */
     @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
     @PutMapping("/app-users")
     public Result<ActionResultVO> updateAppUser(@RequestBody AppUser user) {
         return Result.ok(service.updateAppUser(user));
+    }
+
+    /* ---------------------------- 菜单权限配置 ---------------------------- */
+
+    /** 菜单 × 角色可见性矩阵。 */
+    @GetMapping("/menu-permissions")
+    public Result<MenuAccessVO> menuPermissions() {
+        return Result.ok(service.menuAccess());
+    }
+
+    /** 切换某角色对某菜单的可见性（仅超级管理员）。 */
+    @RequireRole("SUPER_ADMIN")
+    @PutMapping("/menu-permissions")
+    public Result<ActionResultVO> updateMenuPermission(@RequestParam String roleCode, @RequestParam String menuId,
+            @RequestParam boolean visible) {
+        return Result.ok(service.updateMenuPermission(roleCode, menuId, visible));
     }
 
     /* ------------------------------ 系统配置 ------------------------------ */

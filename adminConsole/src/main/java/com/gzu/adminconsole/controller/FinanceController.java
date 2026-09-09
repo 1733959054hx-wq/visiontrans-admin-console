@@ -64,4 +64,21 @@ public class FinanceController {
                                                 @RequestParam boolean approved) {
         return Result.ok(service.reviewInvoice(id, approved));
     }
+
+    /* ------------------------------ 商户入驻审核 ------------------------------ */
+
+    /** 入驻审核：approved = true 通过 / false 驳回（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
+    @PostMapping("/onboardings/{id}/review")
+    public Result<ActionResultVO> reviewOnboarding(@PathVariable Long id,
+                                                   @RequestParam boolean approved) {
+        return Result.ok(service.reviewOnboarding(id, approved));
+    }
+
+    /** 标记平台合作协议已签署（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
+    @PostMapping("/onboardings/{id}/sign")
+    public Result<ActionResultVO> signOnboarding(@PathVariable Long id) {
+        return Result.ok(service.signOnboardingContract(id));
+    }
 }

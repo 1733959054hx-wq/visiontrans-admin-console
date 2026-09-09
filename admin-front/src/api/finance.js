@@ -16,3 +16,12 @@ export const settleSettlement = (id) => request.post(`/finance/settlements/${id}
 /** B 端发票审核：approved = true 通过 / false 驳回。 */
 export const reviewInvoice = (id, approved) =>
   request.post(`/finance/invoices/${id}/review`, null, { params: { approved } })
+
+/* ------------------------------ 商户入驻审核 ------------------------------ */
+
+/** 入驻审核：approved = true 通过 / false 驳回。 */
+export const reviewOnboarding = (id, approved) =>
+  request.post(`/finance/onboardings/${id}/review`, null, { params: { approved } })
+
+/** 标记平台合作协议已签署。 */
+export const signOnboarding = (id) => request.post(`/finance/onboardings/${id}/sign`)

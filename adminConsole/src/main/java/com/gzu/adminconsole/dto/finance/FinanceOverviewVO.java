@@ -10,7 +10,25 @@ import com.gzu.adminconsole.dto.common.KpiMetric;
 public record FinanceOverviewVO(List<KpiMetric> kpis,
                                 List<OrderRow> orders,
                                 List<SettlementRow> settlements,
-                                List<InvoiceRow> invoices) {
+                                List<InvoiceRow> invoices,
+                                List<OnboardingRow> onboardings) {
+
+    /** 商户入驻申请行（资质提交 / 合同签署的后台审核）。 */
+    public record OnboardingRow(Long id,
+                                String applyNo,
+                                String merchantName,
+                                String licenseNo,
+                                String contact,
+                                String phone,
+                                String qualification,
+                                String contractStatus,
+                                String contractTone,
+                                String status,
+                                String statusTone,
+                                String submitted,
+                                String reviewer,
+                                String remark) {
+    }
 
     /** C 端订单行。 */
     public record OrderRow(Long id,

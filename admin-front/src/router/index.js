@@ -5,12 +5,29 @@ import { MERCHANT_ROLE } from '@/jingchen/config'
 // 模块路由由各模块自行维护后在此注册（商户模块：src/jingchen/router）
 import { merchantRoutes } from '@/jingchen/router'
 
-/** 后台管理角色：可访问 a6 ~ a10 全部页面 */
+/** 后台管理角色：可访问 a6 ~ a11 全部页面（具体可见范围以后端下发的菜单为准） */
 const ADMIN_ROLES = ['SUPER_ADMIN', 'OPERATIONS', 'AUDITOR']
 
-/** 按角色返回登录后的落地页：商户进商户工作台，其余进集群大盘 */
+/**
+ * 按角色返回登录后的落地页：
+ * 商户进商户工作台；管理员进「后端按角色下发的菜单」中的第一项，
+ * 菜单尚未加载时回退到 /cluster。
+ */
 function homeFor(roleCode) {
-  return roleCode === MERCHANT_ROLE ? '/merchant' : '/cluster'
+  if (roleCode === MERCHANT_ROLE) return '/merchant'
+  const app = useAppStore()
+  const first = app.nav.groups?.find((g) => g.items?.length)?.items[0]
+  if (!first) return '/cluster'
+  try {
+    return router.resolve({ name: first.id }).path
+  } catch {
+    return '/cluster'
+  }
+}
+
+/** 是否为后台管理端页面（商户路由的 meta.roles 只含 MERCHANT） */
+function isAdminPage(route) {
+  return Array.isArray(route.meta.roles) && !route.meta.roles.includes(MERCHANT_ROLE)
 }
 
 /**
@@ -103,6 +120,17 @@ router.beforeEach(async (to) => {
   const allowed = to.meta.roles
   if (allowed && allowed.length && !allowed.includes(auth.roleCode)) {
     return { path: homeFor(auth.roleCode) }
+  }
+  // 菜单权限兜底：后台页面必须出现在「当前角色可见的菜单」里。
+  // 菜单由后端 GET /api/meta/nav 按角色过滤下发，前端不再硬编码可见范围。
+  if (isAdminPage(to)) {
+    const app = useAppStore()
+    if (!app.nav.groups?.length) {
+      await app.loadMeta()
+    }
+    if (app.nav.groups?.length && !app.navContains(String(to.name))) {
+      return { path: homeFor(auth.roleCode) }
+    }
   }
   return true
 })

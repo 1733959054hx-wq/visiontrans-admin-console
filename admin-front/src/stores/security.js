@@ -8,11 +8,15 @@ import {
   deleteAdmin,
   deleteDevice,
   deletePlan,
+  fetchAppUsers,
+  fetchMenuPermissions,
   fetchSecurityOverview,
   fetchSysConfig,
+  kickDevice,
   updateAdmin,
   updateDevice,
   updateFeature,
+  updateMenuPermission,
   updatePermission,
   updatePlan,
   updatePolicy,
@@ -33,6 +37,14 @@ export const useSecurityStore = defineStore('security', {
     page: 1,
     /** 系统配置（运行参数 + 功能开关） */
     sysConfig: null,
+    /** C 端用户分页查询结果（服务端筛选 + 分页） */
+    appUsers: null,
+    appUsersLoading: false,
+    /** C 端用户筛选条件 */
+    userFilter: { keyword: '', regSource: '', membership: '', status: '' },
+    userPage: 1,
+    /** 菜单 × 角色可见性矩阵 */
+    menuAccess: null,
   }),
   actions: {
     /**
@@ -72,6 +84,10 @@ export const useSecurityStore = defineStore('security', {
     },
     ban(fingerprint) {
       return this.run(() => banDevice(fingerprint))
+    },
+    /** 移除指定设备的登录态（踢下线）。 */
+    kick(fingerprint) {
+      return this.run(() => kickDevice(fingerprint))
     },
     createDevice(payload) {
       return this.run(() => createDevice(payload))
@@ -142,6 +158,55 @@ export const useSecurityStore = defineStore('security', {
         }
         return { message: `已保存 ${payloads.length} 项权限配置` }
       })
+    },
+    /* ---------------------------- C 端用户分页 ---------------------------- */
+    /** 按条件加载 C 端用户（服务端筛选 + 分页）。 */
+    async loadAppUsers(page = this.userPage) {
+      this.appUsersLoading = true
+      this.userPage = page
+      try {
+        const { keyword, regSource, membership, status } = this.userFilter
+        this.appUsers = await fetchAppUsers({ keyword, regSource, membership, status, page, size: 10 })
+      } catch (error) {
+        useUiStore().error(`用户列表加载失败：${error.message}`)
+      } finally {
+        this.appUsersLoading = false
+      }
+    },
+    /** 变更筛选条件后统一回到第 1 页。 */
+    setUserFilter(filter) {
+      this.userFilter = { ...this.userFilter, ...filter }
+      return this.loadAppUsers(1)
+    },
+    /** C 端用户更新成功后刷新用户列表与大盘。 */
+    updateUser(payload) {
+      return this.run(async () => {
+        const result = await updateUser(payload)
+        await this.loadAppUsers(this.userPage)
+        return result
+      }, false)
+    },
+    /* ---------------------------- 菜单权限配置 ---------------------------- */
+    async loadMenuAccess() {
+      try {
+        this.menuAccess = await fetchMenuPermissions()
+      } catch (error) {
+        useUiStore().error(`菜单权限加载失败：${error.message}`)
+      }
+    },
+    /**
+     * 切换某角色对某菜单的可见性：本地先乐观更新，失败由 run 统一提示。
+     * 保存后刷新菜单，侧边栏立即按新权限渲染。
+     */
+    async setMenuVisible(roleCode, menuId, visible) {
+      const result = await this.run(async () => {
+        const res = await updateMenuPermission(roleCode, menuId, visible)
+        await this.loadMenuAccess()
+        // 菜单可见范围变化：重新拉取导航，侧边栏与路由守卫同步生效
+        await useAppStore().loadMeta()
+        return res
+      }, false)
+      return result
     },
   },
 })

@@ -97,6 +97,36 @@ const rejectInvoice = async (row) => {
     await store.review(row.id, false).catch(() => {})
   }
 }
+
+/* ------------------------------ 商户入驻审核 ------------------------------ */
+
+const filteredOnboardings = computed(() => (data.value?.onboardings || [])
+  .filter((m) => matchKeyword(m.applyNo, m.merchantName, m.licenseNo, m.contact, m.status)))
+
+const approveOnboarding = async (row) => {
+  if (await askConfirm(`确定通过商户「${row.merchantName}」的入驻申请？`, '入驻审核通过')) {
+    await store.reviewOnboarding(row.id, true).catch(() => {})
+  }
+}
+
+const rejectOnboarding = async (row) => {
+  if (await askConfirm(`确定驳回商户「${row.merchantName}」的入驻申请？`, '入驻审核驳回')) {
+    await store.reviewOnboarding(row.id, false).catch(() => {})
+  }
+}
+
+const signContract = async (row) => {
+  if (await askConfirm(`确定标记商户「${row.merchantName}」的平台合作协议已签署？`, '合同签署')) {
+    await store.signOnboarding(row.id).catch(() => {})
+  }
+}
+
+const exportOnboardings = () => {
+  exportCsv(`商户入驻-${stamp()}`,
+    ['申请号', '商户名称', '统一社会信用代码', '联系人', '联系电话', '资质文件', '合同状态', '审核状态', '提交时间', '审核人', '审核意见'],
+    filteredOnboardings.value.map((m) => [m.applyNo, m.merchantName, m.licenseNo, m.contact, m.phone,
+      m.qualification, m.contractStatus, m.status, m.submitted, m.reviewer, m.remark]))
+}
 </script>
 
 <template>
@@ -104,9 +134,12 @@ const rejectInvoice = async (row) => {
     <template v-if="data">
       <PageHeader
         title="财务订单与商户结算中心"
-        desc="C 端订单支付与退款处置 · 商户按账期对账分账 · B 端发票申请人工复核"
+        desc="C 端订单支付与退款处置 · 商户入驻资质与合同审核 · 按账期对账分账 · B 端发票申请人工复核"
       >
         <template #actions>
+          <button class="btn btn-ghost btn-sm" @click="exportOnboardings">
+            <i class="fa-solid fa-file-export"></i>导出入驻记录
+          </button>
           <button class="btn btn-primary btn-sm" @click="exportOrders">
             <i class="fa-solid fa-file-export"></i>导出订单 CSV
           </button>
@@ -197,6 +230,84 @@ const rejectInvoice = async (row) => {
               </tr>
               <tr v-if="!filteredOrders.length">
                 <td colspan="7" class="py-8 text-center text-[12px] text-sub">没有匹配的订单</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 商户入驻审核 -->
+      <div class="card anim mt-4">
+        <div class="card-h">
+          <div>
+            <div class="card-t">商户入驻审核</div>
+            <div class="card-s">资质文件与平台合作协议复核 · 合同未签署的申请不允许通过</div>
+          </div>
+          <StatusPill :text="`${filteredOnboardings.length} 条申请`" tone="blue" />
+        </div>
+        <div class="overflow-x-auto">
+          <table class="tb">
+            <thead>
+              <tr>
+                <th>申请号</th>
+                <th>商户名称</th>
+                <th>统一社会信用代码</th>
+                <th>联系人</th>
+                <th>资质文件</th>
+                <th>合同状态</th>
+                <th>审核状态</th>
+                <th>提交时间</th>
+                <th class="text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in filteredOnboardings" :key="row.id">
+                <td class="num text-[12px] font-medium">{{ row.applyNo }}</td>
+                <td class="text-[12.5px]">
+                  {{ row.merchantName }}
+                  <div class="text-[11px] text-sub">{{ row.phone }}</div>
+                </td>
+                <td class="num text-[11.5px] text-sub">{{ row.licenseNo }}</td>
+                <td class="text-[12px]">{{ row.contact }}</td>
+                <td class="text-[11.5px] text-sub">{{ row.qualification }}</td>
+                <td><StatusPill :text="row.contractStatus" :tone="row.contractTone || 'slate'" /></td>
+                <td>
+                  <StatusPill :text="row.status" :tone="row.statusTone || 'slate'" />
+                  <div v-if="row.reviewer !== '—'" class="mt-1 text-[10.5px] text-sub">
+                    {{ row.reviewer }}：{{ row.remark }}
+                  </div>
+                </td>
+                <td class="num text-[11.5px] text-sub">{{ row.submitted }}</td>
+                <td class="whitespace-nowrap text-right">
+                  <template v-if="row.status === '待审核'">
+                    <button
+                      v-if="row.contractStatus === '待签署'"
+                      class="btn btn-ghost btn-sm !px-2 !py-1"
+                      :disabled="store.acting"
+                      @click="signContract(row)"
+                    >
+                      <i class="fa-solid fa-file-signature"></i>标记签署
+                    </button>
+                    <button
+                      class="btn btn-ghost btn-sm !px-2 !py-1"
+                      :disabled="store.acting"
+                      @click="approveOnboarding(row)"
+                    >
+                      <i class="fa-solid fa-check text-emerald-600"></i>通过
+                    </button>
+                    <button
+                      class="btn btn-ghost btn-sm !px-2 !py-1"
+                      :disabled="store.acting"
+                      @click="rejectOnboarding(row)"
+                    >
+                      <i class="fa-solid fa-ban text-rose-500"></i>驳回
+                    </button>
+                  </template>
+                  <span v-else class="text-[11px] text-slate-300">已处理</span>
+                </td>
+              </tr>
+              <tr v-if="!filteredOnboardings.length">
+                <td colspan="9" class="py-8 text-center text-[12px] text-sub">暂无入驻申请</td>
               </tr>
             </tbody>
           </table>

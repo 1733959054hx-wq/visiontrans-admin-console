@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -12,7 +12,7 @@ const app = useAppStore()
 const auth = useAuthStore()
 const router = useRouter()
 
-const menus = computed(() => app.nav.items)
+const menus = computed(() => app.navItems)
 const topBar = ref(null)
 /** 商户只有顶部导航栏，不展示后台管理侧栏 */
 const showSideBar = computed(() => !auth.isMerchant)
@@ -41,7 +41,7 @@ function onKeydown(event) {
     topBar.value?.focusSearch()
   } else if (key === '?' || (key === '/' && event.shiftKey)) {
     app.toggleHelp()
-  } else if (!auth.isMerchant && ['1', '2', '3', '4', '5'].includes(key)) {
+  } else if (!auth.isMerchant && ['1', '2', '3', '4', '5', '6'].includes(key)) {
     // 数字键切换的是后台管理模块，商户无此菜单，直接忽略
     const target = menus.value[Number(key) - 1]
     if (target) router.push({ name: target.id })
@@ -139,7 +139,7 @@ function onKeydown(event) {
   min-width: 18px;
   padding: 1px 5px;
   margin-right: 4px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #E5EAF0;
   border-bottom-width: 2px;
   border-radius: 5px;
   background: #f8fafc;

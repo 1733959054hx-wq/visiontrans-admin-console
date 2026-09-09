@@ -48,6 +48,12 @@ public class MetricRepository {
         public static final String ADS_DECISION_MS = "ads.decision.ms";
         /** 广告：填充率（%，每天一条）。 */
         public static final String ADS_FILL_RATE = "ads.fill.rate";
+        /** 广告：曝光量（按小时）。 */
+        public static final String ADS_IMPRESSION_HOURLY = "ads.impression.hourly";
+        /** 广告：点击量（按小时）。 */
+        public static final String ADS_CLICK_HOURLY = "ads.click.hourly";
+        /** 广告：转化量（按小时）。 */
+        public static final String ADS_CONVERSION_HOURLY = "ads.conversion.hourly";
 
         private MetricKey() {
         }
@@ -60,6 +66,31 @@ public class MetricRepository {
     public long count() {
         Long count = em.createQuery("select count(m) from MetricSampleEntity m", Long.class).getSingleResult();
         return count == null ? 0L : count;
+    }
+
+    /** 单项指标的采样条数（用于老库升级时判断该指标是否需要补灌）。 */
+    public long countByKey(String metricKey) {
+        Long count = em.createQuery("select count(m) from MetricSampleEntity m where m.metricKey = :key",
+                        Long.class)
+                .setParameter("key", metricKey)
+                .getSingleResult();
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * 清理某指标在「同日 + 同时刻」下的重复采样（每组保留最早一条），返回删除行数。
+     *
+     * <p>用于老库升级补灌后的幂等修复：无重复时影响 0 行，可安全重复调用。
+     */
+    @Transactional
+    public int dedupHourlySamples(String metricKey) {
+        return em.createNativeQuery(
+                        "delete m1 from metric_sample m1"
+                        + " join metric_sample m2 on m1.metric_key = m2.metric_key"
+                        + " and m1.sample_date = m2.sample_date and m1.bucket_label = m2.bucket_label"
+                        + " and m1.id > m2.id where m1.metric_key = :key")
+                .setParameter("key", metricKey)
+                .executeUpdate();
     }
 
     /** 批量写入采样数据。 */

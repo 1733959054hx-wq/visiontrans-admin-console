@@ -5,7 +5,9 @@ import {
   handleOrder,
   reconcileSettlement,
   reviewInvoice,
+  reviewOnboarding,
   settleSettlement,
+  signOnboarding,
 } from '@/api/finance'
 import { useAppStore } from './app'
 import { useUiStore } from './ui'
@@ -62,6 +64,14 @@ export const useFinanceStore = defineStore('finance', {
     /** 发票审核（approved = true / false）。 */
     review(id, approved) {
       return this.run(() => reviewInvoice(id, approved))
+    },
+    /** 商户入驻审核（approved = true 通过 / false 驳回）。 */
+    reviewOnboarding(id, approved) {
+      return this.run(() => reviewOnboarding(id, approved))
+    },
+    /** 标记平台合作协议已签署。 */
+    signOnboarding(id) {
+      return this.run(() => signOnboarding(id))
     },
   },
 })

@@ -37,3 +37,14 @@ export const updateBackup = (payload) => request.put('/cluster/ops/backups', pay
 /** 更新资源告警阈值（cpu / mem / gpu）。 */
 export const updateThresholds = (cpu, mem, gpu) =>
   request.put('/cluster/ops/thresholds', null, { params: { cpu, mem, gpu } })
+
+/* ---------------------- 核心服务与第三方接口可用性 ---------------------- */
+
+/** 依赖服务可用性列表（响应耗时 / 可用率 / 最近拨测时间）。 */
+export const fetchDependencies = () => request.get('/cluster/dependencies')
+
+/** 对单个依赖服务发起一次真实拨测。 */
+export const probeDependency = (id) => request.post(`/cluster/dependencies/${id}/probe`)
+
+/** 一键拨测全部依赖服务。 */
+export const probeAllDependencies = () => request.post('/cluster/dependencies/probe-all')

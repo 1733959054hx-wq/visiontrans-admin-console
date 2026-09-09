@@ -22,7 +22,8 @@ const monthStart = () => {
  */
 export const useAppStore = defineStore('app', {
   state: () => ({
-    nav: { group: '', items: [] },
+    /** 导航菜单：按一级页面分组下发，已由后端按当前角色过滤 */
+    nav: { groups: [], roleCode: '' },
     system: null,
     sideCollapsed: false,
     metaLoading: false,
@@ -37,8 +38,14 @@ export const useAppStore = defineStore('app', {
     rangeVersion: 0,
   }),
   getters: {
+    /** 全部菜单项拍平（快捷切换、面包屑等场景）。 */
+    navItems: (state) => (state.nav.groups || []).flatMap((group) => group.items || []),
     /** 按路由名取菜单项元数据。 */
-    metaOf: (state) => (id) => state.nav.items.find((item) => item.id === id) || null,
+    metaOf: (state) => (id) =>
+      (state.nav.groups || []).flatMap((group) => group.items || []).find((item) => item.id === id) || null,
+    /** 指定路由名是否出现在当前角色可见的菜单中（路由守卫兜底用）。 */
+    navContains: (state) => (id) =>
+      (state.nav.groups || []).some((group) => (group.items || []).some((item) => item.id === id)),
     /** 大盘接口的日期范围查询参数（任一为空时不限）。 */
     rangeParams: (state) =>
       state.dateStart && state.dateEnd ? { start: state.dateStart, end: state.dateEnd } : {},

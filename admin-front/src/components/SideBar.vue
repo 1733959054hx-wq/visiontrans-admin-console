@@ -38,27 +38,36 @@ const route = useRoute()
       </div>
     </div>
 
-    <!-- 导航 -->
-    <div
-      class="relative z-10 px-4 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-    >
-      {{ app.nav.group }}
-    </div>
-    <nav class="relative z-10 flex-1 space-y-1 overflow-y-auto px-4 py-2">
-      <router-link
-        v-for="item in app.nav.items"
-        :key="item.id"
-        :to="{ name: item.id }"
-        class="nav-item"
-        :class="{ active: route.name === item.id }"
-      >
-        <span class="nav-ico"><i class="fa-solid" :class="item.icon"></i></span>
-        <span class="min-w-0 flex-1 leading-tight">
-          <span class="block truncate">{{ item.text }}</span>
-          <span class="nav-sub">{{ item.sub }}</span>
-        </span>
-        <i class="fa-solid fa-chevron-right ml-auto text-[9px] opacity-40"></i>
-      </router-link>
+    <!-- 导航：按一级页面分组渲染，菜单由后端按当前角色过滤下发 -->
+    <nav class="relative z-10 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+      <template v-if="app.nav.groups?.length">
+        <div v-for="group in app.nav.groups" :key="group.name">
+          <div
+            class="px-1 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
+          >
+            {{ group.name }}
+          </div>
+          <div class="space-y-1">
+            <router-link
+              v-for="item in group.items"
+              :key="item.id"
+              :to="{ name: item.id }"
+              class="nav-item"
+              :class="{ active: route.name === item.id }"
+            >
+              <span class="nav-ico"><i class="fa-solid" :class="item.icon"></i></span>
+              <span class="min-w-0 flex-1 leading-tight">
+                <span class="block truncate">{{ item.text }}</span>
+                <span class="nav-sub">{{ item.sub || group.sub }}</span>
+              </span>
+              <i class="fa-solid fa-chevron-right ml-auto text-[9px] opacity-40"></i>
+            </router-link>
+          </div>
+        </div>
+      </template>
+      <div v-else class="px-1 py-6 text-center text-[11.5px] text-sub">
+        当前角色没有可访问的菜单
+      </div>
     </nav>
 
     <!-- 当前管理员 -->

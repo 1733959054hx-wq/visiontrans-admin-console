@@ -24,6 +24,8 @@ import com.gzu.adminconsole.config.AppProperties;
 import com.gzu.adminconsole.dto.common.KpiMetric;
 import com.gzu.adminconsole.dto.common.ToggleItem;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
+import com.gzu.adminconsole.dto.security.AppUserPageVO;
+import com.gzu.adminconsole.dto.security.MenuAccessVO;
 import com.gzu.adminconsole.dto.security.PermissionUpdateRequest;
 import com.gzu.adminconsole.dto.security.SecurityOverviewVO;
 import com.gzu.adminconsole.dto.security.SysConfigVO;
@@ -33,10 +35,12 @@ import com.gzu.adminconsole.model.AppUser;
 import com.gzu.adminconsole.model.AuditLogEntry;
 import com.gzu.adminconsole.model.DeviceRecord;
 import com.gzu.adminconsole.model.MembershipPlan;
+import com.gzu.adminconsole.model.NavMenu;
 import com.gzu.adminconsole.model.PermGroup;
 import com.gzu.adminconsole.model.Permission;
 import com.gzu.adminconsole.model.RoleDomain;
 import com.gzu.adminconsole.repository.MetricRepository;
+import com.gzu.adminconsole.repository.NavRepository;
 import com.gzu.adminconsole.repository.OpsRepository;
 import com.gzu.adminconsole.repository.SecurityRepository;
 
@@ -52,17 +56,22 @@ public class SecurityService {
     /** 反向代理透传客户端 IP 的请求头。 */
     private static final String FORWARDED_FOR = "X-Forwarded-For";
 
+    /** C 端用户分页单页上限（防止一次性拉全表）。 */
+    private static final int MAX_APP_USER_PAGE_SIZE = 100;
+
     private final SecurityRepository repository;
     private final AppProperties properties;
     private final GeocodingService geocoding;
     private final MetricRepository metrics;
+    private final NavRepository navRepository;
 
     public SecurityService(SecurityRepository repository, AppProperties properties, GeocodingService geocoding,
-                           MetricRepository metrics) {
+                           MetricRepository metrics, NavRepository navRepository) {
         this.repository = repository;
         this.properties = properties;
         this.geocoding = geocoding;
         this.metrics = metrics;
+        this.navRepository = navRepository;
     }
 
     /** 安全风控大盘视图模型（首页）。 */
@@ -111,7 +120,7 @@ public class SecurityService {
                         "区块链存证 · 累计 " + formatCount(repository.totalLogs(null, null)) + " 条",
                         logTrend));
 
-        return new SecurityOverviewVO(kpis, roleTree(), deviceRows(devices), plans(), appUsers(),
+        return new SecurityOverviewVO(kpis, roleTree(), deviceRows(devices), plans(),
                 auditLogs(page, size, start, end), admins(), repository.findPolicies(), mapCard(),
                 pagination(page, size, start, end));
     }
@@ -130,6 +139,25 @@ public class SecurityService {
         repository.updateDevice(device.markBanned());
         writeLog("异常设备封禁", "封禁异常登录设备 " + fingerprint);
         return ActionResultVO.ok("设备 " + fingerprint + " 已封禁", fingerprint);
+    }
+
+    /**
+     * 移除指定设备的登录态（踢下线）：清除该设备上全部有效会话，但保留设备台账。
+     *
+     * <p>与「封禁」的区别：封禁是禁止再次登录，踢下线只结束当前已建立的会话。
+     */
+    public ActionResultVO kickDevice(String fingerprint) {
+        DeviceRecord device = repository.findDevice(fingerprint);
+        if (device == null) {
+            throw new BusinessException("未找到设备：" + fingerprint);
+        }
+        int removed = repository.kickDeviceSessions(fingerprint);
+        if (removed == 0) {
+            throw new BusinessException("设备 " + fingerprint + " 当前没有在线会话");
+        }
+        writeLog("移除设备登录态", "清除设备 " + fingerprint + " 上的 " + removed + " 个登录会话"
+                + (device.account() == null ? "" : "（账号 " + device.account() + "）"));
+        return ActionResultVO.ok("已移除设备 " + fingerprint + " 的 " + removed + " 个登录态", fingerprint);
     }
 
     /** 新增设备。 */
@@ -389,6 +417,70 @@ public class SecurityService {
         return ActionResultVO.ok("权限已更新并已写入审计日志", request.permissionName());
     }
 
+    /* ---------------------------- 菜单权限配置 ---------------------------- */
+
+    /**
+     * 菜单权限矩阵：每条菜单 × 每个后台管理角色的可见性。
+     *
+     * <p>菜单可见性由 {@code nav_menu.roles} 落库，{@code GET /api/meta/nav} 按当前角色过滤下发，
+     * 因此此处调整后侧边栏会真实生效（前端路由守卫同时按菜单兜底）。
+     */
+    public MenuAccessVO menuAccess() {
+        List<MenuAccessVO.RoleOption> roles = repository.findRoles().stream()
+                .map(role -> new MenuAccessVO.RoleOption(role.code(), role.name()))
+                .toList();
+        List<MenuAccessVO.MenuRow> menus = new ArrayList<>();
+        int order = 0;
+        for (NavMenu menu : navRepository.findAll()) {
+            List<MenuAccessVO.RoleVisible> visible = roles.stream()
+                    .map(role -> new MenuAccessVO.RoleVisible(role.code(), menu.visibleTo(role.code())))
+                    .toList();
+            menus.add(new MenuAccessVO.MenuRow(menu.id(), menu.text(),
+                    menu.groupName() == null || menu.groupName().isBlank() ? NavMenu.DEFAULT_GROUP : menu.groupName(),
+                    visible, order++));
+        }
+        return new MenuAccessVO(roles, menus);
+    }
+
+    /** 切换某角色对某菜单的可见性（不允许把最后可见的角色全部关闭）。 */
+    public ActionResultVO updateMenuPermission(String roleCode, String menuId, boolean visible) {
+        NavMenu menu = navRepository.findById(menuId);
+        if (menu == null) {
+            throw new BusinessException("未找到菜单：" + menuId);
+        }
+        boolean exists = repository.findRoles().stream()
+                .anyMatch(role -> role.code().equalsIgnoreCase(roleCode));
+        if (!exists) {
+            throw new BusinessException("未找到角色：" + roleCode);
+        }
+        List<String> current = new ArrayList<>();
+        if (menu.roles() != null && !menu.roles().isBlank()) {
+            for (String role : menu.roles().split(",")) {
+                String trimmed = role.trim();
+                if (!trimmed.isEmpty() && !trimmed.equalsIgnoreCase(roleCode)) {
+                    current.add(trimmed);
+                }
+            }
+        } else {
+            current.addAll(repository.findRoles().stream().map(RoleDomain::code).toList());
+        }
+        if (visible) {
+            current.add(roleCode);
+        } else if (current.isEmpty()) {
+            throw new BusinessException("至少保留一个可见角色，否则该菜单将无人可访问");
+        }
+        // 保持角色顺序稳定，避免每次保存都产生 diff
+        List<String> ordered = repository.findRoles().stream()
+                .map(RoleDomain::code)
+                .filter(current::contains)
+                .toList();
+        navRepository.updateMenuRoles(menuId, String.join(",", ordered));
+        writeLog("菜单权限配置", "菜单「" + menu.text() + "」对角色 " + roleCode + " "
+                + (visible ? "开放" : "关闭") + "访问");
+        return ActionResultVO.ok("菜单「" + menu.text() + "」已对 " + roleCode + (visible ? "开放" : "关闭"),
+                menuId);
+    }
+
     /* ------------------------------ 私有方法 ------------------------------ */
 
     private List<SecurityOverviewVO.RoleNode> roleTree() {
@@ -406,7 +498,9 @@ public class SecurityService {
     private List<SecurityOverviewVO.DeviceRow> deviceRows(List<DeviceRecord> devices) {
         return devices.stream()
                 .map(d -> new SecurityOverviewVO.DeviceRow(d.region(), d.ip(), d.fingerprint(), d.sessions(),
-                        d.risk(), d.verdict(), toneOf(d.verdict()), d.banned()))
+                        d.risk(), d.verdict(), toneOf(d.verdict()), d.banned(),
+                        d.account() == null || d.account().isBlank() ? "—" : d.account(),
+                        repository.countActiveSessions(d.fingerprint())))
                 .toList();
     }
 
@@ -425,12 +519,28 @@ public class SecurityService {
                 .toList();
     }
 
-    /** C 端用户账号行。 */
-    private List<SecurityOverviewVO.AppUserRow> appUsers() {
-        return repository.findAppUsers().stream()
-                .map(u -> new SecurityOverviewVO.AppUserRow(u.id(), u.account(), u.regSource(), u.membership(),
+    /**
+     * C 端用户分页查询：支持关键字与注册方式 / 会员状态 / 账号状态筛选，服务端分页。
+     *
+     * @param page 1 基页码，越界自动收敛到最后一页
+     */
+    public AppUserPageVO appUsers(String keyword, String regSource, String membership, String status,
+                                  int page, int size) {
+        int safeSize = Math.min(Math.max(1, size), MAX_APP_USER_PAGE_SIZE);
+        long total = repository.countAppUsers(keyword, regSource, membership, status);
+        int totalPages = Math.max(1, (int) Math.ceil((double) total / safeSize));
+        int safePage = Math.min(Math.max(1, page), totalPages);
+        List<AppUserPageVO.AppUserRow> rows = repository.findAppUsers(keyword, regSource, membership, status,
+                        safePage, safeSize).stream()
+                .map(u -> new AppUserPageVO.AppUserRow(u.id(), u.account(), u.regSource(), u.membership(),
                         u.registered(), u.lastActive(), u.status()))
                 .toList();
+        int from = total == 0 ? 0 : (safePage - 1) * safeSize + 1;
+        int to = (int) Math.min(total, (long) safePage * safeSize);
+        return new AppUserPageVO(rows, safePage, safeSize, total, totalPages,
+                "显示 " + from + "–" + to + " 条，共 " + formatCount(total) + " 条",
+                repository.appUserOptions("regSource"), repository.appUserOptions("membership"),
+                repository.appUserOptions("status"));
     }
 
     private List<SecurityOverviewVO.AuditLogRow> auditLogs(int page, int size, String start, String end) {

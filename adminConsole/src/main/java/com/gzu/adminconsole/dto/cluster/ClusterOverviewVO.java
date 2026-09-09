@@ -16,6 +16,8 @@ public record ClusterOverviewVO(List<KpiMetric> kpis,
                                 List<AlarmRow> alarms,
                                 /** 由 metric_sample 真实采样推导的实时告警（顶部消息铃铛） */
                                 List<AlarmRow> alerts,
+                                /** 核心服务与第三方接口可用性监控 */
+                                List<DependencyVO.DependencyRow> dependencies,
                                 Summary summary) {
 
     /** 节点健康度环形卡。 */

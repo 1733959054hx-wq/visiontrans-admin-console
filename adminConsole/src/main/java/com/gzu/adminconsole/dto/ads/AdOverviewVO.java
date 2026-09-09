@@ -14,7 +14,8 @@ public record AdOverviewVO(List<KpiMetric> kpis,
                            List<FrequencyCapRow> frequency,
                            List<ToggleItem> freqStrategies,
                            EcpmMatrix matrix,
-                           AdviceCard advice) {
+                           AdviceCard advice,
+                           RealtimeCard realtime) {
 
     /** 广告位库存甘特行。 */
     public record AdSlotRow(Long id, String name, String status, String color, String remain, String remainTone,
@@ -31,5 +32,24 @@ public record AdOverviewVO(List<KpiMetric> kpis,
 
     /** AI 调优建议。 */
     public record AdviceCard(String text, boolean adopted) {
+    }
+
+    /** 广告实时数据看板：曝光 / 点击 / 转化。 */
+    public record RealtimeCard(List<RealtimeMetric> metrics,
+                               List<String> hours,
+                               List<Double> impressions,
+                               List<Double> clicks,
+                               List<Double> conversions,
+                               List<SlotPerformance> topSlots,
+                               String updatedAt) {
+    }
+
+    /** 实时看板单项指标。 */
+    public record RealtimeMetric(String name, String value, String unit, String icon, String desc, String tone) {
+    }
+
+    /** 单个广告位的投放表现（按曝光降序）。 */
+    public record SlotPerformance(String name, long impressions, long clicks, long conversions, double ctr,
+                                  double cvr, String tone) {
     }
 }

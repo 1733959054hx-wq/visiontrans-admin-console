@@ -36,11 +36,14 @@ public class ClusterService {
     private final ClusterRepository repository;
     private final AppProperties properties;
     private final MetricRepository metrics;
+    private final DependencyService dependencies;
 
-    public ClusterService(ClusterRepository repository, AppProperties properties, MetricRepository metrics) {
+    public ClusterService(ClusterRepository repository, AppProperties properties, MetricRepository metrics,
+                          DependencyService dependencies) {
         this.repository = repository;
         this.properties = properties;
         this.metrics = metrics;
+        this.dependencies = dependencies;
     }
 
     /** 集群态势感知大盘视图模型（可按告警时间范围过滤，yyyy-MM-dd）。 */
@@ -112,7 +115,8 @@ public class ClusterService {
                 : 0;
         return new ClusterOverviewVO(kpis, health, latencyCard(start, end), qpsCard(start, end),
                 regions(nodes, Math.round(regionDelta * 10.0) / 10.0),
-                nodeRows(nodes, randomize), alarmRows(alarms), derivedAlerts(start, end), summary);
+                nodeRows(nodes, randomize), alarmRows(alarms), derivedAlerts(start, end),
+                dependencies.rows(), summary);
     }
 
     /* ------------------------------ 容器节点 ------------------------------ */

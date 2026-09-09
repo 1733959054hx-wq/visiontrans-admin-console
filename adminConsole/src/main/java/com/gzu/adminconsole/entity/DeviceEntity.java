@@ -34,6 +34,10 @@ public class DeviceEntity {
     @Column(name = "banned")
     private boolean banned;
 
+    /** 最近一次登录的 C 端账号：用于按设备移除登录态（踢下线）。 */
+    @Column(name = "account", length = 64)
+    private String account;
+
     @Column(name = "sort_order")
     private int sortOrder;
 
@@ -41,7 +45,7 @@ public class DeviceEntity {
     }
 
     public DeviceEntity(String fingerprint, String region, String ip, String sessions, int risk,
-                        String verdict, boolean banned, int sortOrder) {
+                        String verdict, boolean banned, String account, int sortOrder) {
         this.fingerprint = fingerprint;
         this.region = region;
         this.ip = ip;
@@ -49,6 +53,7 @@ public class DeviceEntity {
         this.risk = risk;
         this.verdict = verdict;
         this.banned = banned;
+        this.account = account;
         this.sortOrder = sortOrder;
     }
 
@@ -66,6 +71,8 @@ public class DeviceEntity {
     public void setVerdict(String verdict) { this.verdict = verdict; }
     public boolean isBanned() { return banned; }
     public void setBanned(boolean banned) { this.banned = banned; }
+    public String getAccount() { return account; }
+    public void setAccount(String account) { this.account = account; }
     public int getSortOrder() { return sortOrder; }
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
 }

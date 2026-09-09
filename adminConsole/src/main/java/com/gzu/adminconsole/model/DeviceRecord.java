@@ -10,6 +10,7 @@ package com.gzu.adminconsole.model;
  * @param risk        风险分（0-100）
  * @param verdict     判定：正常 / 可疑 / 异常
  * @param banned      是否已封禁
+ * @param account     最近一次登录的 C 端账号（用于「移除指定设备登录态」定位会话）
  */
 public record DeviceRecord(String region,
                            String ip,
@@ -17,10 +18,22 @@ public record DeviceRecord(String region,
                            String sessions,
                            int risk,
                            String verdict,
-                           boolean banned) {
+                           boolean banned,
+                           String account) {
+
+    /** 兼容历史调用（未记录关联账号）。 */
+    public DeviceRecord(String region, String ip, String fingerprint, String sessions, int risk, String verdict,
+                        boolean banned) {
+        this(region, ip, fingerprint, sessions, risk, verdict, banned, null);
+    }
 
     /** 复制一份并替换为已封禁状态（避免与记录访问器 banned() 重名）。 */
     public DeviceRecord markBanned() {
-        return new DeviceRecord(region, ip, fingerprint, sessions, risk, "已封禁", true);
+        return new DeviceRecord(region, ip, fingerprint, sessions, risk, "已封禁", true, account);
+    }
+
+    /** 复制一份并替换关联账号。 */
+    public DeviceRecord withAccount(String newAccount) {
+        return new DeviceRecord(region, ip, fingerprint, sessions, risk, verdict, banned, newAccount);
     }
 }

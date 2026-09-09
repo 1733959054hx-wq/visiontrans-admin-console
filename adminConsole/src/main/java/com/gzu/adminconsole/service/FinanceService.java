@@ -17,11 +17,13 @@ import com.gzu.adminconsole.config.AdminContext;
 import com.gzu.adminconsole.dto.common.KpiMetric;
 import com.gzu.adminconsole.dto.finance.FinanceOverviewVO;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
+import com.gzu.adminconsole.entity.MerchantOnboardingEntity;
 import com.gzu.adminconsole.model.AuditLogEntry;
 import com.gzu.adminconsole.model.CustomerOrder;
 import com.gzu.adminconsole.model.InvoiceApplication;
 import com.gzu.adminconsole.model.SettlementRecord;
 import com.gzu.adminconsole.repository.FinanceRepository;
+import com.gzu.adminconsole.repository.OnboardingRepository;
 import com.gzu.adminconsole.repository.SecurityRepository;
 
 /**
@@ -38,10 +40,13 @@ public class FinanceService {
 
     private final FinanceRepository repository;
     private final SecurityRepository securityRepository;
+    private final OnboardingRepository onboardingRepository;
 
-    public FinanceService(FinanceRepository repository, SecurityRepository securityRepository) {
+    public FinanceService(FinanceRepository repository, SecurityRepository securityRepository,
+                          OnboardingRepository onboardingRepository) {
         this.repository = repository;
         this.securityRepository = securityRepository;
+        this.onboardingRepository = onboardingRepository;
     }
 
     /** 财务订单大盘视图模型。 */
@@ -81,7 +86,67 @@ public class FinanceService {
                         "已对账未结算合计 · 对账周期 T+1",
                         trend(pendingSettle)));
 
-        return new FinanceOverviewVO(kpis, orderRows(orders), settlementRows(settlements), invoiceRows(invoices));
+        return new FinanceOverviewVO(kpis, orderRows(orders), settlementRows(settlements), invoiceRows(invoices),
+                onboardingRows());
+    }
+
+    /* ---------------------------- 商户入驻审核 ---------------------------- */
+
+    /** 商户入驻申请列表（资质与合同签署状态）。 */
+    private List<FinanceOverviewVO.OnboardingRow> onboardingRows() {
+        return onboardingRepository.findAll().stream()
+                .map(m -> new FinanceOverviewVO.OnboardingRow(m.getId(), m.getApplyNo(), m.getMerchantName(),
+                        m.getLicenseNo(), m.getContact(), m.getPhone(), m.getQualification(),
+                        m.getContractStatus(), toneOf(m.getContractStatus(), "已签署"),
+                        m.getStatus(), toneOf(m.getStatus(), "已通过"),
+                        m.getSubmitted(), m.getReviewer() == null ? "—" : m.getReviewer(),
+                        m.getRemark() == null ? "" : m.getRemark()))
+                .toList();
+    }
+
+    /** 入驻审核：approved = true 通过 / false 驳回（未签署合同的申请不允许通过）。 */
+    public ActionResultVO reviewOnboarding(Long id, boolean approved) {
+        MerchantOnboardingEntity apply = onboardingRepository.findById(id);
+        if (apply == null) {
+            throw new BusinessException("未找到入驻申请 #" + id);
+        }
+        if (!"待审核".equals(apply.getStatus())) {
+            throw new BusinessException("申请「" + apply.getMerchantName() + "」已审核，不可重复处理");
+        }
+        if (approved && !"已签署".equals(apply.getContractStatus())) {
+            throw new BusinessException("合同尚未签署，无法通过入驻审核");
+        }
+        AdminContext.CurrentAdmin admin = AdminContext.get();
+        apply.setStatus(approved ? "已通过" : "已驳回");
+        apply.setReviewer(admin == null ? UNKNOWN : admin.name());
+        apply.setRemark(approved ? "资质齐全 · 合同已签署，准予入驻" : "资质材料不清晰，请补充后重新提交");
+        onboardingRepository.update(apply);
+        writeLog("商户入驻审核", (approved ? "通过" : "驳回") + "入驻申请「" + apply.getMerchantName() + "」");
+        return ActionResultVO.ok("入驻申请「" + apply.getMerchantName() + "」已" + (approved ? "通过" : "驳回"),
+                apply.getApplyNo());
+    }
+
+    /** 标记合作协议已签署（对应商户端在线签署回调）。 */
+    public ActionResultVO signOnboardingContract(Long id) {
+        MerchantOnboardingEntity apply = onboardingRepository.findById(id);
+        if (apply == null) {
+            throw new BusinessException("未找到入驻申请 #" + id);
+        }
+        if ("已签署".equals(apply.getContractStatus())) {
+            throw new BusinessException("「" + apply.getMerchantName() + "」的合同已签署");
+        }
+        apply.setContractStatus("已签署");
+        onboardingRepository.update(apply);
+        writeLog("商户合同签署", "「" + apply.getMerchantName() + "」平台合作协议已签署");
+        return ActionResultVO.ok("「" + apply.getMerchantName() + "」合同已标记签署", apply.getApplyNo());
+    }
+
+    /** 状态徽标配色：与预期值一致为绿色，待处理为琥珀，其余为红色。 */
+    private static String toneOf(String status, String expected) {
+        if (expected.equals(status)) {
+            return "green";
+        }
+        return "待审核".equals(status) || "待签署".equals(status) ? "amber" : "red";
     }
 
     /* ------------------------------ 订单处理 ------------------------------ */

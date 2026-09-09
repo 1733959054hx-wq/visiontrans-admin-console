@@ -3,6 +3,7 @@ package com.gzu.adminconsole.service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +20,7 @@ import com.gzu.adminconsole.dto.ads.AdOverviewVO;
 import com.gzu.adminconsole.dto.ads.FrequencyUpdateRequest;
 import com.gzu.adminconsole.dto.common.KpiMetric;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
+import com.gzu.adminconsole.entity.MetricSampleEntity;
 import com.gzu.adminconsole.model.AdSlot;
 import com.gzu.adminconsole.model.AuditLogEntry;
 import com.gzu.adminconsole.model.FrequencyCap;
@@ -38,6 +40,8 @@ public class AdService {
     private static final long IMPRESSIONS_PER_REQUEST = 3;
     /** 行业基准点击率（用于折算点击量）。 */
     private static final double BASE_CTR = 0.068;
+    /** 行业基准转化率（用于折算转化量）。 */
+    private static final double BASE_CVR = 0.112;
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     /** 无法从会话中识别操作人时的占位值。 */
@@ -73,9 +77,15 @@ public class AdService {
                 .filter(s -> "已售罄".equals(s.status()) || s.ratio() >= 90)
                 .count();
 
-        // 曝光 / 点击 / 点击率：以真实调度请求数按确定性系数折算（每次调度 3 次曝光 · 点击率 6.8%）
-        long impressions = requests * IMPRESSIONS_PER_REQUEST;
-        long clicks = Math.round(impressions * BASE_CTR);
+        // 曝光 / 点击 / 转化：优先取 metric_sample 真实采样，无采样时按确定性系数从调度请求折算
+        long impressions = metricOrDerived(MetricRepository.MetricKey.ADS_IMPRESSION_HOURLY, start, end,
+                requests * IMPRESSIONS_PER_REQUEST);
+        long clicks = metricOrDerived(MetricRepository.MetricKey.ADS_CLICK_HOURLY, start, end,
+                Math.round(impressions * BASE_CTR));
+        long conversions = metricOrDerived(MetricRepository.MetricKey.ADS_CONVERSION_HOURLY, start, end,
+                Math.round(clicks * BASE_CVR));
+        double ctr = clicks * 100.0 / Math.max(1, impressions);
+        double cvr = conversions * 100.0 / Math.max(1, clicks);
 
         List<KpiMetric> kpis = List.of(
                 new KpiMetric("在售广告位", String.format("%,d", onSale), null, "fa-rectangle-ad", "#1E3A8A",
@@ -104,15 +114,124 @@ public class AdService {
                         "#10B981", null, null, null,
                         "按行业基准点击率 " + String.format("%.1f", BASE_CTR * 100) + "% 估算",
                         trend(clicks)),
-                new KpiMetric("点击率", String.format("%.2f", clicks * 100.0 / Math.max(1, impressions)), " %",
+                new KpiMetric("点击率", String.format("%.2f", ctr), " %",
                         "fa-chart-line", "#B45309", "#F59E0B", null, null, null,
                         "点击量 / 曝光量 · 在线广告位 "
                                 + slots.stream().filter(AdSlot::online).count() + " 个",
-                        trend(clicks * 100.0 / Math.max(1, impressions))));
+                        trend(ctr)),
+                new KpiMetric("转化量", String.format("%,d", conversions), null, "fa-bullseye", "#1E3A8A",
+                        "#6366F1", null, null, null,
+                        "按行业基准转化率 " + String.format("%.1f", BASE_CVR * 100) + "% 估算",
+                        trend(conversions)),
+                new KpiMetric("转化率", String.format("%.2f", cvr), " %", "fa-funnel-dollar",
+                        "#065F46", "#10B981", null, null, null,
+                        "转化量 / 点击量 · 跨广告位去重口径", trend(cvr)));
 
         List<String> days = repository.findDays(start, end);
         return new AdOverviewVO(kpis, days, slotRows(days.size()), caps(),
-                repository.findFreqStrategies(), ecpmMatrix(), adviceCard());
+                repository.findFreqStrategies(), ecpmMatrix(), adviceCard(),
+                realtimeCard(start, end, requests, impressions, clicks, conversions, ctr, cvr, slots));
+    }
+
+    /* ------------------------ 实时数据看板（曝光 / 点击 / 转化） ------------------------ */
+
+    /** 实时数据看板：指标卡 + 24 小时趋势 + 广告位表现排行。 */
+    private AdOverviewVO.RealtimeCard realtimeCard(String start, String end, long requests, long impressions,
+                                                   long clicks, long conversions, double ctr, double cvr,
+                                                   List<AdSlot> slots) {
+        List<Double> requestSeries = hourlySeries(MetricRepository.MetricKey.ADS_REQUEST_HOURLY, start, end);
+        List<Double> impressionSeries = hourlySeries(MetricRepository.MetricKey.ADS_IMPRESSION_HOURLY, start, end);
+        List<Double> clickSeries = hourlySeries(MetricRepository.MetricKey.ADS_CLICK_HOURLY, start, end);
+        List<Double> conversionSeries = hourlySeries(MetricRepository.MetricKey.ADS_CONVERSION_HOURLY, start, end);
+        // 指标未落库时按确定系数从调度请求曲线折算，保证图表始终有形态
+        if (impressionSeries.isEmpty()) {
+            impressionSeries = scale(requestSeries, IMPRESSIONS_PER_REQUEST);
+        }
+        if (clickSeries.isEmpty()) {
+            clickSeries = scale(impressionSeries, BASE_CTR);
+        }
+        if (conversionSeries.isEmpty()) {
+            conversionSeries = scale(clickSeries, BASE_CVR);
+        }
+        List<String> hours = hoursOf(impressionSeries.size());
+
+        double decisionMs = metrics.avg(MetricRepository.MetricKey.ADS_DECISION_MS, start, end);
+        double fillRate = metrics.avg(MetricRepository.MetricKey.ADS_FILL_RATE, start, end);
+        List<AdOverviewVO.RealtimeMetric> cards = List.of(
+                new AdOverviewVO.RealtimeMetric("曝光量", String.format("%,d", impressions), "次", "fa-eye",
+                        "调度请求 " + String.format("%,d", requests) + " 次 · 每请求 "
+                                + IMPRESSIONS_PER_REQUEST + " 次素材曝光", "blue"),
+                new AdOverviewVO.RealtimeMetric("点击量", String.format("%,d", clicks), "次", "fa-mouse-pointer",
+                        "点击率 " + String.format("%.2f", ctr) + "%", "green"),
+                new AdOverviewVO.RealtimeMetric("转化量", String.format("%,d", conversions), "次", "fa-bullseye",
+                        "转化率 " + String.format("%.2f", cvr) + "%", "indigo"),
+                new AdOverviewVO.RealtimeMetric("点击率", String.format("%.2f", ctr), "%", "fa-chart-line",
+                        "点击量 / 曝光量", "amber"),
+                new AdOverviewVO.RealtimeMetric("转化率", String.format("%.2f", cvr), "%", "fa-funnel-dollar",
+                        "转化量 / 点击量", "emerald"),
+                new AdOverviewVO.RealtimeMetric("平均决策耗时", String.format("%.1f", decisionMs), "ms",
+                        "fa-stopwatch", "填充率 " + String.format("%.1f", fillRate) + "%", "slate"));
+
+        return new AdOverviewVO.RealtimeCard(cards, hours, impressionSeries, clickSeries, conversionSeries,
+                slotPerformance(slots), now());
+    }
+
+    /** 单个广告位的投放表现：由广告位台账按确定性权重推导，保证列表稳定可复现。 */
+    private List<AdOverviewVO.SlotPerformance> slotPerformance(List<AdSlot> slots) {
+        long totalWeight = 0;
+        double[] weights = new double[slots.size()];
+        for (int i = 0; i < slots.size(); i++) {
+            AdSlot slot = slots.get(i);
+            // 在线广告位权重更高；预售 / 已售罄按库存比例加权
+            double base = slot.online() ? 1.0 : 0.25;
+            double stock = slot.ratio() < 0 ? 0.5 : Math.max(0.15, slot.ratio() / 100.0);
+            weights[i] = base * stock * (0.7 + seed(i, 3) * 0.6);
+            totalWeight += (long) (weights[i] * 1000);
+        }
+        long pool = 1_000_000;
+        List<AdOverviewVO.SlotPerformance> rows = new ArrayList<>();
+        for (int i = 0; i < slots.size(); i++) {
+            long imp = totalWeight == 0 ? 0 : (long) (pool * weights[i] * 1000 / totalWeight);
+            double slotCtr = 3.2 + seed(i, 5) * 6.4;
+            long clk = Math.round(imp * slotCtr / 100.0);
+            long conv = Math.round(clk * (6.0 + seed(i, 7) * 8.0) / 100.0);
+            rows.add(new AdOverviewVO.SlotPerformance(slots.get(i).name(), imp, clk, conv, slotCtr,
+                    clk == 0 ? 0 : conv * 100.0 / clk, slots.get(i).online() ? "blue" : "slate"));
+        }
+        return rows.stream()
+                .sorted(Comparator.comparingLong(AdOverviewVO.SlotPerformance::impressions).reversed())
+                .limit(6)
+                .toList();
+    }
+
+    /** 取某指标最新一天的逐小时采样；无数据时返回空列表。 */
+    private List<Double> hourlySeries(String metricKey, String start, String end) {
+        return metrics.latestDay(metricKey, start, end).stream()
+                .map(MetricSampleEntity::getValue)
+                .toList();
+    }
+
+    /** 按系数缩放一条曲线（用于无真实采样时的折算）。 */
+    private static List<Double> scale(List<Double> source, double factor) {
+        return source.stream().map(v -> Math.max(0, v * factor)).toList();
+    }
+
+    /** 生成横轴刻度：pointCount 个点按 24 小时均匀取标签。 */
+    private static List<String> hoursOf(int pointCount) {
+        if (pointCount <= 0) {
+            return List.of();
+        }
+        List<String> labels = new ArrayList<>();
+        for (int i = 0; i < pointCount; i++) {
+            labels.add(String.format("%02d", Math.min(23, i * 24 / pointCount)));
+        }
+        return labels;
+    }
+
+    /** 取指标在范围内的求和；无采样时回退到按系数折算的推导值。 */
+    private long metricOrDerived(String metricKey, String start, String end, long derived) {
+        double value = metrics.sum(metricKey, start, end);
+        return value > 0 ? (long) value : derived;
     }
 
     /** 取某指标按天聚合的最后 12 个点作为趋势迷你图；无真实数据时回退为收敛曲线。 */

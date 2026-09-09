@@ -1,5 +1,6 @@
 package com.gzu.adminconsole.repository;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -17,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.gzu.adminconsole.common.PasswordHasher;
 import com.gzu.adminconsole.dto.common.ToggleItem;
 import com.gzu.adminconsole.entity.AdminUserEntity;
+import com.gzu.adminconsole.entity.AppSessionEntity;
 import com.gzu.adminconsole.entity.AppSetting;
 import com.gzu.adminconsole.entity.AppUserEntity;
 import com.gzu.adminconsole.entity.AuditLogEntity;
@@ -138,7 +140,7 @@ public class SecurityRepository {
         return em.createQuery("select d from DeviceEntity d order by d.sortOrder", DeviceEntity.class)
                 .getResultList().stream()
                 .map(d -> new DeviceRecord(d.getRegion(), d.getIp(), d.getFingerprint(), d.getSessions(),
-                        d.getRisk(), d.getVerdict(), d.isBanned()))
+                        d.getRisk(), d.getVerdict(), d.isBanned(), d.getAccount()))
                 .toList();
     }
 
@@ -147,7 +149,8 @@ public class SecurityRepository {
         DeviceEntity entity = em.find(DeviceEntity.class, fingerprint);
         return entity == null ? null
                 : new DeviceRecord(entity.getRegion(), entity.getIp(), entity.getFingerprint(),
-                        entity.getSessions(), entity.getRisk(), entity.getVerdict(), entity.isBanned());
+                        entity.getSessions(), entity.getRisk(), entity.getVerdict(), entity.isBanned(),
+                        entity.getAccount());
     }
 
     /** 新增设备。 */
@@ -155,7 +158,7 @@ public class SecurityRepository {
     public void insertDevice(DeviceRecord device) {
         Integer max = em.createQuery("select max(d.sortOrder) from DeviceEntity d", Integer.class).getSingleResult();
         em.persist(new DeviceEntity(device.fingerprint(), device.region(), device.ip(), device.sessions(),
-                device.risk(), device.verdict(), device.banned(), max == null ? 0 : max + 1));
+                device.risk(), device.verdict(), device.banned(), device.account(), max == null ? 0 : max + 1));
     }
 
     /** 更新设备记录（整行覆盖）。 */
@@ -171,6 +174,7 @@ public class SecurityRepository {
         entity.setRisk(device.risk());
         entity.setVerdict(device.verdict());
         entity.setBanned(device.banned());
+        entity.setAccount(device.account());
         em.merge(entity);
     }
 
@@ -180,6 +184,74 @@ public class SecurityRepository {
         DeviceEntity entity = em.find(DeviceEntity.class, fingerprint);
         if (entity != null) {
             em.remove(entity);
+        }
+    }
+
+    /* ------------------------ C 端登录会话（踢下线） ------------------------ */
+
+    /**
+     * 老库升级：为既有设备回填关联账号，并同步派生到 C 端会话表。
+     *
+     * <p>「移除指定设备登录态」需要设备能定位到账号与会话，老数据缺账号时先补齐。
+     */
+    @Transactional
+    public void backfillDeviceAccounts(Map<String, String> accounts) {
+        accounts.forEach((fingerprint, account) -> {
+            DeviceEntity entity = em.find(DeviceEntity.class, fingerprint);
+            if (entity != null && (entity.getAccount() == null || entity.getAccount().isBlank())) {
+                entity.setAccount(account);
+                em.merge(entity);
+            }
+        });
+        // 会话表的账号由设备台账派生：已生成的空值会话一并修复
+        em.createNativeQuery("update app_session s join device_record d on d.fingerprint = s.fingerprint"
+                + " set s.account = d.account where s.account is null and d.account is not null")
+                .executeUpdate();
+    }
+
+    /** 指定设备上当前有效的登录会话数。 */
+    public long countActiveSessions(String fingerprint) {
+        if (fingerprint == null || fingerprint.isBlank()) {
+            return 0L;
+        }
+        Long count = em.createQuery(
+                        "select count(s) from AppSessionEntity s where s.fingerprint = :fp and s.expireAt > :now",
+                        Long.class)
+                .setParameter("fp", fingerprint)
+                .setParameter("now", LocalDateTime.now())
+                .getSingleResult();
+        return count == null ? 0L : count;
+    }
+
+    /** 移除指定设备上全部登录态（踢下线），返回被清除的会话数。 */
+    @Transactional
+    public int kickDeviceSessions(String fingerprint) {
+        if (fingerprint == null || fingerprint.isBlank()) {
+            return 0;
+        }
+        return em.createQuery("delete from AppSessionEntity s where s.fingerprint = :fp")
+                .setParameter("fp", fingerprint)
+                .executeUpdate();
+    }
+
+    /** 清理已过期的 C 端会话。 */
+    @Transactional
+    public int purgeExpiredAppSessions() {
+        return em.createQuery("delete from AppSessionEntity s where s.expireAt < :now")
+                .setParameter("now", LocalDateTime.now())
+                .executeUpdate();
+    }
+
+    /** C 端会话表是否为空（用于演示数据初始化）。 */
+    public boolean appSessionsEmpty() {
+        Long count = em.createQuery("select count(s) from AppSessionEntity s", Long.class).getSingleResult();
+        return count == null || count == 0L;
+    }
+
+    @Transactional
+    public void saveAppSessions(List<AppSessionEntity> sessions) {
+        for (AppSessionEntity session : sessions) {
+            em.persist(session);
         }
     }
 
@@ -377,6 +449,84 @@ public class SecurityRepository {
     public List<AppUser> findAppUsers() {
         return em.createQuery("select u from AppUserEntity u order by u.id", AppUserEntity.class)
                 .getResultList().stream().map(this::toAppUserModel).toList();
+    }
+
+    /**
+     * 按条件分页查询 C 端用户：关键字模糊匹配账号，注册方式 / 会员状态 / 账号状态为精确筛选。
+     *
+     * @param page 1 基页码
+     */
+    public List<AppUser> findAppUsers(String keyword, String regSource, String membership, String status,
+                                      int page, int size) {
+        String where = appUserWhere(keyword, regSource, membership, status);
+        TypedQuery<AppUserEntity> query = em.createQuery(
+                "select u from AppUserEntity u" + where + " order by u.id", AppUserEntity.class);
+        bindAppUserParams(query, keyword, regSource, membership, status);
+        int safePage = Math.max(1, page);
+        query.setFirstResult((safePage - 1) * Math.max(1, size));
+        query.setMaxResults(Math.max(1, size));
+        return query.getResultList().stream().map(this::toAppUserModel).toList();
+    }
+
+    /** 按条件统计 C 端用户数（与 {@link #findAppUsers(String, String, String, String, int, int)} 同口径）。 */
+    public long countAppUsers(String keyword, String regSource, String membership, String status) {
+        String where = appUserWhere(keyword, regSource, membership, status);
+        Query query = em.createQuery("select count(u) from AppUserEntity u" + where, Long.class);
+        bindAppUserParams(query, keyword, regSource, membership, status);
+        Long total = (Long) query.getSingleResult();
+        return total == null ? 0L : total;
+    }
+
+    /** C 端用户可选筛选项取值（去重后升序）。 */
+    public List<String> appUserOptions(String field) {
+        return switch (field) {
+            case "regSource" -> em.createQuery(
+                    "select distinct u.regSource from AppUserEntity u where u.regSource is not null order by u.regSource",
+                    String.class).getResultList();
+            case "membership" -> em.createQuery(
+                    "select distinct u.membership from AppUserEntity u where u.membership is not null order by u.membership",
+                    String.class).getResultList();
+            default -> em.createQuery(
+                    "select distinct u.status from AppUserEntity u where u.status is not null order by u.status",
+                    String.class).getResultList();
+        };
+    }
+
+    private static String appUserWhere(String keyword, String regSource, String membership, String status) {
+        StringBuilder where = new StringBuilder(" where 1 = 1");
+        if (hasText(keyword)) {
+            where.append(" and (lower(u.account) like lower(:kw) or lower(u.regSource) like lower(:kw))");
+        }
+        if (hasText(regSource)) {
+            where.append(" and u.regSource = :regSource");
+        }
+        if (hasText(membership)) {
+            where.append(" and u.membership = :membership");
+        }
+        if (hasText(status)) {
+            where.append(" and u.status = :status");
+        }
+        return where.toString();
+    }
+
+    private static void bindAppUserParams(Query query, String keyword, String regSource, String membership,
+                                          String status) {
+        if (hasText(keyword)) {
+            query.setParameter("kw", "%" + keyword.trim() + "%");
+        }
+        if (hasText(regSource)) {
+            query.setParameter("regSource", regSource.trim());
+        }
+        if (hasText(membership)) {
+            query.setParameter("membership", membership.trim());
+        }
+        if (hasText(status)) {
+            query.setParameter("status", status.trim());
+        }
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     /** 按主键查找 C 端用户。 */
@@ -584,7 +734,7 @@ public class SecurityRepository {
         int order = 0;
         for (DeviceRecord device : devices) {
             em.persist(new DeviceEntity(device.fingerprint(), device.region(), device.ip(), device.sessions(),
-                    device.risk(), device.verdict(), device.banned(), order++));
+                    device.risk(), device.verdict(), device.banned(), device.account(), order++));
         }
     }
 

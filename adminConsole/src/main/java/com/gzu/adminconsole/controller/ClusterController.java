@@ -14,10 +14,12 @@ import org.springframework.web.bind.annotation.RestController;
 import com.gzu.adminconsole.common.Result;
 import com.gzu.adminconsole.config.RequireRole;
 import com.gzu.adminconsole.dto.cluster.ClusterOverviewVO;
+import com.gzu.adminconsole.dto.cluster.DependencyVO;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
 import com.gzu.adminconsole.model.AlarmEvent;
 import com.gzu.adminconsole.model.ClusterNode;
 import com.gzu.adminconsole.service.ClusterService;
+import com.gzu.adminconsole.service.DependencyService;
 
 /**
  * 集群态势感知接口（View 层）。
@@ -29,9 +31,11 @@ import com.gzu.adminconsole.service.ClusterService;
 public class ClusterController {
 
     private final ClusterService service;
+    private final DependencyService dependencyService;
 
-    public ClusterController(ClusterService service) {
+    public ClusterController(ClusterService service, DependencyService dependencyService) {
         this.service = service;
+        this.dependencyService = dependencyService;
     }
 
     /** 集群态势感知与推演监控大盘（可按告警时间范围过滤，yyyy-MM-dd）。 */
@@ -46,6 +50,29 @@ public class ClusterController {
     @PostMapping("/capacity-simulation")
     public Result<ActionResultVO> simulate() {
         return Result.ok(service.simulateCapacity());
+    }
+
+    /* ---------------------- 核心服务与第三方接口可用性 ---------------------- */
+
+    /** 依赖服务可用性列表（含响应耗时与近 24 小时可用率）。 */
+    @GetMapping("/dependencies")
+    public Result<DependencyVO> dependencies() {
+        return Result.ok(dependencyService.dependencies());
+    }
+
+    /** 对单个依赖服务发起一次真实拨测（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
+    @PostMapping("/dependencies/{id}/probe")
+    public Result<ActionResultVO> probeDependency(@PathVariable Long id) {
+        return Result.ok(dependencyService.probe(id));
+    }
+
+    /** 一键拨测全部依赖服务（运营管理员及以上）。 */
+    @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
+    @PostMapping("/dependencies/probe-all")
+    public Result<ActionResultVO> probeAllDependencies() {
+        dependencyService.probeAll();
+        return Result.ok(ActionResultVO.ok("已对全部依赖服务发起拨测", "all"));
     }
 
     /* ------------------------------ 容器节点 CRUD ------------------------------ */

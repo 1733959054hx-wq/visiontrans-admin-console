@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -26,6 +26,9 @@ onMounted(() => {
   if (!data.value) store.load(1)
   // 系统配置（参数 / 功能开关）独立于大盘数据，进入页面即顺带拉取
   if (!store.sysConfig) store.loadSysConfig()
+  // C 端用户走独立的服务端筛选 + 分页接口；菜单权限矩阵独立于大盘
+  store.loadAppUsers(1)
+  store.loadMenuAccess()
 })
 
 const STATE_ORDER = ['GRANTED', 'PARTIAL', 'NONE']
@@ -70,6 +73,7 @@ const DEVICE_FIELDS = [
   { key: 'sessions', label: '会话数', type: 'text', kind: 'int', placeholder: '1286' },
   { key: 'risk', label: '风险分 (0-100)', type: 'number', min: 0, max: 100 },
   { key: 'verdict', label: '判定', type: 'select', options: ['正常', '可疑', '异常'] },
+  { key: 'account', label: '关联账号', type: 'text', placeholder: '最近登录的 C 端账号，可留空' },
   { key: 'banned', label: '已封禁', type: 'switch' },
 ]
 
@@ -108,7 +112,7 @@ const openDeviceCreate = () => {
   dialog.mode = 'device-create'
   dialog.title = '新增设备台账'
   dialog.fields = DEVICE_FIELDS.map((f) => ({ ...f, disabled: false }))
-  dialog.record = { fingerprint: '', region: '', ip: '', sessions: '0', risk: 50, verdict: '正常', banned: false }
+  dialog.record = { fingerprint: '', region: '', ip: '', sessions: '0', risk: 50, verdict: '正常', banned: false, account: '' }
 }
 
 const openDeviceEdit = (row) => {
@@ -197,6 +201,32 @@ const banOne = (device) => {
   if (!device.banned) store.ban(device.fingerprint).catch(() => {})
 }
 
+/** 移除指定设备的登录态（踢下线），仅在该设备存在在线会话时可用。 */
+const kickOne = async (device) => {
+  if (await askConfirm(
+    `确定移除设备「${device.fingerprint}」上的 ${device.activeSessions} 个登录态？设备台账会保留。`,
+    '移除设备登录态',
+  )) {
+    await store.kick(device.fingerprint).catch(() => {})
+  }
+}
+
+/* ---------------------------- 菜单权限配置 ---------------------------- */
+
+const menuAccess = computed(() => store.menuAccess)
+/** 切换某角色对某菜单的可见性。 */
+const toggleMenu = (menu, code, current) => store.setMenuVisible(code, menu.id, !current).catch(() => {})
+
+/* ---------------------------- C 端用户筛选分页 ---------------------------- */
+
+const userFilter = computed(() => store.userFilter)
+const userPage = computed(() => store.appUsers)
+const setFilter = (patch) => store.setUserFilter(patch)
+const goUserPage = (page) => {
+  if (page < 1 || page > (userPage.value?.totalPages || 1)) return
+  store.loadAppUsers(page)
+}
+
 /* ------------------------------ 安全策略弹窗 ------------------------------ */
 
 const policyOpen = ref(false)
@@ -241,8 +271,8 @@ const filteredDevices = computed(() => (data.value?.devices || [])
   .filter((d) => matchKeyword(d.region, d.ip, d.fingerprint, d.verdict)))
 const filteredAdmins = computed(() => (data.value?.admins || [])
   .filter((u) => matchKeyword(u.name, u.role, u.group, u.phone, u.status)))
-const filteredAppUsers = computed(() => (data.value?.appUsers || [])
-  .filter((u) => matchKeyword(u.account, u.regSource, u.membership, u.status)))
+/** C 端用户由服务端完成条件筛选与分页，前端直接渲染当前页。 */
+const filteredAppUsers = computed(() => store.appUsers?.rows || [])
 const filteredLogs = computed(() => (data.value?.auditLogs || [])
   .filter((l) => matchKeyword(l.time, l.operator, l.action, l.detail, l.source, l.result)))
 
@@ -259,8 +289,8 @@ const gotoModeration = () => router.push({ name: 'a8' })
   <div class="p-5">
     <template v-if="data">
       <PageHeader
-        title="安全风控、设备审计与 RBAC 权限"
-        desc="管理员分级授权、异常设备地理监控与不可篡改的审计日志 · 日志留存 180 天"
+        title="用户管理、权限管理与系统配置"
+        desc="注册用户与登录设备台账 · 角色分配与菜单权限配置 · 接口限流 / 会话有效期等运行参数"
       >
         <template #actions>
           <button class="btn btn-ghost btn-sm" @click="policyOpen = true">
@@ -343,6 +373,53 @@ const gotoModeration = () => router.push({ name: 'a8' })
         </div>
       </div>
 
+      <!-- 菜单权限配置：按角色控制可访问的菜单，保存后侧边栏与路由立即生效 -->
+      <div class="card anim mt-4">
+        <div class="card-h">
+          <div>
+            <div class="card-t">菜单权限配置</div>
+            <div class="card-s">
+              按角色控制各一级页面下菜单的可见性 · 保存后侧边栏与页面访问即时生效（每个菜单至少保留一个可见角色）
+            </div>
+          </div>
+          <StatusPill
+            v-if="menuAccess"
+            :text="`${menuAccess.menus.length} 个菜单 · ${menuAccess.roles.length} 个角色`"
+            tone="blue"
+          />
+        </div>
+        <div class="overflow-x-auto">
+          <table class="tb">
+            <thead>
+              <tr>
+                <th>菜单</th>
+                <th>所属一级页面</th>
+                <th v-for="role in menuAccess?.roles || []" :key="role.code" class="text-center">
+                  {{ role.name }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="menu in menuAccess?.menus || []" :key="menu.id">
+                <td class="text-[12.5px] font-medium">{{ menu.text }}</td>
+                <td class="text-[12px] text-sub">{{ menu.group }}</td>
+                <td v-for="role in menuAccess.roles" :key="role.code" class="text-center">
+                  <ToggleSwitch
+                    :model-value="!!menu.roles.find((item) => item.code === role.code)?.visible"
+                    @update:model-value="
+                      toggleMenu(menu, role.code, !!menu.roles.find((item) => item.code === role.code)?.visible)
+                    "
+                  />
+                </td>
+              </tr>
+              <tr v-if="!menuAccess?.menus?.length">
+                <td colspan="5" class="py-8 text-center text-[12px] text-sub">暂无菜单数据</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- 登录监控地图 + 设备明细 -->
       <div class="card anim mt-4">
         <div class="card-h">
@@ -369,7 +446,8 @@ const gotoModeration = () => router.push({ name: 'a8' })
                 <th>地域 · 运营商</th>
                 <th>IP 地址</th>
                 <th>设备指纹</th>
-                <th>会话数</th>
+                <th>关联账号</th>
+                <th>在线会话</th>
                 <th>风险分</th>
                 <th>判定</th>
                 <th class="text-right">操作</th>
@@ -380,10 +458,27 @@ const gotoModeration = () => router.push({ name: 'a8' })
                 <td class="text-[12.5px] font-medium">{{ device.region }}</td>
                 <td class="num text-[12px]">{{ device.ip }}</td>
                 <td class="num text-[11.5px] text-sub">{{ device.fingerprint }}</td>
-                <td class="num text-[12px]">{{ device.sessions }}</td>
+                <td class="text-[12px]">{{ device.account }}</td>
+                <td>
+                  <StatusPill
+                    :text="`${device.activeSessions} 个在线`"
+                    :tone="device.activeSessions > 0 ? 'blue' : 'slate'"
+                  />
+                </td>
                 <td><ProgressBar :value="device.risk" :tone="riskTone(device.risk)" show-text /></td>
                 <td><StatusPill :text="device.verdict" :tone="deviceTone[device.verdict] || 'slate'" /></td>
                 <td class="text-right">
+                  <button
+                    class="btn btn-ghost btn-sm !px-2 !py-1"
+                    title="移除该设备的登录态（踢下线）"
+                    :disabled="!device.activeSessions || store.acting"
+                    @click="kickOne(device)"
+                  >
+                    <i
+                      class="fa-solid fa-right-from-bracket"
+                      :class="device.activeSessions ? 'text-amber-500' : 'text-slate-300'"
+                    ></i>
+                  </button>
                   <button
                     class="btn btn-ghost btn-sm !px-2 !py-1"
                     title="封禁设备"
@@ -401,7 +496,7 @@ const gotoModeration = () => router.push({ name: 'a8' })
                 </td>
               </tr>
               <tr v-if="!filteredDevices.length">
-                <td colspan="7" class="py-8 text-center text-[12px] text-sub">没有匹配的设备</td>
+                <td colspan="8" class="py-8 text-center text-[12px] text-sub">没有匹配的设备</td>
               </tr>
             </tbody>
           </table>
@@ -490,7 +585,7 @@ const gotoModeration = () => router.push({ name: 'a8' })
                 <td class="text-[12.5px] font-medium">
                   <span
                     class="mr-2 inline-grid h-6 w-6 place-items-center rounded-lg text-[9.5px] font-bold text-white"
-                    style="background: linear-gradient(135deg, #1E3A8A, #2563EB)"
+                    style="background: linear-gradient(135deg, #115E59, #0D9488)"
                     >{{ admin.name.slice(0, 1) }}</span
                   >{{ admin.name }}
                 </td>
@@ -516,15 +611,54 @@ const gotoModeration = () => router.push({ name: 'a8' })
         </div>
       </div>
 
-      <!-- C 端用户管理 -->
+      <!-- C 端用户管理：服务端条件筛选 + 分页 -->
       <div class="card anim mt-4">
         <div class="card-h">
           <div>
             <div class="card-t">C 端用户管理</div>
-            <div class="card-s">会员状态与账号状态在线调整 · 注册来源与活跃度一览</div>
+            <div class="card-s">会员状态与账号状态在线调整 · 支持按账号 / 注册方式 / 会员状态 / 账号状态筛选</div>
           </div>
-          <StatusPill :text="`${filteredAppUsers.length} 个用户`" tone="blue" />
+          <StatusPill :text="userPage?.rangeText || '加载中…'" tone="blue" />
         </div>
+
+        <!-- 筛选栏 -->
+        <div class="card-b flex flex-wrap items-center gap-2 border-b border-line pb-3">
+          <input
+            v-model="userFilter.keyword"
+            class="field !w-56 !py-1.5 text-[12.5px]"
+            placeholder="搜索账号 / 注册方式"
+            @keyup.enter="setFilter({ keyword: userFilter.keyword })"
+            @blur="setFilter({ keyword: userFilter.keyword })"
+          />
+          <select
+            class="field !w-40 !py-1.5 text-[12.5px]"
+            :value="userFilter.regSource"
+            @change="setFilter({ regSource: $event.target.value })"
+          >
+            <option value="">全部注册方式</option>
+            <option v-for="opt in userPage?.regSources || []" :key="opt" :value="opt">{{ opt }}</option>
+          </select>
+          <select
+            class="field !w-40 !py-1.5 text-[12.5px]"
+            :value="userFilter.membership"
+            @change="setFilter({ membership: $event.target.value })"
+          >
+            <option value="">全部会员状态</option>
+            <option v-for="opt in userPage?.memberships || []" :key="opt" :value="opt">{{ opt }}</option>
+          </select>
+          <select
+            class="field !w-36 !py-1.5 text-[12.5px]"
+            :value="userFilter.status"
+            @change="setFilter({ status: $event.target.value })"
+          >
+            <option value="">全部账号状态</option>
+            <option v-for="opt in userPage?.statuses || []" :key="opt" :value="opt">{{ opt }}</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" @click="setFilter({ keyword: '', regSource: '', membership: '', status: '' })">
+            重置筛选
+          </button>
+        </div>
+
         <div class="overflow-x-auto">
           <table class="tb">
             <thead>
@@ -558,10 +692,29 @@ const gotoModeration = () => router.push({ name: 'a8' })
                 </td>
               </tr>
               <tr v-if="!filteredAppUsers.length">
-                <td colspan="7" class="py-8 text-center text-[12px] text-sub">没有匹配的用户</td>
+                <td colspan="7" class="py-8 text-center text-[12px] text-sub">
+                  {{ store.appUsersLoading ? '加载中…' : '没有符合条件的注册用户' }}
+                </td>
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- 分页 -->
+        <div v-if="(userPage?.totalPages || 0) > 1" class="flex items-center justify-between border-t border-line px-4 py-3">
+          <div class="text-[11.5px] text-sub">第 {{ userPage.page }} / {{ userPage.totalPages }} 页</div>
+          <div class="flex items-center gap-1.5">
+            <button class="btn btn-ghost btn-sm" :disabled="userPage.page <= 1" @click="goUserPage(userPage.page - 1)">
+              上一页
+            </button>
+            <button
+              class="btn btn-ghost btn-sm"
+              :disabled="userPage.page >= userPage.totalPages"
+              @click="goUserPage(userPage.page + 1)"
+            >
+              下一页
+            </button>
+          </div>
         </div>
       </div>
 
@@ -658,7 +811,7 @@ const gotoModeration = () => router.push({ name: 'a8' })
                   <div class="flex items-center gap-2">
                     <span
                       class="grid h-6 w-6 flex-none place-items-center rounded-lg text-[9.5px] font-bold text-white"
-                      style="background: linear-gradient(135deg, #1E3A8A, #2563EB)"
+                      style="background: linear-gradient(135deg, #115E59, #0D9488)"
                       >{{ log.operator.slice(0, 1) }}</span
                     >
                     <div class="leading-tight">

@@ -3,6 +3,7 @@ package com.gzu.adminconsole;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 视界译 VisionTrans · 平台管理后台启动类。
@@ -16,6 +17,8 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
  */
 @SpringBootApplication
 @ConfigurationPropertiesScan
+// 开启定时任务：依赖服务自动拨测由 admin-console.dependency.auto-probe 控制是否注册
+@EnableScheduling
 public class AdminConsoleApplication {
 
     public static void main(String[] args) {

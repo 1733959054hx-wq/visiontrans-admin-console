@@ -12,7 +12,6 @@ public record SecurityOverviewVO(List<KpiMetric> kpis,
                                  List<RoleNode> roleTree,
                                  List<DeviceRow> devices,
                                  List<PlanRow> plans,
-                                 List<AppUserRow> appUsers,
                                  List<AuditLogRow> auditLogs,
                                  List<AdminUserRow> admins,
                                  List<ToggleItem> policies,
@@ -22,11 +21,6 @@ public record SecurityOverviewVO(List<KpiMetric> kpis,
     /** 后台管理员账号。 */
     public record AdminUserRow(Long id, String name, String role, String group, String phone, String status,
                                String lastLogin) {
-    }
-
-    /** C 端用户账号行。 */
-    public record AppUserRow(Long id, String account, String regSource, String membership,
-                             String registered, String lastActive, String status) {
     }
 
     /** 角色域。 */
@@ -41,7 +35,12 @@ public record SecurityOverviewVO(List<KpiMetric> kpis,
     public record PermissionItem(String name, String state) {
     }
 
-    /** 异常设备监控行。 */
+    /**
+     * 异常设备监控行。
+     *
+     * @param account        最近一次登录的 C 端账号
+     * @param activeSessions 该设备上当前有效的登录会话数（用于「移除登录态」）
+     */
     public record DeviceRow(String region,
                             String ip,
                             String fingerprint,
@@ -49,7 +48,9 @@ public record SecurityOverviewVO(List<KpiMetric> kpis,
                             int risk,
                             String verdict,
                             String tone,
-                            boolean banned) {
+                            boolean banned,
+                            String account,
+                            long activeSessions) {
     }
 
     /** 会员套餐与额度配置。 */

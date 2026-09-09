@@ -1,10 +1,12 @@
 package com.gzu.adminconsole.config;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 import org.slf4j.Logger;
@@ -38,9 +40,12 @@ import com.gzu.adminconsole.model.ReleaseEvent;
 import com.gzu.adminconsole.model.RoleDomain;
 import com.gzu.adminconsole.model.SettlementRecord;
 import com.gzu.adminconsole.model.UgcRecord;
+import com.gzu.adminconsole.entity.AppSessionEntity;
 import com.gzu.adminconsole.entity.BackupPolicyEntity;
 import com.gzu.adminconsole.entity.CircuitBreakerEntity;
+import com.gzu.adminconsole.entity.MerchantOnboardingEntity;
 import com.gzu.adminconsole.entity.MetricSampleEntity;
+import com.gzu.adminconsole.entity.ThirdPartyServiceEntity;
 import com.gzu.adminconsole.entity.SystemLogEntity;
 import com.gzu.adminconsole.repository.AdRepository;
 import com.gzu.adminconsole.repository.ClusterRepository;
@@ -49,8 +54,10 @@ import com.gzu.adminconsole.repository.MetricRepository;
 import com.gzu.adminconsole.repository.ModerationRepository;
 import com.gzu.adminconsole.repository.ModelRepository;
 import com.gzu.adminconsole.repository.NavRepository;
+import com.gzu.adminconsole.repository.OnboardingRepository;
 import com.gzu.adminconsole.repository.OpsRepository;
 import com.gzu.adminconsole.repository.SecurityRepository;
+import com.gzu.adminconsole.repository.ThirdPartyRepository;
 
 /**
  * 演示数据初始化器：应用启动后，若对应表为空则灌入一套演示数据。
@@ -73,6 +80,26 @@ public class DataInitializer implements ApplicationRunner {
     private final MetricRepository metricRepository;
     private final FinanceRepository financeRepository;
     private final OpsRepository opsRepository;
+    private final ThirdPartyRepository thirdPartyRepository;
+    private final OnboardingRepository onboardingRepository;
+
+    /**
+     * 演示设备的关联 C 端账号（fingerprint → account）。
+     *
+     * <p>种子数据与老库回填共用，保证「移除指定设备登录态」在任何库上都能定位到账号与会话。
+     */
+    private static final Map<String, String> DEVICE_ACCOUNTS = Map.ofEntries(
+            Map.entry("DEV-2A71-3C08", "林晚晴"),
+            Map.entry("DEV-8F2A-9C31", "沈亦舟"),
+            Map.entry("DEV-4D19-77E2", "顾清欢"),
+            Map.entry("DEV-6B33-10AF", "苏念"),
+            Map.entry("DEV-1E92-45D6", "陆之遥"),
+            Map.entry("DEV-9C04-28B1", "江辞"),
+            Map.entry("DEV-3F58-6AD9", "许栀"));
+
+    /** 24 小时 QPS 形态基线（凌晨低谷、午晚高峰），主流程与漏斗指标补灌共用。 */
+    private static final int[] QPS_SHAPE = {212, 186, 164, 148, 132, 124, 138, 186, 268, 342, 428, 486,
+            528, 562, 548, 536, 586, 642, 708, 812, 860, 764, 588, 412};
 
     public DataInitializer(AppProperties properties,
                            ClusterRepository clusterRepository,
@@ -83,7 +110,9 @@ public class DataInitializer implements ApplicationRunner {
                            NavRepository navRepository,
                            MetricRepository metricRepository,
                            FinanceRepository financeRepository,
-                           OpsRepository opsRepository) {
+                           OpsRepository opsRepository,
+                           ThirdPartyRepository thirdPartyRepository,
+                           OnboardingRepository onboardingRepository) {
         this.properties = properties;
         this.clusterRepository = clusterRepository;
         this.modelRepository = modelRepository;
@@ -94,6 +123,8 @@ public class DataInitializer implements ApplicationRunner {
         this.metricRepository = metricRepository;
         this.financeRepository = financeRepository;
         this.opsRepository = opsRepository;
+        this.thirdPartyRepository = thirdPartyRepository;
+        this.onboardingRepository = onboardingRepository;
     }
 
     @Override
@@ -111,8 +142,11 @@ public class DataInitializer implements ApplicationRunner {
         initAds();
         initSecurity();
         initAppUsers();
+        initAppSessions();
         initFinance();
+        initOnboardings();
         initOps();
+        initDependencies();
         initSysConfig();
         // 时序指标采样：KPI / 波形 / 曲线全部改为由这些落库数据统计得出
         initMetrics();
@@ -128,11 +162,12 @@ public class DataInitializer implements ApplicationRunner {
      */
     private void initMetrics() {
         if (metricRepository.count() > 0) {
+            // 老库升级：仅补齐新增的曝光 / 点击 / 转化漏斗指标，已有的指标采样不重灌
+            backfillAdFunnelMetrics();
             return;
         }
         // 24 小时 QPS 形态基线（凌晨低谷、午晚高峰）
-        int[] qpsShape = {212, 186, 164, 148, 132, 124, 138, 186, 268, 342, 428, 486,
-                528, 562, 548, 536, 586, 642, 708, 812, 860, 764, 588, 412};
+        int[] qpsShape = QPS_SHAPE;
         // 端到端延迟管线分层：层名、渐变起止色、基准耗时
         String[] layers = {"帧抓取", "OCR 检测", "NMT 翻译", "空间渲染", "图层上屏"};
         String[] c1 = {"#1E3A8A", "#2563EB", "#0EA5E9", "#38BDF8", "#6366F1"};
@@ -175,11 +210,10 @@ public class DataInitializer implements ApplicationRunner {
                             Math.max(1, round1(v)), c1[i], c2[i]));
                 }
             }
-            // 4) 广告调度请求数（按小时）
+            // 4) 广告调度请求数 / 曝光 / 点击 / 转化（按小时，转化率链路可自洽）
             for (int h = 0; h < 24; h++) {
-                rows.add(new MetricSampleEntity(MetricRepository.MetricKey.ADS_REQUEST_HOURLY, date,
-                        String.format("%02d", h), h, Math.round(38000 * dayFactor * (0.6 + qpsShape[h] / 900.0)),
-                        null, null));
+                long requests = Math.round(38000 * dayFactor * (0.6 + qpsShape[h] / 900.0));
+                addAdFunnelRows(rows, date, h, requests, rnd, true);
             }
             // 5) 越权访问拦截事件（当天若干条，value = 1 便于 count / sum）
             int blocks = 4 + rnd.nextInt(6);
@@ -213,36 +247,132 @@ public class DataInitializer implements ApplicationRunner {
         return Math.round(value * 10.0) / 10.0;
     }
 
-    private void initNav() {
-        if (navRepository.isEmpty()) {
-            navRepository.saveAll(List.of(
-                    new NavMenu("a6", "fa-satellite-dish", "集群态势感知", "Cluster Ops",
-                            "集群态势感知与推演监控大盘",
-                            "全网实时并发、端到端延迟拆解、QPS 吞吐与节点健康度 · 采样周期 5s · 数据时延 < 1s"),
-                    new NavMenu("a7", "fa-brain", "AI 模型与热更", "Model Lifecycle",
-                            "AI 模型生命周期与热更中心",
-                            "端侧量化模型（INT8/FP16，最小 0.9MB）与云端大模型统一纳管 · 秒级热更 · 一键回滚"),
-                    new NavMenu("a8", "fa-language", "术语库与 UGC 风控", "Moderation",
-                            "语种术语库审核与 UGC 风控中台",
-                            "多语种术语库审核、AR 广告素材机审与 UGC 违规高亮拦截 · 平均处置耗时 82 ms"),
-                    new NavMenu("a9", "fa-calendar-day", "广告位排期引擎", "Scheduler",
-                            "全网广告位排期与调度引擎",
-                            "12 类广告位库存甘特排期 · 场景×语种 eCPM 策略矩阵 · 单用户跨广告位联合频控"),
-                    new NavMenu("a10", "fa-shield-halved", "安全风控与 RBAC", "Security & RBAC",
-                            "安全风控、设备审计与 RBAC 权限",
-                            "管理员分级授权、异常设备地理监控与不可篡改的审计日志 · 日志留存 180 天"),
-                    new NavMenu("a11", "fa-file-invoice-dollar", "财务订单", "Finance & Orders",
-                            "财务订单与商户结算中心",
-                            "C 端订单、异常订单处理、商户周期结算对账与 B 端发票审核 · 对账周期 T+1")));
-            log.info("[初始化] nav_menu 已写入 {} 条菜单", 6);
+    /**
+     * 追加某小时的一组广告漏斗采样：曝光 / 点击 / 转化（转化率链路可自洽）。
+     *
+     * @param withRequest 是否同时写入调度请求采样：老库补灌时 request 已存在，传 false 避免重复
+     */
+    private static void addAdFunnelRows(List<MetricSampleEntity> rows, String date, int hour, long requests,
+                                        Random rnd, boolean withRequest) {
+        long impressions = Math.round(requests * 3 * (0.94 + rnd.nextDouble() * 0.12));
+        long clicks = Math.round(impressions * (0.058 + rnd.nextDouble() * 0.022));
+        long conversions = Math.round(clicks * (0.092 + rnd.nextDouble() * 0.048));
+        String label = String.format("%02d", hour);
+        if (withRequest) {
+            rows.add(new MetricSampleEntity(MetricRepository.MetricKey.ADS_REQUEST_HOURLY, date, label, hour,
+                    requests, null, null));
+        }
+        rows.add(new MetricSampleEntity(MetricRepository.MetricKey.ADS_IMPRESSION_HOURLY, date, label, hour,
+                impressions, null, null));
+        rows.add(new MetricSampleEntity(MetricRepository.MetricKey.ADS_CLICK_HOURLY, date, label, hour,
+                clicks, null, null));
+        rows.add(new MetricSampleEntity(MetricRepository.MetricKey.ADS_CONVERSION_HOURLY, date, label, hour,
+                conversions, null, null));
+    }
+
+    /**
+     * 老库升级：为新增的曝光 / 点击 / 转化指标按天补齐采样。
+     *
+     * <p>三项指标彼此成套（转化率 = 转化 / 点击 / 曝光），任一缺失即整组重灌，
+     * 与主流程共用同一形态基线，保证 KPI 口径一致。
+     */
+    private void backfillAdFunnelMetrics() {
+        List<String> funnelKeys = List.of(MetricRepository.MetricKey.ADS_IMPRESSION_HOURLY,
+                MetricRepository.MetricKey.ADS_CLICK_HOURLY, MetricRepository.MetricKey.ADS_CONVERSION_HOURLY);
+        boolean missing = funnelKeys.stream().anyMatch(key -> metricRepository.countByKey(key) == 0);
+        if (!missing) {
+            // 幂等修复：即使指标已齐，也顺手清理历史版本补灌可能写入的重复请求采样
+            int removed = metricRepository.dedupHourlySamples(MetricRepository.MetricKey.ADS_REQUEST_HOURLY);
+            if (removed > 0) {
+                log.info("[初始化] metric_sample 已清理重复调度请求采样 {} 条", removed);
+            }
             return;
         }
-        // 老数据幂等补齐：仅缺 a11 时单独插入，不重建全表
-        if (!navRepository.existsById("a11")) {
-            navRepository.insertOne(new NavMenu("a11", "fa-file-invoice-dollar", "财务订单", "Finance & Orders",
-                    "财务订单与商户结算中心",
-                    "C 端订单、异常订单处理、商户周期结算对账与 B 端发票审核 · 对账周期 T+1"), 5);
-            log.info("[初始化] nav_menu 已补齐菜单 a11（财务订单）");
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        LocalDate today = LocalDate.now();
+        Random rnd = new Random(20260907L);
+        List<MetricSampleEntity> rows = new ArrayList<>();
+        int days = 30;
+        for (int d = days - 1; d >= 0; d--) {
+            String date = today.minusDays(d).format(df);
+            double dayFactor = 0.92 + rnd.nextDouble() * 0.16;
+            for (int h = 0; h < 24; h++) {
+                long requests = Math.round(38000 * dayFactor * (0.6 + QPS_SHAPE[h] / 900.0));
+                addAdFunnelRows(rows, date, h, requests, rnd, false);
+            }
+        }
+        metricRepository.saveAll(rows);
+        // 幂等修复：清理此前补灌版本可能写入的重复调度请求采样（无重复时影响 0 行）
+        int removed = metricRepository.dedupHourlySamples(MetricRepository.MetricKey.ADS_REQUEST_HOURLY);
+        log.info("[初始化] metric_sample 已补齐广告漏斗指标 {} 条（曝光 / 点击 / 转化，近 {} 天），"
+                + "并清理重复调度请求采样 {} 条", rows.size(), days, removed);
+    }
+
+    /**
+     * 侧边导航菜单：按需求清单的五个一级页面分组（系统管理 / 审核中心 / 广告运营 / 财务订单 / 监控运维），
+     * 每条菜单携带可见角色，配合菜单权限配置实现按角色下发。
+     *
+     * <p>单一数据源：首次启动灌库与老库升级共用同一份菜单定义，保证版本间一致。
+     */
+    private static List<NavMenu> navMenus() {
+        return List.of(
+                // —— 系统管理 ——
+                new NavMenu("a10", "fa-shield-halved", "系统管理", "Security & RBAC",
+                        "用户管理、权限管理与系统配置",
+                        "注册用户与登录设备台账 · 角色分配与菜单权限配置 · 接口限流 / 会话有效期等运行参数",
+                        "系统管理", "System Admin", NavMenu.ALL_ROLES),
+                // —— 审核中心 ——
+                new NavMenu("a8", "fa-language", "内容审核", "Moderation",
+                        "语种术语库审核与 UGC 风控中台",
+                        "多语种术语库审核、AR 广告素材机审与 UGC 违规高亮拦截 · 平均处置耗时 82 ms",
+                        "审核中心", "Audit Center", NavMenu.ALL_ROLES),
+                new NavMenu("a7", "fa-brain", "版本管理", "Model Lifecycle",
+                        "AI 模型生命周期与热更中心",
+                        "端侧量化模型（INT8/FP16，最小 0.9MB）与云端大模型统一纳管 · 秒级热更 · 一键回滚",
+                        "审核中心", "Audit Center", NavMenu.ALL_ROLES),
+                // —— 广告运营 ——
+                new NavMenu("a9", "fa-calendar-day", "广告运营", "Scheduler",
+                        "全网广告位排期与调度引擎",
+                        "12 类广告位库存甘特排期 · 场景×语种 eCPM 策略矩阵 · 曝光 / 点击 / 转化实时看板",
+                        "广告运营", "Ads Operations", NavMenu.ALL_ROLES),
+                // —— 财务订单 ——
+                new NavMenu("a11", "fa-file-invoice-dollar", "财务订单", "Finance & Orders",
+                        "财务订单与商户结算中心",
+                        "C 端订单、异常订单处理、商户周期结算对账与 B 端发票审核 · 对账周期 T+1",
+                        "财务订单", "Finance & Orders", NavMenu.ALL_ROLES),
+                // —— 监控运维 ——
+                new NavMenu("a6", "fa-satellite-dish", "监控运维", "Cluster Ops",
+                        "集群态势感知与推演监控大盘",
+                        "全网实时并发、端到端延迟拆解、QPS 吞吐与节点健康度 · 采样周期 5s · 数据时延 < 1s",
+                        "监控运维", "Monitor & Ops", NavMenu.ALL_ROLES));
+    }
+
+    private void initNav() {
+        if (navRepository.isEmpty()) {
+            navRepository.saveAll(navMenus());
+            log.info("[初始化] nav_menu 已写入 {} 条菜单（按一级页面分组）", navMenus().size());
+            return;
+        }
+        // 老库升级：把菜单分组 / 文案 / 排序与当前版本对齐（不覆盖运营已配置的可见角色）
+        List<NavMenu> menus = navMenus();
+        int upgraded = 0;
+        for (int i = 0; i < menus.size(); i++) {
+            if (navRepository.upgradeMenu(menus.get(i), i)) {
+                upgraded++;
+            }
+        }
+        // 缺失的菜单（如老库缺 a11）单独补齐
+        for (int i = 0; i < menus.size(); i++) {
+            NavMenu menu = menus.get(i);
+            if (!navRepository.existsById(menu.id())) {
+                navRepository.insertOne(menu, i);
+                log.info("[初始化] nav_menu 已补齐菜单 {}", menu.id());
+            }
+        }
+        // 为既有菜单补上可见角色默认值，保证菜单权限配置可用
+        navRepository.backfillGroupAndRoles();
+        if (upgraded > 0) {
+            log.info("[初始化] nav_menu 已按一级页面分组升级 {} 条菜单", upgraded);
         }
     }
 
@@ -441,6 +571,8 @@ public class DataInitializer implements ApplicationRunner {
 
     private void initSecurity() {
         if (!securityRepository.isEmpty()) {
+            // 老库升级：为既有设备回填关联账号，保证「移除指定设备登录态」能定位到会话
+            securityRepository.backfillDeviceAccounts(DEVICE_ACCOUNTS);
             return;
         }
         List<RoleDomain> roles = List.of(
@@ -483,13 +615,20 @@ public class DataInitializer implements ApplicationRunner {
                                 new Permission("任何写操作", Permission.NONE),
                                 new Permission("权限配置", Permission.NONE))))));
         List<DeviceRecord> devices = List.of(
-                new DeviceRecord("北京 · 联通", "61.135.169.105", "DEV-2A71-3C08", "1,286", 86, "正常", false),
-                new DeviceRecord("上海 · 电信", "101.86.106.29", "DEV-8F2A-9C31", "642", 92, "异常", false),
-                new DeviceRecord("深圳 · 电信", "113.87.193.226", "DEV-4D19-77E2", "1,024", 74, "可疑", false),
-                new DeviceRecord("广州 · 移动", "183.14.132.8", "DEV-6B33-10AF", "486", 68, "正常", false),
-                new DeviceRecord("杭州 · 移动", "112.17.68.31", "DEV-1E92-45D6", "318", 81, "可疑", false),
-                new DeviceRecord("成都 · 电信", "171.212.201.87", "DEV-9C04-28B1", "204", 35, "正常", false),
-                new DeviceRecord("西安 · 联通", "117.36.202.114", "DEV-3F58-6AD9", "142", 29, "正常", false));
+                new DeviceRecord("北京 · 联通", "61.135.169.105", "DEV-2A71-3C08", "1,286", 86, "正常", false,
+                        DEVICE_ACCOUNTS.get("DEV-2A71-3C08")),
+                new DeviceRecord("上海 · 电信", "101.86.106.29", "DEV-8F2A-9C31", "642", 92, "异常", false,
+                        DEVICE_ACCOUNTS.get("DEV-8F2A-9C31")),
+                new DeviceRecord("深圳 · 电信", "113.87.193.226", "DEV-4D19-77E2", "1,024", 74, "可疑", false,
+                        DEVICE_ACCOUNTS.get("DEV-4D19-77E2")),
+                new DeviceRecord("广州 · 移动", "183.14.132.8", "DEV-6B33-10AF", "486", 68, "正常", false,
+                        DEVICE_ACCOUNTS.get("DEV-6B33-10AF")),
+                new DeviceRecord("杭州 · 移动", "112.17.68.31", "DEV-1E92-45D6", "318", 81, "可疑", false,
+                        DEVICE_ACCOUNTS.get("DEV-1E92-45D6")),
+                new DeviceRecord("成都 · 电信", "171.212.201.87", "DEV-9C04-28B1", "204", 35, "正常", false,
+                        DEVICE_ACCOUNTS.get("DEV-9C04-28B1")),
+                new DeviceRecord("西安 · 联通", "117.36.202.114", "DEV-3F58-6AD9", "142", 29, "正常", false,
+                        DEVICE_ACCOUNTS.get("DEV-3F58-6AD9")));
         List<MembershipPlan> plans = List.of(
                 new MembershipPlan("免费体验版", "¥ 0", "注册即享 · 有效期 30 天", "每日 20 次 · 仅端侧模型",
                         "1,286,420", "72%"),
@@ -617,6 +756,38 @@ public class DataInitializer implements ApplicationRunner {
         }
     }
 
+    /**
+     * 初始化 C 端登录会话：按设备台账派生，使「查看用户登录设备列表 / 移除指定设备登录态」可真实操作。
+     *
+     * <p>会话有效期取自系统参数 sys.session_ttl（默认 24 小时），前 4 台设备各挂 1~2 个有效会话。
+     */
+    private void initAppSessions() {
+        if (!securityRepository.appSessionsEmpty()) {
+            return;
+        }
+        int ttlHours = 24;
+        try {
+            ttlHours = Integer.parseInt(securityRepository.getSetting(SecurityRepository.KEY_SESSION_TTL));
+        } catch (NumberFormatException ignored) {
+            // 参数缺失 / 非数字时用默认值
+        }
+        List<DeviceRecord> devices = securityRepository.findDevices();
+        List<AppSessionEntity> sessions = new ArrayList<>();
+        int[] counts = {2, 1, 2, 1, 1, 0, 0};
+        for (int i = 0; i < devices.size() && i < counts.length; i++) {
+            DeviceRecord device = devices.get(i);
+            for (int s = 0; s < counts[i]; s++) {
+                LocalDateTime loginAt = LocalDateTime.now().minusHours(2L * (s + 1) + i * 3L);
+                sessions.add(new AppSessionEntity(
+                        "APP-" + device.fingerprint().replace("DEV-", "") + "-" + s,
+                        device.account(), device.fingerprint(), loginAt,
+                        loginAt.plusHours(ttlHours)));
+            }
+        }
+        securityRepository.saveAppSessions(sessions);
+        log.info("[初始化] app_session 已写入 {} 条有效登录会话", sessions.size());
+    }
+
     /** 初始化 C 端用户演示数据（注册来源 / 会员状态全覆盖，含 1 条停用）。 */
     private void initAppUsers() {
         if (!securityRepository.appUsersEmpty()) {
@@ -718,6 +889,70 @@ public class DataInitializer implements ApplicationRunner {
                     seed.message, logs.size()));
         }
         return logs;
+    }
+
+    /** 初始化商户入驻申请（资质提交 / 合同签署的后台审核对象）。 */
+    private void initOnboardings() {
+        if (!onboardingRepository.isEmpty()) {
+            return;
+        }
+        onboardingRepository.saveAll(List.of(
+                new MerchantOnboardingEntity("MO-20260907-001", "晨曦文化传媒有限公司",
+                        "91330106MA2H3K7X0A", "周晨", "138-0013-8000",
+                        "营业执照 · 广播电视节目制作经营许可证", "已签署", "待审核",
+                        daysAgo(2, "10:12"), "—", ""),
+                new MerchantOnboardingEntity("MO-20260908-002", "星野动漫工作室",
+                        "91350211M0001WQ25B", "叶星野", "139-2200-1188",
+                        "营业执照 · 著作权登记证书", "已签署", "待审核",
+                        daysAgo(1, "15:36"), "—", ""),
+                new MerchantOnboardingEntity("MO-20260906-003", "青禾教育科技",
+                        "91440300MA5DKQ8L7C", "许青禾", "135-6688-2020",
+                        "营业执照 · 办学许可证", "待签署", "待审核",
+                        daysAgo(3, "09:04"), "—", "合同已发送 H5 签署链接，等待商户确认"),
+                new MerchantOnboardingEntity("MO-20260905-004", "蓝湾科技有限公司",
+                        "91440300MA5DKQ8L7D", "林蓝湾", "186-8899-6677",
+                        "营业执照", "已签署", "已通过",
+                        daysAgo(4, "11:22"), "Danny", "资质齐全 · 合同已签署，准予入驻"),
+                new MerchantOnboardingEntity("MO-20260904-005", "云梦互娱",
+                        "91330106MA2H3K7X0B", "秦云梦", "137-5566-3344",
+                        "营业执照（副本模糊）", "已签署", "已驳回",
+                        daysAgo(5, "17:48"), "Danny", "资质材料不清晰，请补充后重新提交")));
+        log.info("[初始化] merchant_onboarding 已写入 5 条入驻申请");
+    }
+
+    /**
+     * 初始化核心服务与第三方接口台账：状态与耗时为最近一次拨测结果，
+     * 开机后可点「拨测」发起真实 HTTP 探测刷新。
+     */
+    private void initDependencies() {
+        if (!thirdPartyRepository.isEmpty()) {
+            return;
+        }
+        DateTimeFormatter stamp = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String checkedAt = LocalDateTime.now().minusMinutes(3).format(stamp);
+        thirdPartyRepository.saveAll(List.of(
+                new ThirdPartyServiceEntity("平台 API 网关", "核心服务",
+                        "http://localhost:8080/api/meta/system", 2000, "正常", 168, 99.98, checkedAt,
+                        "自拨测 · 网关与鉴权链路", 0),
+                new ThirdPartyServiceEntity("端侧模型分发 CDN", "核心服务",
+                        "https://cdn.jsdelivr.net", 3000, "正常", 212, 99.86, checkedAt,
+                        "INT8 / FP16 量化模型分发", 0),
+                new ThirdPartyServiceEntity("NMT 云端翻译引擎", "翻译引擎",
+                        "https://api-free.deepl.com", 3000, "正常", 342, 99.72, checkedAt,
+                        "长句与专业领域译文主力", 0),
+                new ThirdPartyServiceEntity("ASR 语音识别服务", "语音识别",
+                        "https://www.google.com", 3000, "正常", 268, 99.65, checkedAt,
+                        "会议 / 语音翻译实时转写", 0),
+                new ThirdPartyServiceEntity("OCR 文字识别服务", "翻译引擎",
+                        "https://cdn.jsdelivr.net", 3000, "正常", 296, 99.41, checkedAt,
+                        "实时画面与图片文字检测", 0),
+                new ThirdPartyServiceEntity("地理编码服务（腾讯 LBS）", "地理编码",
+                        "https://apis.map.qq.com", 2500, "降级", 486, 98.92, checkedAt,
+                        "高峰期偶发超时，已启用 Open-Meteo 兜底", 0),
+                new ThirdPartyServiceEntity("支付渠道网关", "支付渠道",
+                        "https://api.mch.weixin.qq.com", 3000, "正常", 305, 99.95, checkedAt,
+                        "会员 / 课程订单收单", 0)));
+        log.info("[初始化] third_party_service 已写入 7 条依赖服务台账");
     }
 
     /** 初始化系统配置：运行参数（缺省才写入，不覆盖运营调整）+ C 端功能开关。 */

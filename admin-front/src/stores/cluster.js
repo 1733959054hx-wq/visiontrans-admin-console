@@ -8,6 +8,9 @@ import {
   fetchClusterOps,
   fetchClusterOverview,
   fetchClusterSysLogs,
+  fetchDependencies,
+  probeAllDependencies,
+  probeDependency,
   simulateCapacity,
   updateBackup,
   updateBreaker,
@@ -29,6 +32,9 @@ export const useClusterStore = defineStore('cluster', {
     /** 系统日志检索结果 { logs: [...] } */
     sysLogs: null,
     logsLoading: false,
+    /** 核心服务与第三方接口可用性 { rows, probeMode, updatedAt } */
+    dependencies: null,
+    depsLoading: false,
   }),
   actions: {
     /** 统一执行：处理 loading / 成功提示 / 失败提示 / 自动刷新。 */
@@ -118,6 +124,30 @@ export const useClusterStore = defineStore('cluster', {
     async setThresholds(cpu, mem, gpu) {
       const result = await this.run(() => updateThresholds(cpu, mem, gpu))
       await this.loadOps()
+      return result
+    },
+    /* ---------------------- 核心服务与第三方接口可用性 ---------------------- */
+    /** 拉取依赖服务可用性列表。 */
+    async loadDependencies() {
+      this.depsLoading = true
+      try {
+        this.dependencies = await fetchDependencies()
+      } catch (error) {
+        useUiStore().error(`依赖服务加载失败：${error.message}`)
+      } finally {
+        this.depsLoading = false
+      }
+    },
+    /** 对单个依赖服务发起真实拨测，成功后回读列表。 */
+    async probe(id) {
+      const result = await this.run(() => probeDependency(id))
+      await this.loadDependencies()
+      return result
+    },
+    /** 一键拨测全部依赖服务。 */
+    async probeAll() {
+      const result = await this.run(() => probeAllDependencies())
+      await this.loadDependencies()
       return result
     },
   },
