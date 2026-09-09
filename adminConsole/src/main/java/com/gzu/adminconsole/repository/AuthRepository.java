@@ -2,7 +2,9 @@ package com.gzu.adminconsole.repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -20,6 +22,10 @@ import com.gzu.adminconsole.entity.AuthSessionEntity;
  *
  * <p>同时作为 {@link TokenResolver} 的默认实现参与统一鉴权：
  * 商户等模块的令牌由各自模块解析，互不干扰。
+ *
+ * <p>会话保存在<b>进程内存</b>（{@link ConcurrentHashMap}）而非数据库：
+ * 后端重启即全部失效，所有在线用户被迫重新登录，避免长期挂起的令牌；
+ * 持久化表 auth_session 仅保留历史兼容，不再读写。
  */
 @Repository
 @Transactional(readOnly = true)
@@ -27,6 +33,9 @@ public class AuthRepository implements TokenResolver {
 
     /** 令牌有效期（小时）。 */
     public static final int TOKEN_HOURS = 8;
+
+    /** 内存会话表：token → 会话。 */
+    private final Map<String, AuthSessionEntity> sessions = new ConcurrentHashMap<>();
 
     @PersistenceContext
     private EntityManager em;
@@ -97,18 +106,13 @@ public class AuthRepository implements TokenResolver {
     /** 删除会话（登出）。 */
     @Transactional
     public void deleteSession(String token) {
-        AuthSessionEntity session = em.find(AuthSessionEntity.class, token);
-        if (session != null) {
-            em.remove(session);
-        }
+        sessions.remove(token);
     }
 
     /** 清理过期会话。 */
     @Transactional
     public void purgeExpired() {
-        em.createQuery("delete from AuthSessionEntity s where s.expireAt < :now")
-                .setParameter("now", LocalDateTime.now())
-                .executeUpdate();
+        sessions.values().removeIf(AuthSessionEntity::isExpired);
     }
 
     /** 角色中文名 → 角色编码（与 RBAC 角色域一致）。 */

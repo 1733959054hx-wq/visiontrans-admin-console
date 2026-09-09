@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import * as echarts from 'echarts/core'
 import { EffectScatterChart } from 'echarts/charts'
@@ -33,7 +33,7 @@ const render = () => {
       animation: false,
       tooltip: {
         backgroundColor: 'rgba(255,255,255,.98)',
-        borderColor: '#E2E8F0',
+        borderColor: '#E5EAF0',
         textStyle: { fontSize: 11.5, color: '#334155' },
         formatter: (p) => {
           const d = p.data || {}
@@ -70,7 +70,7 @@ const render = () => {
             borderColor: '#fff',
             borderWidth: 1.5,
             shadowBlur: 8,
-            shadowColor: 'rgba(37, 99, 235,.35)',
+            shadowColor: 'rgba(13,148,136,.35)',
           },
           label: { show: true, position: 'right', distance: 5, fontSize: 10.5, color: '#334155', formatter: (p) => p.name },
           zlevel: 2,

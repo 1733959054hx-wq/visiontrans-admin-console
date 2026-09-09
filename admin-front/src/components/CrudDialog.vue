@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, watch } from 'vue'
 
 /**
@@ -186,7 +186,7 @@ const submit = () => {
     @click.self="emit('close')"
   >
     <div class="w-full max-w-lg rounded-2xl bg-white shadow-lift">
-      <div class="flex items-center justify-between border-b border-[#EEF2F7] px-5 py-3.5">
+      <div class="flex items-center justify-between border-b border-[#E5EAF0] px-5 py-3.5">
         <div class="text-[14.5px] font-semibold text-ink">{{ title }}</div>
         <button class="text-sub transition hover:text-ink" @click="emit('close')">
           <i class="fa-solid fa-xmark"></i>
@@ -251,7 +251,7 @@ const submit = () => {
         </div>
       </div>
 
-      <div class="flex items-center justify-between border-t border-[#EEF2F7] px-5 py-3.5">
+      <div class="flex items-center justify-between border-t border-[#E5EAF0] px-5 py-3.5">
         <span v-if="Object.keys(errors).length" class="text-[11.5px] text-rose-500">
           <i class="fa-solid fa-circle-exclamation mr-1"></i>还有 {{ Object.keys(errors).length }} 项必填未填
         </span>

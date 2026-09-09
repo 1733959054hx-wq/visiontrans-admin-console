@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 defineProps({
   open: { type: Boolean, default: false },
   title: { type: String, default: '操作确认' },
@@ -37,7 +37,7 @@ const emit = defineEmits(['resolve'])
       >
         <div
           class="grid h-9 w-9 flex-none place-items-center rounded-full text-[13px] font-semibold text-white"
-          style="background: linear-gradient(135deg, #1E3A8A, #0EA5E9)"
+          style="background: linear-gradient(135deg, #115E59, #14B8A6)"
         >
           {{ subject.avatar || String(subject.name || '?').slice(0, 1) }}
         </div>

@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -47,6 +47,8 @@ onMounted(() => {
   // 运维管理与系统日志为独立区块：并行拉取，失败不影响主大盘
   if (!store.ops) store.loadOps()
   if (!store.sysLogs) store.loadSysLogs()
+  // 核心服务与第三方接口可用性：独立区块
+  store.loadDependencies()
 })
 
 /* ------------------------------ 图表配置 ------------------------------ */
@@ -73,7 +75,7 @@ const waveOption = computed(() => {
       type: 'category',
       boundaryGap: false,
       data: xLabels,
-      axisLine: { lineStyle: { color: '#E2E8F0' } },
+      axisLine: { lineStyle: { color: '#E5EAF0' } },
       axisTick: { show: false },
       axisLabel: { color: '#94A3B8', fontSize: 10.5 },
     },
@@ -82,7 +84,7 @@ const waveOption = computed(() => {
       max: Math.ceil((maxV * 1.08) / 10) * 10,
       splitNumber: 4,
       axisLabel: { color: '#94A3B8', fontSize: 10.5, fontFamily: 'JetBrains Mono, monospace' },
-      splitLine: { lineStyle: { color: '#EEF2F7' } },
+      splitLine: { lineStyle: { color: '#E5EAF0' } },
     },
     series: layers.map((layer) => ({
       name: layer.name,
@@ -120,7 +122,7 @@ const qpsOption = computed(() => {
       type: 'category',
       boundaryGap: false,
       data: qps.labels,
-      axisLine: { lineStyle: { color: '#E2E8F0' } },
+      axisLine: { lineStyle: { color: '#E5EAF0' } },
       axisTick: { show: false },
       axisLabel: { color: '#94A3B8', fontSize: 10.5 },
     },
@@ -129,7 +131,7 @@ const qpsOption = computed(() => {
       max: qps.maxAxis,
       splitNumber: 4,
       axisLabel: { color: '#94A3B8', fontSize: 10.5, fontFamily: 'JetBrains Mono, monospace' },
-      splitLine: { lineStyle: { color: '#EEF2F7' } },
+      splitLine: { lineStyle: { color: '#E5EAF0' } },
     },
     series: [
       {
@@ -139,14 +141,14 @@ const qpsOption = computed(() => {
         data: qps.real,
         symbol: 'circle',
         symbolSize: 5,
-        itemStyle: { color: '#2563EB', borderColor: '#fff', borderWidth: 1.5 },
-        lineStyle: { color: '#2563EB', width: 2.4 },
+        itemStyle: { color: '#0D9488', borderColor: '#fff', borderWidth: 1.5 },
+        lineStyle: { color: '#0D9488', width: 2.4 },
         areaStyle: {
           color: {
             type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
             colorStops: [
-              { offset: 0, color: '#2563EB', opacity: 0.28 },
-              { offset: 1, color: '#2563EB', opacity: 0 },
+              { offset: 0, color: '#0D9488', opacity: 0.28 },
+              { offset: 1, color: '#0D9488', opacity: 0 },
             ],
           },
         },
@@ -158,8 +160,8 @@ const qpsOption = computed(() => {
         data: qps.forecast,
         symbol: 'circle',
         symbolSize: 5,
-        itemStyle: { color: '#0EA5E9', borderColor: '#fff', borderWidth: 1.5 },
-        lineStyle: { color: '#0EA5E9', width: 2.4, type: 'dashed' },
+        itemStyle: { color: '#14B8A6', borderColor: '#fff', borderWidth: 1.5 },
+        lineStyle: { color: '#14B8A6', width: 2.4, type: 'dashed' },
       },
       {
         name: `设计容量上限 ${qps.capacity} QPS`,
@@ -208,8 +210,8 @@ const topoOption = computed(() => {
   const tree = {
     name: GATEWAY,
     symbolSize: 38,
-    itemStyle: { color: '#1E3A8A' },
-    label: { fontWeight: 600, color: '#1E3A8A' },
+    itemStyle: { color: '#115E59' },
+    label: { fontWeight: 600, color: '#115E59' },
     tip: `承载 ${zones.length} 个可用区 · ${list.length} 个服务组`,
     children: zones.map((zone) => {
       const members = groups.get(zone)
@@ -217,7 +219,7 @@ const topoOption = computed(() => {
       return {
         name: zone,
         symbolSize: 28,
-        itemStyle: { color: risky ? '#F59E0B' : '#2563EB' },
+        itemStyle: { color: risky ? '#F59E0B' : '#0D9488' },
         tip: `${members.length} 个服务组${risky ? ' · 存在高负载节点' : ' · 全部健康'}`,
         children: members.map((node) => ({
           name: node.id,
@@ -238,7 +240,7 @@ const topoOption = computed(() => {
     animation: false,
     tooltip: {
       backgroundColor: 'rgba(255,255,255,.98)',
-      borderColor: '#E2E8F0',
+      borderColor: '#E5EAF0',
       textStyle: { fontSize: 11.5, color: '#334155' },
       formatter: (p) => (p.data?.tip ? `<b>${p.name}</b><br/>${p.data.tip}` : ''),
     },
@@ -403,6 +405,30 @@ const commitThresholds = () => {
   store.setThresholds(thresholdValues.cpu, thresholdValues.mem, thresholdValues.gpu).catch(() => {})
 }
 
+/* ---------------------- 核心服务与第三方接口可用性 ---------------------- */
+
+const dependencies = computed(() => store.dependencies)
+const dependencyRows = computed(() => store.dependencies?.rows || [])
+const depAbnormal = computed(() => dependencyRows.value.filter((d) => d.status !== '正常').length)
+
+/** 依赖拨测：真实 HTTP 请求，成功后回读列表 */
+const probeOne = async (row) => {
+  await store.probe(row.id).catch(() => {})
+}
+
+const probeAll = async () => {
+  if (await askConfirm('将对全部核心服务与第三方接口发起一次真实 HTTP 拨测，预计耗时数秒。', '一键拨测')) {
+    await store.probeAll().catch(() => {})
+  }
+}
+
+const exportDependencies = () => {
+  exportCsv(`依赖服务可用性-${stamp()}`,
+    ['服务名称', '分类', '拨测地址', '超时(ms)', '状态', '响应耗时(ms)', '近24h可用率(%)', '最近拨测', '备注'],
+    dependencyRows.value.map((d) => [d.name, d.category, d.endpoint, d.timeoutMs, d.status, d.latencyMs,
+      d.successRate, d.lastCheck, d.remark]))
+}
+
 /* ------------------------------ 系统日志检索 ------------------------------ */
 
 const LOG_LEVELS = ['全部', 'INFO', 'WARN', 'ERROR']
@@ -470,7 +496,7 @@ const filteredLogs = computed(() => (store.sysLogs?.logs || [])
                 :sw="11"
                 :fs="17"
                 c1="#10B981"
-                c2="#0EA5E9"
+                c2="#14B8A6"
               />
             </div>
           </div>
@@ -667,6 +693,86 @@ const filteredLogs = computed(() => (store.sysLogs?.logs || [])
               </tr>
               <tr v-if="!filteredNodes.length">
                 <td colspan="9" class="py-8 text-center text-[12px] text-sub">没有匹配的节点</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 核心服务与第三方接口可用性监控 -->
+      <div class="card anim mt-4">
+        <div class="card-h flex-wrap">
+          <div>
+            <div class="card-t">服务可用性监控</div>
+            <div class="card-s">
+              核心服务与第三方接口的可用性与响应耗时 · 拨测为真实 HTTP 请求
+              <span v-if="dependencies?.updatedAt">· 最近拨测 {{ dependencies.updatedAt }}</span>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <StatusPill
+              :text="depAbnormal ? `${depAbnormal} 项异常 / 降级` : '全部正常'"
+              :tone="depAbnormal ? 'amber' : 'green'"
+            />
+            <StatusPill
+              :text="dependencies?.probeMode === 'auto' ? '定时拨测已开启' : '手动拨测模式'"
+              tone="blue"
+            />
+            <button class="btn btn-ghost btn-sm" @click="exportDependencies">
+              <i class="fa-solid fa-file-export"></i>导出
+            </button>
+            <button class="btn btn-primary btn-sm" :disabled="store.acting" @click="probeAll">
+              <i class="fa-solid fa-satellite-dish"></i>一键拨测
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="tb">
+            <thead>
+              <tr>
+                <th>服务名称</th>
+                <th>分类</th>
+                <th>拨测地址</th>
+                <th class="text-right">响应耗时</th>
+                <th class="text-right">近 24h 可用率</th>
+                <th>状态</th>
+                <th>最近拨测</th>
+                <th class="text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in dependencyRows" :key="row.id">
+                <td class="text-[12.5px] font-medium">
+                  {{ row.name }}
+                  <div class="text-[10.5px] font-normal text-sub">{{ row.remark }}</div>
+                </td>
+                <td><StatusPill :text="row.category" tone="blue" /></td>
+                <td class="num max-w-[240px] truncate text-[11px] text-sub" :title="row.endpoint">
+                  {{ row.endpoint }}
+                </td>
+                <td class="num text-right text-[12px]">
+                  <span :class="row.latencyMs > row.timeoutMs ? 'text-rose-500 font-semibold' : ''">
+                    {{ row.latencyMs }} ms
+                  </span>
+                </td>
+                <td class="num text-right text-[12px]">{{ row.successRate.toFixed(2) }}%</td>
+                <td><StatusPill :text="row.status" :tone="row.tone || 'slate'" /></td>
+                <td class="num text-[11px] text-sub">{{ row.lastCheck }}</td>
+                <td class="text-right">
+                  <button
+                    class="btn btn-ghost btn-sm !px-2 !py-1"
+                    title="对该服务发起一次拨测"
+                    :disabled="store.acting"
+                    @click="probeOne(row)"
+                  >
+                    <i class="fa-solid fa-satellite-dish text-electric"></i>拨测
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="!dependencyRows.length">
+                <td colspan="8" class="py-8 text-center text-[12px] text-sub">
+                  {{ store.depsLoading ? '加载中…' : '暂无依赖服务台账' }}
+                </td>
               </tr>
             </tbody>
           </table>

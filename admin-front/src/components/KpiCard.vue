@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed } from 'vue'
 
 import SparkLine from './SparkLine.vue'
@@ -10,7 +10,7 @@ const props = defineProps({
 
 /** hex → rgba（用于卡片右上角光晕） */
 const glow = computed(() => {
-  const hex = props.kpi.c2 || '#2563EB'
+  const hex = props.kpi.c2 || '#0D9488'
   if (hex[0] !== '#') return hex
   const r = parseInt(hex.slice(1, 3), 16)
   const g = parseInt(hex.slice(3, 5), 16)
@@ -53,7 +53,7 @@ const toneClass = (tone) =>
       <span class="text-[11px] text-sub">{{ kpi.note }}</span>
     </div>
     <div class="mt-2.5">
-      <SparkLine :data="kpi.spark" :color="kpi.c2 || '#2563EB'" :height="34" />
+      <SparkLine :data="kpi.spark" :color="kpi.c2 || '#0D9488'" :height="34" />
     </div>
   </div>
 </template>

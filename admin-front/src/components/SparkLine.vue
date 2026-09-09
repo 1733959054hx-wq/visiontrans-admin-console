@@ -1,9 +1,9 @@
-<script setup>
+﻿<script setup>
 import { computed } from 'vue'
 
 const props = defineProps({
   data: { type: Array, default: () => [] },
-  color: { type: String, default: '#2563EB' },
+  color: { type: String, default: '#0D9488' },
   height: { type: Number, default: 34 },
 })
 

@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed } from 'vue'
 
 const props = defineProps({
@@ -7,8 +7,8 @@ const props = defineProps({
   label: { type: String, default: '' },
   size: { type: Number, default: 150 },
   sw: { type: Number, default: 14 },
-  c1: { type: String, default: '#1E3A8A' },
-  c2: { type: String, default: '#0EA5E9' },
+  c1: { type: String, default: '#115E59' },
+  c2: { type: String, default: '#14B8A6' },
   fs: { type: Number, default: 22 },
 })
 
@@ -36,7 +36,7 @@ const gradientId = `donut-${Math.random().toString(36).slice(2, 9)}`
         <stop offset="100%" :stop-color="c2" />
       </linearGradient>
     </defs>
-    <circle :cx="size / 2" :cy="size / 2" :r="geometry.r" fill="none" stroke="#EEF2F7" :stroke-width="sw" />
+    <circle :cx="size / 2" :cy="size / 2" :r="geometry.r" fill="none" stroke="#E5EAF0" :stroke-width="sw" />
     <circle
       :cx="size / 2"
       :cy="size / 2"

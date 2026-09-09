@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed } from 'vue'
 
 const props = defineProps({
@@ -20,8 +20,8 @@ const fmt = (n) => Number(n || 0).toLocaleString('en-US')
         class="num grid h-5 w-5 flex-none place-items-center rounded-md text-[10.5px] font-bold"
         :style="
           index < 3
-            ? 'background:linear-gradient(135deg,#1E3A8A,#0EA5E9);color:#fff'
-            : 'background:#EEF2F7;color:#64748B'
+            ? 'background:linear-gradient(135deg,#115E59,#14B8A6);color:#fff'
+            : 'background:#E5EAF0;color:#64748B'
         "
       >
         {{ index + 1 }}
