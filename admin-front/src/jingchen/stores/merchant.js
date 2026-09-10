@@ -2,30 +2,42 @@ import { defineStore } from 'pinia'
 
 import {
   createChannel,
+  createGoods,
   createMaterial,
   createPlan,
   createVideo,
   deleteChannel,
+  deleteGoods,
   deleteMaterial,
   deletePlan,
   deleteVideo,
   fetchAb,
   fetchChannels,
+  fetchFunds,
+  fetchGoods,
   fetchMaterials,
   fetchMerchantHome,
+  fetchOnboard,
   fetchOrders,
   fetchOverview,
   fetchPlans,
   fetchSales,
   fetchVideos,
   pausePlan,
+  rechargeFunds,
   resumePlan,
   saveAb,
   settleOrder as apiSettleOrder,
+  shelfGoods,
+  signContract,
+  submitOnboard,
+  unshelfGoods,
   updateChannel,
+  updateGoods,
   updateMaterial,
   updatePlan,
   updateVideo,
+  withdrawFunds,
 } from '@/jingchen/api/merchant'
 import { useUiStore } from '@/stores/ui'
 
@@ -51,6 +63,12 @@ export const useMerchantStore = defineStore('jingchenMerchant', {
     channelsLoading: false,
     sales: null,
     salesLoading: false,
+    goods: null,
+    goodsLoading: false,
+    funds: null,
+    fundsLoading: false,
+    onboard: null,
+    onboardLoading: false,
   }),
   actions: {
     async loadHome() {
@@ -135,13 +153,14 @@ export const useMerchantStore = defineStore('jingchenMerchant', {
         this.ordersLoading = false
       }
     },
-    async runOrder(action) {
+    async runOrder(action, reload) {
       const ui = useUiStore()
       this.acting = true
       try {
         const result = await action()
         if (result?.message) ui.success(result.message)
-        await this.loadOrders()
+        if (reload === 'funds') await this.loadFunds()
+        else await this.loadOrders()
         return result
       } catch (error) {
         ui.error(error.message)
@@ -282,6 +301,105 @@ export const useMerchantStore = defineStore('jingchenMerchant', {
     },
     deleteChannel(id) {
       return this.runChannel(() => deleteChannel(id))
+    },
+    /* ------------------------------ 商品管理 ------------------------------ */
+    async loadGoods() {
+      const ui = useUiStore()
+      this.goodsLoading = true
+      try {
+        this.goods = await fetchGoods()
+      } catch (error) {
+        ui.error(`商品加载失败：${error.message}`)
+      } finally {
+        this.goodsLoading = false
+      }
+    },
+    async runGoods(action) {
+      const ui = useUiStore()
+      this.acting = true
+      try {
+        const result = await action()
+        if (result?.message) ui.success(result.message)
+        await this.loadGoods()
+        return result
+      } catch (error) {
+        ui.error(error.message)
+        throw error
+      } finally {
+        this.acting = false
+      }
+    },
+    createGoods(payload) {
+      return this.runGoods(() => createGoods(payload))
+    },
+    updateGoods(id, payload) {
+      return this.runGoods(() => updateGoods(id, payload))
+    },
+    shelfGoods(id) {
+      return this.runGoods(() => shelfGoods(id))
+    },
+    unshelfGoods(id) {
+      return this.runGoods(() => unshelfGoods(id))
+    },
+    deleteGoods(id) {
+      return this.runGoods(() => deleteGoods(id))
+    },
+    /* ------------------------------ 账户与资金 ------------------------------ */
+    async loadFunds() {
+      const ui = useUiStore()
+      this.fundsLoading = true
+      try {
+        this.funds = await fetchFunds()
+      } catch (error) {
+        ui.error(`资金数据加载失败：${error.message}`)
+      } finally {
+        this.fundsLoading = false
+      }
+    },
+    recharge(amount) {
+      return this.runOrder(() => rechargeFunds(amount), 'funds')
+    },
+    withdraw(amount) {
+      return this.runOrder(() => withdrawFunds(amount), 'funds')
+    },
+    /* ------------------------------ 入驻管理 ------------------------------ */
+    async loadOnboard() {
+      this.onboardLoading = true
+      try {
+        this.onboard = await fetchOnboard()
+      } catch {
+        this.onboard = null
+      } finally {
+        this.onboardLoading = false
+      }
+    },
+    async submitOnboarding(payload) {
+      const ui = useUiStore()
+      this.acting = true
+      try {
+        this.onboard = await submitOnboard(payload)
+        ui.success('入驻资质已提交，等待平台审核')
+        return this.onboard
+      } catch (error) {
+        ui.error(error.message)
+        throw error
+      } finally {
+        this.acting = false
+      }
+    },
+    async signContract() {
+      const ui = useUiStore()
+      this.acting = true
+      try {
+        this.onboard = await signContract()
+        ui.success('合作协议签署成功')
+        return this.onboard
+      } catch (error) {
+        ui.error(error.message)
+        throw error
+      } finally {
+        this.acting = false
+      }
     },
   },
 })

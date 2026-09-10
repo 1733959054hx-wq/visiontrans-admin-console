@@ -22,7 +22,9 @@ onMounted(() => {
   if (!store.materials) store.loadMaterials()
   if (!store.videos) store.loadVideos()
   if (!store.channels) store.loadChannels()
-  if (!store.ab) store.loadAb()
+  if (!store.goods) store.loadGoods()
+  if (!store.funds) store.loadFunds()
+  if (!store.onboard) store.loadOnboard()
 })
 
 const wan = (n) => {
@@ -37,6 +39,8 @@ const modules = computed(() => {
   const materials = store.materials || []
   const videos = store.videos || []
   const channels = store.channels || []
+  const goods = store.goods || []
+  const funds = store.funds
   const ov = store.overview
   const planBudget = plans.reduce((s, p) => s + (p.budget || 0), 0)
   const planUsed = plans.reduce((s, p) => s + (p.used || 0), 0)
@@ -44,7 +48,23 @@ const modules = computed(() => {
   const sumMoney = (list, k, st) => list.filter((o) => !st || o.status === st).reduce((s, o) => s + (o[k] || 0), 0)
   const playSum = videos.reduce((s, v) => s + (v.plays || 0), 0)
   const dealSum = channels.reduce((s, c) => s + (c.dealCount || 0), 0)
+  const goodsOn = goods.filter((g) => g.status === '在售').length
+  const onboard = store.onboard
+  const onboardState = !onboard ? '未提交' : onboard.status === '已通过' ? '已通过' : onboard.status === '已驳回' ? '已驳回' : onboard.contractStatus === '已签署' ? '审核中' : '待签署'
   return [
+    {
+      key: 'onboard',
+      title: '入驻管理',
+      icon: 'fa-building-shield',
+      grad: 'linear-gradient(135deg,#475569,#94A3B8)',
+      desc: '资质提交 / 合同签署 / 平台审核',
+      stats: [
+        { label: '状态', value: onboardState },
+        { label: '申请单', value: onboard ? onboard.applyNo : '—' },
+        { label: '合同', value: onboard ? onboard.contractStatus : '未签署' },
+      ],
+      to: () => router.push({ name: 'merchantOnboard' }),
+    },
     {
       key: 'overview',
       title: '经营概览',
@@ -72,6 +92,19 @@ const modules = computed(() => {
       to: () => router.push({ name: 'merchantPlans' }),
     },
     {
+      key: 'goods',
+      title: '商品管理',
+      icon: 'fa-box-open',
+      grad: 'linear-gradient(135deg,#7C3AED,#A78BFA)',
+      desc: '商品上架 / 编辑 / 下架与折扣定价',
+      stats: [
+        { label: '商品', value: `${goods.length} 个` },
+        { label: '在售', value: `${goodsOn} 个` },
+        { label: '销量', value: `${Number(goods.reduce((s, g) => s + (g.salesCount || 0), 0)).toLocaleString('zh-CN')} 份` },
+      ],
+      to: () => router.push({ name: 'merchantGoods' }),
+    },
+    {
       key: 'orders',
       title: '订单与结算',
       icon: 'fa-file-invoice-dollar',
@@ -83,6 +116,19 @@ const modules = computed(() => {
         { label: '退款中', value: `${orders.filter((o) => o.status === '退款中').length} 笔` },
       ],
       to: () => router.push({ name: 'merchantOrders' }),
+    },
+    {
+      key: 'funds',
+      title: '账户与资金',
+      icon: 'fa-wallet',
+      grad: 'linear-gradient(135deg,#10B981,#34D399)',
+      desc: '余额 / 充值提现 / 资金流水',
+      stats: [
+        { label: '可用余额', value: `¥${wan(funds?.balance || 0)}` },
+        { label: '累计收入', value: `¥${wan(funds?.income || 0)}` },
+        { label: '累计支出', value: `¥${wan(funds?.expense || 0)}` },
+      ],
+      to: () => router.push({ name: 'merchantFunds' }),
     },
     {
       key: 'materials',
@@ -132,7 +178,7 @@ const modules = computed(() => {
     <!-- 欢迎模块 -->
     <MerchantWelcomeCard :home="store.home" :loading="store.loading" />
 
-    <!-- 业务模块:经营概览 / 投放计划 / 订单结算 -->
+    <!-- 业务模块:入驻 + 九大业务模块入口 -->
     <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       <div v-for="mod in modules" :key="mod.key" class="card anim overflow-hidden">
         <div class="card-h">

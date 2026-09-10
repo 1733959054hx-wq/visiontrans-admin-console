@@ -152,3 +152,48 @@ export function deleteChannel(id) {
 export function fetchSales() {
   return request.get('/merchant/sales')
 }
+
+/* ------------------------------ 商品管理 ------------------------------ */
+
+export function fetchGoods() {
+  return request.get('/merchant/goods')
+}
+export function createGoods(payload) {
+  return request.post('/merchant/goods', payload)
+}
+export function updateGoods(id, payload) {
+  return request.put(`/merchant/goods/${id}`, payload)
+}
+export function shelfGoods(id) {
+  return request.put(`/merchant/goods/${id}/shelf`)
+}
+export function unshelfGoods(id) {
+  return request.put(`/merchant/goods/${id}/unshelf`)
+}
+export function deleteGoods(id) {
+  return request.delete(`/merchant/goods/${id}`)
+}
+
+/* ------------------------------ 账户与资金 ------------------------------ */
+
+export function fetchFunds() {
+  return request.get('/merchant/funds')
+}
+export function rechargeFunds(amount) {
+  return request.post('/merchant/funds/recharge', { amount })
+}
+export function withdrawFunds(amount) {
+  return request.post('/merchant/funds/withdraw', { amount })
+}
+
+/* ------------------------------ 入驻管理 ------------------------------ */
+
+export function fetchOnboard() {
+  return request.get('/merchant/onboarding')
+}
+export function submitOnboard(payload) {
+  return request.post('/merchant/onboarding/submit', payload)
+}
+export function signContract() {
+  return request.post('/merchant/onboarding/contract/sign')
+}

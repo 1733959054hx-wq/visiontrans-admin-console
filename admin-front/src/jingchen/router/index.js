@@ -48,6 +48,24 @@ export const merchantRoutes = [
     component: () => import('@/jingchen/views/MerchantPromoView.vue'),
     meta: { title: '推广与销售报表', roles: [MERCHANT_ROLE] },
   },
+  {
+    path: '/merchant/goods',
+    name: 'merchantGoods',
+    component: () => import('@/jingchen/views/MerchantGoodsView.vue'),
+    meta: { title: '商品管理', roles: [MERCHANT_ROLE] },
+  },
+  {
+    path: '/merchant/funds',
+    name: 'merchantFunds',
+    component: () => import('@/jingchen/views/MerchantFundsView.vue'),
+    meta: { title: '账户与资金', roles: [MERCHANT_ROLE] },
+  },
+  {
+    path: '/merchant/onboard',
+    name: 'merchantOnboard',
+    component: () => import('@/jingchen/views/MerchantOnboardView.vue'),
+    meta: { title: '入驻管理', roles: [MERCHANT_ROLE] },
+  },
 ]
 
 export default merchantRoutes
