@@ -6,7 +6,9 @@ import CrudDialog from '@/components/CrudDialog.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusPill from '@/components/StatusPill.vue'
 import { useConfirm } from '@/composables/useConfirm'
+import { exportCsv, stamp } from '@/utils/csv'
 import { useMerchantStore } from '@/jingchen/stores/merchant'
+import { useUiStore } from '@/stores/ui'
 
 /**
  * 商户投放计划管理（jingchen 模块业务页）。
@@ -43,6 +45,36 @@ const planTone = (p) => {
 }
 const barColor = (pct) => (pct > 95 ? '#EF4444' : pct > 80 ? '#F59E0B' : '#0D9488')
 const planPct = (p) => (p.budget > 0 ? Math.min(100, Math.round(((p.used || 0) / p.budget) * 100)) : 0)
+
+/* ---- 投放报表:效果数据查看 + 导出(Excel / PDF) ---- */
+const ui = useUiStore()
+
+const avgCtr = computed(() => {
+  const withCtr = plans.value.filter((p) => p.ctr != null)
+  if (!withCtr.length) return '—'
+  return `${(withCtr.reduce((s, p) => s + p.ctr, 0) / withCtr.length).toFixed(2)}%`
+})
+
+const exportExcel = () => {
+  exportCsv(
+    `投放报表-${stamp()}`,
+    ['计划编号', '计划名称', '广告形式', '定向场景', '日预算(元)', '已消耗(元)', '消耗进度', 'CTR', '状态', '负责人'],
+    plans.value.map((p) => [
+      p.planNo, p.name, p.adForm, p.scene,
+      Number(p.budget || 0).toFixed(2),
+      Number(p.used || 0).toFixed(2),
+      `${planPct(p)}%`,
+      p.ctr == null ? '' : `${p.ctr}%`,
+      p.paused ? '已暂停' : p.status,
+      p.owner || '',
+    ]),
+  )
+}
+
+const exportPdf = () => {
+  ui.success('在弹出的打印窗口中选择「另存为 PDF」即可导出')
+  window.print()
+}
 
 /* ---- 新增 / 编辑（复用通用 CrudDialog，字段按后端契约配置） ---- */
 const PLAN_FIELDS = [
@@ -115,11 +147,27 @@ onMounted(() => {
   <div class="p-5">
     <PageHeader title="投放计划管理" desc="广告投放计划的新增 / 编辑 / 暂停恢复与删除 · 数据落 ad_plan 表">
       <template #actions>
+        <button class="btn btn-ghost btn-sm" title="下载 CSV(Excel 可直接打开)" @click="exportExcel">
+          <i class="fa-solid fa-file-excel text-emerald-600"></i>导出 Excel
+        </button>
+        <button class="btn btn-ghost btn-sm" title="打印窗口中另存为 PDF" @click="exportPdf">
+          <i class="fa-solid fa-file-pdf text-rose-500"></i>导出 PDF
+        </button>
         <button class="btn btn-primary btn-sm" :disabled="store.acting" @click="openCreate">
           <i class="fa-solid fa-plus"></i>新建投放计划
         </button>
       </template>
     </PageHeader>
+
+    <!-- 投放报表 · 效果数据 -->
+    <div class="card anim mb-1 px-4 py-2.5">
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-[12px]">
+        <span class="font-bold text-ink"><i class="fa-solid fa-chart-simple mr-1.5 text-teal-500"></i>投放报表</span>
+        <span class="text-sub">平均点击率 CTR <b class="num text-electric">{{ avgCtr }}</b></span>
+        <span class="text-sub">覆盖计划 <b class="num text-ink">{{ plans.length }}</b> 个</span>
+        <span class="text-sub ml-auto text-[10.5px]">数据来自 ad_plan 表实时聚合 · 可导出 Excel / PDF</span>
+      </div>
+    </div>
 
     <!-- 汇总指标 -->
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
