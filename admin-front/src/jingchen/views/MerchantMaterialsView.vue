@@ -2,15 +2,17 @@
 import { computed, onMounted, reactive } from 'vue'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import CrudDialog from '@/components/CrudDialog.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import StatusPill from '@/components/StatusPill.vue'
 import { useConfirm } from '@/composables/useConfirm'
+import MerchantUploadDialog from '@/jingchen/components/MerchantUploadDialog.vue'
+import { fileObjectUrl } from '@/jingchen/composables/useFileUrl'
 import { useMerchantStore } from '@/jingchen/stores/merchant'
 import { useUiStore } from '@/stores/ui'
 
 /**
- * 商户素材管理（jingchen 模块业务页）:素材库 CRUD + A/B 分流测试配置。
+ * 商户素材管理（jingchen 模块业务页）:素材库真实上传 + CRUD + A/B 分流测试配置。
+ * 上传走 POST /merchant/files(multipart),名称/大小/形态由落盘文件自动回填。
  */
 const store = useMerchantStore()
 const { confirmState, askConfirm, resolveConfirm } = useConfirm()
@@ -33,33 +35,93 @@ const typeTone = { 图片: 'green', 视频: 'blue', H5: 'amber' }
 const statusTone = { 使用中: 'green', 测试中: 'amber', 已停用: 'slate' }
 
 const MATERIAL_FIELDS = [
-  { key: 'name', label: '素材文件名', type: 'text', required: true, placeholder: '如：东京机场导览_15s.mp4' },
-  { key: 'materialType', label: '素材形态', type: 'select', options: ['视频', '图片', 'H5'] },
-  { key: 'sizeKb', label: '文件大小', type: 'text', kind: 'decimal', suffix: 'KB', decimals: 0, min: 0, placeholder: '12800' },
+  { key: 'name', label: '素材名称', type: 'text', required: true, placeholder: '选文件后自动回填,可改' },
+  { key: 'materialType', label: '素材形态', type: 'select', options: ['视频', '图片', 'H5'], disabled: true },
   { key: 'status', label: '投放状态', type: 'select', options: ['使用中', '测试中', '已停用'] },
 ]
 
 const dialog = reactive({ open: false, title: '', record: {}, mode: 'create' })
+const upload = reactive({ uploading: false, progress: 0, meta: null, error: '' })
+
+const extOf = (name) => String(name || '').split('.').pop().toLowerCase()
+const kindOfExt = (ext) => {
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext)) return 'image'
+  if (['mp4', 'mov', 'm4v', 'webm', 'avi', 'mkv'].includes(ext)) return 'video'
+  return ''
+}
+const typeOfExt = (ext) => (kindOfExt(ext) === 'image' ? '图片' : kindOfExt(ext) === 'video' ? '视频' : '')
+
 const openCreate = () => {
   dialog.open = true
   dialog.mode = 'create'
-  dialog.title = '上传新素材(演示)'
-  dialog.record = { name: '', materialType: '图片', sizeKb: 1200, status: '测试中' }
+  dialog.title = '上传新素材'
+  upload.uploading = false
+  upload.progress = 0
+  upload.meta = null
+  upload.error = ''
+  dialog.record = { name: '', materialType: '图片', sizeKb: '', status: '测试中' }
 }
 const openEdit = (row) => {
   dialog.open = true
   dialog.mode = 'edit'
   dialog.title = `编辑素材 · ${row.name}`
+  upload.uploading = false
+  upload.progress = 0
+  upload.error = ''
+  upload.meta = row.fileUrl
+    ? { name: row.fileName || row.name, url: row.fileUrl, ext: extOf(row.fileUrl), sizeText: sizeText(row.sizeKb) }
+    : null
   dialog.record = { ...row }
 }
+const clearFile = () => {
+  upload.meta = null
+  dialog.record = { ...dialog.record, fileUrl: '', fileName: '' }
+}
+
+/** 选文件 → 按扩展名定业务类型 → 先传服务器 → 回填名称/大小/形态 */
+const onPick = async (file) => {
+  const ext = extOf(file.name)
+  const kind = kindOfExt(ext)
+  if (!kind) {
+    upload.error = '素材文件支持图片 / 视频格式（H5 素材无需上传文件）'
+    return
+  }
+  upload.uploading = true
+  upload.progress = 0
+  upload.error = ''
+  try {
+    const vo = await store.upload(file, kind, (e) => {
+      upload.progress = e.total ? Math.round((e.loaded / e.total) * 100) : 0
+    })
+    upload.meta = { name: vo.name, url: vo.url, ext: vo.ext, sizeText: sizeText(vo.sizeKb) }
+    dialog.record = {
+      ...dialog.record,
+      name: dialog.mode === 'create' || !dialog.record.name ? vo.name.replace(/\.[^.]+$/, '') : dialog.record.name,
+      materialType: typeOfExt(vo.ext),
+      sizeKb: vo.sizeKb,
+      fileName: vo.name,
+      fileUrl: vo.url,
+    }
+  } catch {
+    /* 提示已在 store 统一处理 */
+  } finally {
+    upload.uploading = false
+  }
+}
+
 const submitDialog = async (form) => {
   const mode = dialog.mode
   dialog.open = false
   const payload = {
     name: form.name,
     materialType: form.materialType,
-    sizeKb: Number(String(form.sizeKb).replace(/[^\d]/g, '')) || 0,
+    sizeKb: Number(String(form.sizeKb ?? '').replace(/[^\d]/g, '')) || undefined,
     status: form.status,
+  }
+  // 新建必须已传文件(图片/视频);编辑仅在更换文件时携带
+  if (upload.meta) {
+    payload.fileName = upload.meta.name
+    payload.fileUrl = upload.meta.url
   }
   try {
     if (mode === 'create') await store.createMaterial(payload)
@@ -68,6 +130,22 @@ const submitDialog = async (form) => {
     /* 提示已在 store 统一处理 */
   }
 }
+
+/* 文件预览（鉴权 blob） */
+const preview = reactive({ open: false, name: '', url: '', ext: '', src: '' })
+const openPreview = async (row) => {
+  preview.open = true
+  preview.name = row.fileName || row.name
+  preview.url = row.fileUrl
+  preview.ext = extOf(row.fileUrl)
+  preview.src = ''
+  preview.src = await fileObjectUrl(row.fileUrl)
+}
+const downloadPreview = async () => {
+  const { downloadFile } = await import('@/jingchen/composables/useFileUrl')
+  await downloadFile(preview.url, preview.name)
+}
+
 const removeMaterial = async (row) => {
   if (await askConfirm(`确定删除素材「${row.name}」？`, '删除素材')) {
     await store.deleteMaterial(row.id).catch(() => {})
@@ -99,7 +177,7 @@ onMounted(() => {
 
 <template>
   <div class="p-5">
-    <PageHeader title="素材管理" desc="广告素材档案 · A/B 分流测试配置">
+    <PageHeader title="素材管理" desc="广告素材上传 · A/B 分流测试配置">
       <template #actions>
         <button class="btn btn-primary btn-sm" :disabled="store.acting" @click="openCreate">
           <i class="fa-solid fa-upload"></i>上传素材
@@ -164,7 +242,7 @@ onMounted(() => {
         <div class="card-h">
           <div>
             <div class="card-t">素材库</div>
-            <div class="card-s">共 {{ materials.length }} 个素材 · 表现数据实时统计</div>
+            <div class="card-s">共 {{ materials.length }} 个素材 · 文件真实上传,表现数据实时统计</div>
           </div>
         </div>
         <div class="overflow-x-auto">
@@ -189,6 +267,7 @@ onMounted(() => {
               <tr v-for="m in materials" v-else :key="m.id">
                 <td class="text-[12.5px] font-medium">
                   <i class="fa-regular mr-1.5" :class="m.materialType === '图片' ? 'fa-image' : m.materialType === 'H5' ? 'fa-file-code' : 'fa-circle-play'"></i>{{ m.name }}
+                  <span v-if="!m.fileUrl" class="ml-1 rounded bg-slate-100 px-1 py-0.5 text-[9.5px] text-slate-400">演示档案</span>
                 </td>
                 <td><StatusPill :text="m.materialType" :tone="typeTone[m.materialType] || 'slate'" small /></td>
                 <td class="num text-right text-[12px]">{{ sizeText(m.sizeKb) }}</td>
@@ -197,6 +276,9 @@ onMounted(() => {
                 <td><StatusPill :text="m.status" :tone="statusTone[m.status] || 'slate'" /></td>
                 <td>
                   <div class="flex items-center justify-end gap-1">
+                    <button v-if="m.fileUrl" class="btn btn-ghost btn-sm !px-2 !py-1" title="预览" @click="openPreview(m)">
+                      <i class="fa-solid fa-eye"></i>
+                    </button>
                     <button class="btn btn-ghost btn-sm !px-2 !py-1" title="编辑" @click="openEdit(m)">
                       <i class="fa-solid fa-pen"></i>
                     </button>
@@ -212,15 +294,53 @@ onMounted(() => {
       </div>
     </div>
 
-    <CrudDialog
+    <!-- 上传 / 编辑弹窗 -->
+    <MerchantUploadDialog
       :open="dialog.open"
       :title="dialog.title"
+      subtitle="文件先上传服务器（multipart 真实传输）,名称 / 大小 / 形态自动识别回填"
       :fields="MATERIAL_FIELDS"
       :model-value="dialog.record"
       :loading="store.acting"
+      :uploading="upload.uploading"
+      :progress="upload.progress"
+      :file-meta="upload.meta"
+      :file-required="dialog.mode === 'create' && dialog.record.materialType !== 'H5'"
+      :file-error="upload.error"
+      file-hint="图片 jpg/png/gif/webp ≤20MB · 视频 mp4/mov/webm ≤500MB"
+      accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.mp4,.mov,.m4v,.webm,.avi,.mkv"
+      submit-text="保存素材"
       @close="dialog.open = false"
+      @pick="onPick"
+      @clear="clearFile"
       @submit="submitDialog"
     />
+
+    <!-- 文件预览 -->
+    <div
+      v-if="preview.open"
+      class="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-ink/30 p-6 backdrop-blur-sm"
+      @click.self="preview.open = false"
+    >
+      <div class="w-full max-w-2xl rounded-2xl bg-white shadow-lift">
+        <div class="flex items-center justify-between border-b border-[#E5EAF0] px-5 py-3.5">
+          <div class="truncate text-[14.5px] font-semibold text-ink">{{ preview.name }}</div>
+          <div class="flex items-center gap-2">
+            <button class="btn btn-ghost btn-sm" @click="downloadPreview">
+              <i class="fa-solid fa-download"></i>下载
+            </button>
+            <button class="text-sub transition hover:text-ink" @click="preview.open = false">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+        <div class="grid min-h-64 place-items-center px-5 py-4">
+          <img v-if="preview.src" :src="preview.src" class="max-h-[480px] w-auto rounded-lg" alt="素材预览" />
+          <span v-else class="text-[12px] text-sub"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>加载预览…</span>
+        </div>
+      </div>
+    </div>
+
     <ConfirmDialog v-bind="confirmState" @resolve="resolveConfirm" />
   </div>
 </template>

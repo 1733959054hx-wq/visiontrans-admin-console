@@ -2,7 +2,7 @@
 
 > 本文档是给 AI 助手新会话 / 新成员准备的**项目状态快照**。
 > 读完本文即可无缝接手全部工作，无需翻阅历史对话。
-> 最后更新：2026-09-09 · 提交 13ab547
+> 最后更新：2026-09-11（商户端迭代:真实文件上传 / 字幕独立表 / 视频播放统计页）
 
 ---
 
@@ -35,7 +35,7 @@ ADMIN_DDL_AUTO=update
 ```
 
 ### 数据库
-- 库名 `shixun`（utf8mb4），50 张表
+- 库名 `shixun`（utf8mb4），52 张表
 - 快照文件：`adminConsole/db/shixun.sql`（全量含数据，导入即恢复）
 - 迁移脚本：`adminConsole/db/upgrade-*.sql`（幂等，可安全重复执行）
 - root 密码：`jcJC198101`
@@ -93,7 +93,9 @@ D:\shixun\
 │           ├── controller/MerchantOverviewController.java # 经营概览
 │           ├── controller/MerchantOrderController.java    # 订单结算
 │           ├── controller/MerchantMaterialController.java # 素材 CRUD + AB
-│           ├── controller/MerchantVideoController.java    # 视频 CRUD
+│           ├── controller/MerchantVideoController.java    # 视频 CRUD + 播放统计
+│           ├── controller/MerchantFileController.java     # 文件上传/取回(multipart)
+│           ├── controller/MerchantSubtitleController.java # 字幕 CRUD(按视频逐语种)
 │           ├── controller/MerchantPromoController.java    # 渠道 CRUD
 │           ├── controller/MerchantSalesController.java    # 销售报表
 │           ├── controller/MerchantFundsController.java    # 资金充值/提现
@@ -106,9 +108,11 @@ D:\shixun\
 │           ├── entity/MerchantPlanEntity.java             # 投放计划(ad_plan)
 │           ├── entity/MerchantDailyStatEntity.java        # 经营日统计(merchant_daily_stat)
 │           ├── entity/MerchantOrderEntity.java            # 订单(merchant_order)
-│           ├── entity/MerchantMaterialEntity.java         # 素材(merchant_material)
+│           ├── entity/MerchantMaterialEntity.java         # 素材(merchant_material,含 file_url/file_name)
 │           ├── entity/MerchantAbConfigEntity.java         # AB配置(merchant_ab_config)
-│           ├── entity/MerchantVideoEntity.java            # 视频(merchant_video)
+│           ├── entity/MerchantVideoEntity.java            # 视频(merchant_video,含 file_url/file_name)
+│           ├── entity/MerchantSubtitleEntity.java         # 字幕(merchant_subtitle)
+│           ├── entity/MerchantVideoDailyEntity.java       # 视频日播放(merchant_video_daily)
 │           ├── entity/MerchantChannelEntity.java          # 渠道(merchant_channel)
 │           ├── entity/MerchantGoodsEntity.java            # 商品(merchant_goods)
 │           ├── entity/MerchantFundFlowEntity.java         # 流水(merchant_fund_flow)
@@ -120,22 +124,27 @@ D:\shixun\
 │
 ├── admin-front/                     # 前端 Vue 3
 │   ├── src/jingchen/                # ★ 商户模块（前端）
-│   │   ├── api/merchant.js          # 全部商户接口调用
-│   │   ├── stores/merchant.js       # 商户工作台状态(九模块)
-│   │   ├── router/index.js          # 路由: /merchant /merchant/plans|overview|orders|materials|videos|promo|goods|funds|onboard
+│   │   ├── api/merchant.js          # 全部商户接口调用(含 uploadFile/字幕/播放统计)
+│   │   ├── stores/merchant.js       # 商户工作台状态(十模块+字幕+统计)
+│   │   ├── composables/useFileUrl.js# 鉴权文件取回(blob→objectURL 预览/下载)
+│   │   ├── router/index.js          # 路由: /merchant /merchant/plans|overview|orders|materials|videos|video-stats|promo|goods|funds|onboard
 │   │   ├── config/index.js          # MERCHANT_ROLE / MERCHANT_ROUTE_PREFIX
 │   │   ├── components/MerchantWelcomeCard.vue
+│   │   ├── components/MerchantFileDrop.vue      # 文件选择/拖拽/预览区(模块自有)
+│   │   ├── components/MerchantUploadDialog.vue  # 上传建档弹窗(模块自有)
+│   │   ├── components/MerchantChart.vue         # ECharts 封装(折线/柱状/饼,模块自有)
 │   │   └── views/
 │   │       ├── MerchantHomeView.vue       # 工作台首页(九卡)
 │   │       ├── MerchantPlansView.vue      # 投放计划管理(三步向导+列表+报表导出)
 │   │       ├── MerchantOverviewView.vue   # 经营概览
 │   │       ├── MerchantOrdersView.vue     # 订单与结算
-│   │       ├── MerchantMaterialsView.vue  # 素材管理(含AB)
-│   │       ├── MerchantVideosView.vue     # 视频接入
+│   │       ├── MerchantMaterialsView.vue  # 素材管理(真实上传+预览+AB)
+│   │       ├── MerchantVideosView.vue     # 视频接入(真实上传+字幕面板)
+│   │       ├── MerchantVideoStatsView.vue # 视频播放统计(ECharts)
 │   │       ├── MerchantPromoView.vue      # 推广与销售报表
 │   │       ├── MerchantGoodsView.vue      # 商品管理
 │   │       ├── MerchantFundsView.vue      # 账户与资金(含资料维护)
-│   │       └── MerchantOnboardView.vue    # 入驻管理(三步状态机)
+│   │       └── MerchantOnboardView.vue    # 入驻管理(真实资质上传+三步状态机)
 │   ├── public/
 │   ├── src/views/LoginView.vue      # 登录页(管理员/商户身份切换)
 │   └── src/router/index.js          # 主路由(注册 merchantRoutes,守卫按角色分发)
@@ -152,13 +161,14 @@ D:\shixun\
 | 1 | 经营概览 | merchant_daily_stat(14) | GET /overview | /merchant/overview | 指标卡+趋势+订单摘要 ✅ |
 | 2 | 投放计划 | ad_plan(4) | CRUD+pause/resume+GET /slots | /merchant/plans | 三步向导(广告位/时段/人群)+列表+报表导出 ✅ |
 | 3 | 订单与结算 | merchant_order(8) | GET /orders+PUT /{id}/settle | /merchant/orders | 列表+结算流转 ✅ |
-| 4 | 素材管理 | merchant_material(4)+merchant_ab_config(1) | CRUD+/ab | /merchant/materials | CRUD+A/B 分流 ✅ |
-| 5 | 视频接入 | merchant_video(6) | CRUD | /merchant/videos | 档案/元数据/字幕/播放数据 ✅ |
-| 6 | 推广与销售 | merchant_channel(4) | CRUD+/sales | /merchant/promo | 渠道+二维码+销售报表 ✅ |
-| 7 | 账户与资金 | merchant_fund_flow(9)+merchant_withdraw(2) | GET /funds+POST /recharge|withdraw | /merchant/funds | 余额+充值提现+流水 ✅ |
-| 8 | 商品管理 | merchant_goods(6) | CRUD+shelf/unshelf | /merchant/goods | 上架/下架+折扣定价 ✅ |
-| 9 | 入驻管理 | merchant_onboarding(5) | GET mine+POST /submit|contract/sign | /merchant/onboard | 三步状态机 ✅ |
-| 10 | 资料维护 | merchant_profile_ext(1)+merchant_account | GET/PUT /profile | 弹窗(资金页) | 联系人/电话/结算账户 ✅ |
+| 4 | 素材管理 | merchant_material(4)+merchant_ab_config(1) | CRUD+/ab+POST /files | /merchant/materials | 真实上传(multipart)+CRUD+A/B 分流 ✅ |
+| 5 | 视频接入 | merchant_video(6)+merchant_subtitle | CRUD+GET /videos/{id}/subtitles CRUD | /merchant/videos | 真实上传+档案/元数据+字幕逐语种独立维护 ✅ |
+| 6 | 视频播放统计 | merchant_video_daily(视频×日) | GET /videos/stats | /merchant/video-stats | 播放趋势+完播率加权+地域分布+单视频对比 ✅ |
+| 7 | 推广与销售 | merchant_channel(4) | CRUD+/sales | /merchant/promo | 渠道+二维码+销售报表 ✅ |
+| 8 | 账户与资金 | merchant_fund_flow(9)+merchant_withdraw(2) | GET /funds+POST /recharge|withdraw | /merchant/funds | 余额+充值提现+流水 ✅ |
+| 9 | 商品管理 | merchant_goods(6) | CRUD+shelf/unshelf | /merchant/goods | 上架/下架+折扣定价 ✅ |
+| 10 | 入驻管理 | merchant_onboarding(5) | GET mine+POST /submit|contract/sign | /merchant/onboard | 真实资质上传+三步状态机 ✅ |
+| 11 | 资料维护 | merchant_profile_ext(1)+merchant_account | GET/PUT /profile | 弹窗(资金页) | 联系人/电话/结算账户 ✅ |
 
 ## 六、登录账号
 
@@ -172,11 +182,11 @@ D:\shixun\
 
 | # | 缺口 | 难度 | 说明 |
 |---|---|---|---|
-| 1 | 真实文件上传 | ⭐⭐⭐ | 素材/视频/资质目前为"演示建档案"，Spring Boot 接 MultipartFile 即可 |
-| 2 | 字幕管理独立化 | ⭐⭐ | 字幕目前是视频表的文本字段，建议加 merchant_subtitle 表做关联 CRUD |
-| 3 | 视频播放统计页 | ⭐⭐ | 播放趋势/完播率/地域分布专用视图 |
-| 4 | 提现审核联动 | ⭐ | 提现状态流转由管理端执行（队友负责侧） |
-| 5 | 管理员侧审核入口 | ⭐ | 入驻申请审核页面（队友管理端 SecurityView 已有雏形） |
+| 1 | 提现审核联动 | ⭐ | 提现状态流转由管理端执行（队友负责侧） |
+| 2 | 管理员侧审核入口 | ⭐ | 入驻申请审核页面（队友管理端 SecurityView 已有雏形）；商户资质文件已真实落盘（uploads/merchant），审核页可加文件下载 |
+| 3 | 素材/视频文件清理策略 | ⭐ | 删除档案不删落盘文件（防误删，后续可加孤儿文件清理任务） |
+
+> 已完成（2026-09-11）：真实文件上传（POST /merchant/files，multipart 落盘 + 类型白名单 + 大小按落盘文件回填）、字幕独立化（merchant_subtitle 表，按视频逐语种 CRUD，自动回写 subtitle_langs）、视频播放统计页（merchant_video_daily 表 + GET /videos/stats + ECharts 视图 /merchant/video-stats）。
 
 ## 八、协作流程速查
 
@@ -199,6 +209,8 @@ git pull upstream main   # 快进或合并
 1. **会话存内存**：管理员/商户会话均为内存态（重启即注销），需要重新登录
 2. **不要同时跑两份后端**：8080 端口唯一
 3. **旧副本勿启动**：`D:\慧科实习文件\VR项目代码\visiontrans-api` 是废弃的独立工程（占用 8080 且连 visiontrans 库）
-4. **`shixun.sql` 应与实际库保持一致**：每次新加表/列后重新导出 mysqldump 全量覆盖
+4. **`shixun.sql` 应与实际库保持一致**：每次新加表/列后重新导出 mysqldump 全量覆盖（最新一次 2026-09-11，含 merchant_subtitle / merchant_video_daily）
 5. **前端热更新**：Vite dev 下改动 .vue 文件即时生效，无需重启
 6. **密码哈希**：PasswordHasher 用 PBKDF2(600k 迭代)，用 `PasswordHasher.hash(明文)` 生成，登录时 `matches(明文, hash)` 校验
+7. **上传文件落盘**：素材/视频/字幕/资质统一经 `POST /merchant/files`（kind=image/video/subtitle/doc），存 `admin-console.jingchen.upload-dir`（默认 `uploads/merchant`，按 32 位 uuid 重命名）；取回 `GET /merchant/files/{storedName}` 需商户令牌（前端 blob 预览），管理员令牌 403；删除档案不删文件
+8. **字幕冗余字段**：`merchant_video.subtitle_langs` 由 merchant_subtitle 表增删自动回写，仅作展示，不要手工改

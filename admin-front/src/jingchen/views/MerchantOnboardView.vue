@@ -3,11 +3,12 @@ import { computed, onMounted, reactive } from 'vue'
 
 import PageHeader from '@/components/PageHeader.vue'
 import StatusPill from '@/components/StatusPill.vue'
+import MerchantFileDrop from '@/jingchen/components/MerchantFileDrop.vue'
 import { useMerchantStore } from '@/jingchen/stores/merchant'
 
 /**
  * 商户入驻管理（jingchen 模块业务页,功能表「入驻页」）。
- * 三步流程:① 资质提交 → ② 合同签署 → ③ 平台审核(通过 / 驳回);
+ * 三步流程:① 资质提交(营业执照等文件真实上传) → ② 合同签署 → ③ 平台审核(通过 / 驳回);
  * 状态机按后端 merchant_onboarding 表驱动。
  */
 const store = useMerchantStore()
@@ -25,8 +26,36 @@ const form = reactive({
   licenseNo: '',
   contact: '',
   phone: '',
-  qualification: '营业执照_business.pdf',
+  qualification: '',
 })
+/** 资质文件上传态:{name,url,sizeKb} */
+const qual = reactive({ uploading: false, progress: 0, meta: null, error: '' })
+
+const DOC_EXTS = ['pdf', 'jpg', 'jpeg', 'png']
+
+const pickQualification = async (file) => {
+  const ext = String(file.name).split('.').pop().toLowerCase()
+  if (!DOC_EXTS.includes(ext)) {
+    qual.error = '资质文件仅支持 PDF / JPG / PNG'
+    return
+  }
+  qual.uploading = true
+  qual.progress = 0
+  qual.error = ''
+  try {
+    const vo = await store.upload(file, 'doc', (e) => {
+      qual.progress = e.total ? Math.round((e.loaded / e.total) * 100) : 0
+    })
+    qual.meta = { name: vo.name, url: vo.url, ext: vo.ext, sizeText: vo.sizeKb >= 1024 ? `${(vo.sizeKb / 1024).toFixed(1)} MB` : `${vo.sizeKb} KB` }
+    form.qualification = vo.name
+  } catch {
+    /* 提示已在 store 统一处理 */
+  } finally {
+    qual.uploading = false
+  }
+}
+
+const canSubmit = computed(() => form.licenseNo.trim() !== '' && form.qualification !== '')
 
 const submitForm = async () => {
   try {
@@ -108,18 +137,22 @@ onMounted(() => {
               <input v-model="form.phone" class="field" placeholder="手机号" />
             </div>
             <div class="md:col-span-2">
-              <label class="lbl">资质文件</label>
-              <div class="rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/50 px-4 py-5 text-center cursor-pointer hover:bg-blue-50/80 transition"
-                @click="form.qualification = '营业执照_' + Date.now() + '.pdf'">
-                <i class="fa-solid fa-cloud-arrow-up text-[22px] text-electric"></i>
-                <div class="mt-1.5 text-[12.5px] font-semibold text-ink">
-                  {{ form.qualification || '点击上传营业执照等资质文件(演示)' }}
-                </div>
-                <div class="mt-0.5 text-[10.5px] text-sub">JPG / PNG / PDF · ≤ 20MB</div>
-              </div>
+              <label class="lbl">资质文件<span class="text-rose-500">*</span></label>
+              <MerchantFileDrop
+                accept=".pdf,.jpg,.jpeg,.png"
+                hint="JPG / PNG / PDF · ≤20MB（multipart 真实上传）"
+                :uploading="qual.uploading"
+                :progress="qual.progress"
+                :file-meta="qual.meta"
+                @pick="pickQualification"
+                @clear="qual.meta = null; form.qualification = ''"
+              />
+              <p v-if="qual.error" class="mt-1 text-[11px] text-rose-500">
+                <i class="fa-solid fa-circle-exclamation mr-1"></i>{{ qual.error }}
+              </p>
             </div>
           </div>
-          <button class="btn btn-primary mt-4 w-full" :disabled="store.acting" @click="submitForm">
+          <button class="btn btn-primary mt-4 w-full" :disabled="store.acting || qual.uploading || !canSubmit" @click="submitForm">
             <i class="fa-solid fa-paper-plane"></i>提交资质申请
           </button>
         </div>

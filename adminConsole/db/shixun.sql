@@ -117,7 +117,7 @@ CREATE TABLE `admin_user` (
 
 LOCK TABLES `admin_user` WRITE;
 /*!40000 ALTER TABLE `admin_user` DISABLE KEYS */;
-INSERT INTO `admin_user` VALUES (1,'集群运维组','2026-09-10 09:39','Danny','138****2043','超级管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','admin'),(2,'模型治理组','2026-09-03 13:41','陈默','139****8812','超级管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','chenmo'),(3,'内容审核组','2026-09-03 12:58','王倩','150****3391','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','wangqian'),(4,'广告运营组','2026-09-03 11:32','赵磊','186****7720','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','zhaolei'),(5,'商户与结算组','2026-09-03 10:05','孙奇','133****5590','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','sunqi'),(6,'合规审计组','2026-09-03 09:47','刘洋','187****1186','只读审计员','停用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','liuyang');
+INSERT INTO `admin_user` VALUES (1,'集群运维组','2026-09-11 09:58','Danny','138****2043','超级管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','admin'),(2,'模型治理组','2026-09-03 13:41','陈默','139****8812','超级管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','chenmo'),(3,'内容审核组','2026-09-03 12:58','王倩','150****3391','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','wangqian'),(4,'广告运营组','2026-09-03 11:32','赵磊','186****7720','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','zhaolei'),(5,'商户与结算组','2026-09-03 10:05','孙奇','133****5590','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','sunqi'),(6,'合规审计组','2026-09-03 09:47','刘洋','187****1186','只读审计员','停用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','liuyang');
 /*!40000 ALTER TABLE `admin_user` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -315,6 +315,7 @@ CREATE TABLE `auth_session` (
 
 LOCK TABLES `auth_session` WRITE;
 /*!40000 ALTER TABLE `auth_session` DISABLE KEYS */;
+INSERT INTO `auth_session` VALUES ('8688925385084e71919f883450515cb7','2026-09-11 17:58:10.901307','集群运维组','Danny','SUPER_ADMIN','超级管理员','admin');
 /*!40000 ALTER TABLE `auth_session` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -826,8 +827,10 @@ CREATE TABLE `merchant_material` (
   `material_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `size_kb` bigint DEFAULT NULL,
   `m_status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `file_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `file_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -836,7 +839,7 @@ CREATE TABLE `merchant_material` (
 
 LOCK TABLES `merchant_material` WRITE;
 /*!40000 ALTER TABLE `merchant_material` DISABLE KEYS */;
-INSERT INTO `merchant_material` VALUES (1,6.82,1864120,'视频','东京机场导览_15s.mp4',12800,'使用中'),(2,5.47,1610900,'视频','东京机场导览_B版_15s.mp4',12400,'测试中'),(3,4.28,986400,'图片','免税购物_kv_main.png',2400,'使用中'),(4,5.03,742600,'H5','医疗术语包_h5.html',180,'已停用');
+INSERT INTO `merchant_material` VALUES (1,6.82,1864120,'视频','东京机场导览_15s.mp4',12800,'使用中',NULL,NULL),(2,5.47,1610900,'视频','东京机场导览_B版_15s.mp4',12400,'测试中',NULL,NULL),(3,4.28,986400,'图片','免税购物_kv_main.png',2400,'使用中',NULL,NULL),(4,5.03,742600,'H5','医疗术语包_h5.html',180,'已停用',NULL,NULL);
 /*!40000 ALTER TABLE `merchant_material` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -957,6 +960,35 @@ LOCK TABLES `merchant_session` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `merchant_subtitle`
+--
+
+DROP TABLE IF EXISTS `merchant_subtitle`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `merchant_subtitle` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `file_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `file_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sub_format` varchar(8) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `lang` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `uploaded_at` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `video_id` bigint NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `merchant_subtitle`
+--
+
+LOCK TABLES `merchant_subtitle` WRITE;
+/*!40000 ALTER TABLE `merchant_subtitle` DISABLE KEYS */;
+INSERT INTO `merchant_subtitle` VALUES (1,'JP_Tokyo_Transit_4K_Master_zh.srt',NULL,'SRT','中','2026-09-11 09:56',1),(2,'JP_Tokyo_Transit_4K_Master_en.srt',NULL,'SRT','英','2026-09-11 09:56',1),(3,'JP_Tokyo_Transit_4K_Master_ja.srt',NULL,'SRT','日','2026-09-11 09:56',1),(4,'DE_Munich_Expo_Day1_zh.srt',NULL,'SRT','中','2026-09-11 09:56',2),(5,'DE_Munich_Expo_Day1_de.srt',NULL,'SRT','德','2026-09-11 09:56',2),(6,'FR_Paris_Art_Tour_EP03_zh.srt',NULL,'SRT','中','2026-09-11 09:56',3),(7,'FR_Paris_Art_Tour_EP03_fr.srt',NULL,'SRT','法','2026-09-11 09:56',3),(8,'EN_Medical_Onboarding_S01E02_zh.srt',NULL,'SRT','中','2026-09-11 09:56',4),(9,'EN_Medical_Onboarding_S01E02_en.srt',NULL,'SRT','英','2026-09-11 09:56',4),(10,'KR_Seoul_StreetFood_4K_zh.srt',NULL,'SRT','中','2026-09-11 09:56',5),(11,'KR_Seoul_StreetFood_4K_ko.srt',NULL,'SRT','韩','2026-09-11 09:56',5),(12,'AR_Dubai_Business_Etiquette_zh.srt',NULL,'SRT','中','2026-09-11 09:56',6),(13,'AR_Dubai_Business_Etiquette_ar.srt',NULL,'SRT','阿','2026-09-11 09:56',6);
+/*!40000 ALTER TABLE `merchant_subtitle` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `merchant_video`
 --
 
@@ -974,8 +1006,10 @@ CREATE TABLE `merchant_video` (
   `size_gb` decimal(6,2) DEFAULT NULL,
   `video_status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `subtitle_langs` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `file_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `file_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -984,8 +1018,38 @@ CREATE TABLE `merchant_video` (
 
 LOCK TABLES `merchant_video` WRITE;
 /*!40000 ALTER TABLE `merchant_video` DISABLE KEYS */;
-INSERT INTO `merchant_video` VALUES (1,2538,68.40,'JA·JP','JP_Tokyo_Transit_4K_Master.mp4',1286420,'亚太',12.40,'已上架','中,英,日'),(2,4565,61.20,'DE·DE','DE_Munich_Expo_Day1.mp4',862940,'欧洲',21.86,'已就绪','中,德'),(3,1727,65.80,'FR·FR','FR_Paris_Art_Tour_EP03.mp4',604182,'全球',6.14,'已就绪','中,法'),(4,2120,NULL,'EN·US','EN_Medical_Onboarding_S01E02.mp4',0,'全球',7.92,'转码中','中,英'),(5,3156,59.40,'KO·KR','KR_Seoul_StreetFood_4K.mp4',728510,'亚太',15.30,'已上架','中,韩'),(6,1148,54.10,'AR·AE','AR_Dubai_Business_Etiquette.mp4',196835,'全球',4.05,'已上架','中,阿');
+INSERT INTO `merchant_video` VALUES (1,2538,68.40,'JA·JP','JP_Tokyo_Transit_4K_Master.mp4',1286420,'亚太',12.40,'已上架','中,英,日',NULL,NULL),(2,4565,61.20,'DE·DE','DE_Munich_Expo_Day1.mp4',862940,'欧洲',21.86,'已就绪','中,德',NULL,NULL),(3,1727,65.80,'FR·FR','FR_Paris_Art_Tour_EP03.mp4',604182,'全球',6.14,'已就绪','中,法',NULL,NULL),(4,2120,NULL,'EN·US','EN_Medical_Onboarding_S01E02.mp4',0,'全球',7.92,'转码中','中,英',NULL,NULL),(5,3156,59.40,'KO·KR','KR_Seoul_StreetFood_4K.mp4',728510,'亚太',15.30,'已上架','中,韩',NULL,NULL),(6,1148,54.10,'AR·AE','AR_Dubai_Business_Etiquette.mp4',196835,'全球',4.05,'已上架','中,阿',NULL,NULL);
 /*!40000 ALTER TABLE `merchant_video` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `merchant_video_daily`
+--
+
+DROP TABLE IF EXISTS `merchant_video_daily`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `merchant_video_daily` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `finish_rate` decimal(5,2) DEFAULT NULL,
+  `plays` bigint DEFAULT NULL,
+  `region` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `stat_date` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `video_id` bigint NOT NULL,
+  `watch_sec` bigint DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UK7lvd4ufkft1qhmvcbp9u5wwuc` (`video_id`,`stat_date`)
+) ENGINE=InnoDB AUTO_INCREMENT=71 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `merchant_video_daily`
+--
+
+LOCK TABLES `merchant_video_daily` WRITE;
+/*!40000 ALTER TABLE `merchant_video_daily` DISABLE KEYS */;
+INSERT INTO `merchant_video_daily` VALUES (1,67.20,30828,'亚太','2026-08-29',1,1706),(2,68.40,34682,'亚太','2026-08-30',1,1736),(3,69.60,29116,'亚太','2026-08-31',1,1766),(4,67.80,40676,'亚太','2026-09-01',1,1721),(5,69.00,44530,'亚太','2026-09-02',1,1751),(6,67.20,50524,'亚太','2026-09-03',1,1706),(7,68.40,47955,'亚太','2026-09-04',1,1736),(8,69.60,32541,'亚太','2026-09-05',1,1766),(9,67.80,37679,'亚太','2026-09-06',1,1721),(10,69.00,35538,'亚太','2026-09-07',1,1751),(11,67.20,43674,'亚太','2026-09-08',1,1706),(12,68.40,49240,'亚太','2026-09-09',1,1736),(13,69.60,52237,'亚太','2026-09-10',1,1766),(14,67.80,49668,'亚太','2026-09-11',1,1721),(15,60.00,20680,'欧洲','2026-08-29',2,2739),(16,61.20,23265,'欧洲','2026-08-30',2,2794),(17,62.40,19531,'欧洲','2026-08-31',2,2849),(18,60.60,27286,'欧洲','2026-09-01',2,2766),(19,61.80,29871,'欧洲','2026-09-02',2,2821),(20,60.00,33892,'欧洲','2026-09-03',2,2739),(21,61.20,32169,'欧洲','2026-09-04',2,2794),(22,62.40,21829,'欧洲','2026-09-05',2,2849),(23,60.60,25275,'欧洲','2026-09-06',2,2766),(24,61.80,23839,'欧洲','2026-09-07',2,2821),(25,60.00,29297,'欧洲','2026-09-08',2,2739),(26,61.20,33030,'欧洲','2026-09-09',2,2794),(27,62.40,35041,'欧洲','2026-09-10',2,2849),(28,60.60,33318,'欧洲','2026-09-11',2,2766),(29,64.60,14479,'全球','2026-08-29',3,1116),(30,65.80,16289,'全球','2026-08-30',3,1136),(31,67.00,13675,'全球','2026-08-31',3,1157),(32,65.20,19104,'全球','2026-09-01',3,1126),(33,66.40,20914,'全球','2026-09-02',3,1147),(34,64.60,23729,'全球','2026-09-03',3,1116),(35,65.80,22523,'全球','2026-09-04',3,1136),(36,67.00,15283,'全球','2026-09-05',3,1157),(37,65.20,17696,'全球','2026-09-06',3,1126),(38,66.40,16691,'全球','2026-09-07',3,1147),(39,64.60,20512,'全球','2026-09-08',3,1116),(40,65.80,23126,'全球','2026-09-09',3,1136),(41,67.00,24534,'全球','2026-09-10',3,1157),(42,65.20,23327,'全球','2026-09-11',3,1126),(43,58.20,17458,'亚太','2026-08-29',5,1837),(44,59.40,19641,'亚太','2026-08-30',5,1875),(45,60.60,16488,'亚太','2026-08-31',5,1913),(46,58.80,23035,'亚太','2026-09-01',5,1856),(47,60.00,25218,'亚太','2026-09-02',5,1894),(48,58.20,28612,'亚太','2026-09-03',5,1837),(49,59.40,27158,'亚太','2026-09-04',5,1875),(50,60.60,18428,'亚太','2026-09-05',5,1913),(51,58.80,21338,'亚太','2026-09-06',5,1856),(52,60.00,20126,'亚太','2026-09-07',5,1894),(53,58.20,24733,'亚太','2026-09-08',5,1837),(54,59.40,27885,'亚太','2026-09-09',5,1875),(55,60.60,29582,'亚太','2026-09-10',5,1913),(56,58.80,28127,'亚太','2026-09-11',5,1856),(57,52.90,4717,'全球','2026-08-29',6,607),(58,54.10,5307,'全球','2026-08-30',6,621),(59,55.30,4455,'全球','2026-08-31',6,635),(60,53.50,6224,'全球','2026-09-01',6,614),(61,54.70,6814,'全球','2026-09-02',6,628),(62,52.90,7731,'全球','2026-09-03',6,607),(63,54.10,7338,'全球','2026-09-04',6,621),(64,55.30,4979,'全球','2026-09-05',6,635),(65,53.50,5765,'全球','2026-09-06',6,614),(66,54.70,5438,'全球','2026-09-07',6,628),(67,52.90,6683,'全球','2026-09-08',6,607),(68,54.10,7534,'全球','2026-09-09',6,621),(69,55.30,7993,'全球','2026-09-10',6,635),(70,53.50,7600,'全球','2026-09-11',6,614);
+/*!40000 ALTER TABLE `merchant_video_daily` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -1475,6 +1539,14 @@ LOCK TABLES `ugc_segment` WRITE;
 INSERT INTO `ugc_segment` VALUES ('UGC-CURRENT','用户评论：「加我',NULL,0),('UGC-CURRENT','微信 xxx 领免费翻译','rose',1),('UGC-CURRENT','，比官方便宜一半」',NULL,2),('UGC-CURRENT','疑似人身攻击内容','amber',3);
 /*!40000 ALTER TABLE `ugc_segment` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Dumping events for database 'shixun'
+--
+
+--
+-- Dumping routines for database 'shixun'
+--
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -1485,4 +1557,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-11  9:28:20
+-- Dump completed on 2026-09-11  9:58:59

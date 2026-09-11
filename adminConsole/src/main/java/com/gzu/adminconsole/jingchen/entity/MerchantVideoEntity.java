@@ -59,11 +59,25 @@ public class MerchantVideoEntity {
     @Column(name = "subtitle_langs", length = 64)
     private String subtitleLangs;
 
+    /** 上传文件原始名。 */
+    @Column(name = "file_name", length = 128)
+    private String fileName;
+
+    /** 落盘文件访问地址(/merchant/files/{uuid}.ext),演示档案无实体文件时为 null。 */
+    @Column(name = "file_url", length = 255)
+    private String fileUrl;
+
     protected MerchantVideoEntity() {
     }
 
     public MerchantVideoEntity(String name, Long durationSec, BigDecimal sizeGb, String lang, String status,
                                Long plays, BigDecimal finishRate, String region, String subtitleLangs) {
+        this(name, durationSec, sizeGb, lang, status, plays, finishRate, region, subtitleLangs, null, null);
+    }
+
+    public MerchantVideoEntity(String name, Long durationSec, BigDecimal sizeGb, String lang, String status,
+                               Long plays, BigDecimal finishRate, String region, String subtitleLangs,
+                               String fileName, String fileUrl) {
         this.name = name;
         this.durationSec = durationSec;
         this.sizeGb = sizeGb;
@@ -73,6 +87,8 @@ public class MerchantVideoEntity {
         this.finishRate = finishRate;
         this.region = region;
         this.subtitleLangs = subtitleLangs;
+        this.fileName = fileName;
+        this.fileUrl = fileUrl;
     }
 
     public Long getId() { return id; }
@@ -95,4 +111,8 @@ public class MerchantVideoEntity {
     public void setRegion(String region) { this.region = region; }
     public String getSubtitleLangs() { return subtitleLangs; }
     public void setSubtitleLangs(String subtitleLangs) { this.subtitleLangs = subtitleLangs; }
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
+    public String getFileUrl() { return fileUrl; }
+    public void setFileUrl(String fileUrl) { this.fileUrl = fileUrl; }
 }

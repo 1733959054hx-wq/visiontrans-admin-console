@@ -15,8 +15,10 @@ import com.gzu.adminconsole.common.Result;
 import com.gzu.adminconsole.config.RequireRole;
 import com.gzu.adminconsole.jingchen.common.MerchantConstants;
 import com.gzu.adminconsole.jingchen.dto.MerchantVideoRequest;
+import com.gzu.adminconsole.jingchen.dto.MerchantVideoStatsVO;
 import com.gzu.adminconsole.jingchen.entity.MerchantVideoEntity;
 import com.gzu.adminconsole.jingchen.service.MerchantVideoService;
+import com.gzu.adminconsole.jingchen.service.MerchantVideoStatsService;
 
 /**
  * 商户视频接入接口（jingchen 模块）。
@@ -28,14 +30,22 @@ import com.gzu.adminconsole.jingchen.service.MerchantVideoService;
 public class MerchantVideoController {
 
     private final MerchantVideoService service;
+    private final MerchantVideoStatsService statsService;
 
-    public MerchantVideoController(MerchantVideoService service) {
+    public MerchantVideoController(MerchantVideoService service, MerchantVideoStatsService statsService) {
         this.service = service;
+        this.statsService = statsService;
     }
 
     @GetMapping
     public Result<List<MerchantVideoEntity>> list() {
         return Result.ok(service.list());
+    }
+
+    /** 播放统计:近 14 天趋势 / 完播率 / 地域分布(字幕与播放明细见独立表)。 */
+    @GetMapping("/stats")
+    public Result<MerchantVideoStatsVO> stats() {
+        return Result.ok(statsService.stats());
     }
 
     /** 上传(演示:建档案,状态默认转码中)。 */

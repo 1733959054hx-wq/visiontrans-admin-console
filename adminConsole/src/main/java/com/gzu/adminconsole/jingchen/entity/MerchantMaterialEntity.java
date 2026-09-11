@@ -47,17 +47,32 @@ public class MerchantMaterialEntity {
     @Column(name = "m_status", length = 16)
     private String status;
 
+    /** 上传文件原始名(与 name 同源,保留完整扩展名)。 */
+    @Column(name = "file_name", length = 128)
+    private String fileName;
+
+    /** 落盘文件访问地址(/merchant/files/{uuid}.ext),演示档案无实体文件时为 null。 */
+    @Column(name = "file_url", length = 255)
+    private String fileUrl;
+
     protected MerchantMaterialEntity() {
     }
 
     public MerchantMaterialEntity(String name, String materialType, Long sizeKb, Long exposure,
                                   BigDecimal ctr, String status) {
+        this(name, materialType, sizeKb, exposure, ctr, status, null, null);
+    }
+
+    public MerchantMaterialEntity(String name, String materialType, Long sizeKb, Long exposure,
+                                  BigDecimal ctr, String status, String fileName, String fileUrl) {
         this.name = name;
         this.materialType = materialType;
         this.sizeKb = sizeKb;
         this.exposure = exposure;
         this.ctr = ctr;
         this.status = status;
+        this.fileName = fileName;
+        this.fileUrl = fileUrl;
     }
 
     public Long getId() { return id; }
@@ -74,4 +89,8 @@ public class MerchantMaterialEntity {
     public void setCtr(BigDecimal ctr) { this.ctr = ctr; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
+    public String getFileUrl() { return fileUrl; }
+    public void setFileUrl(String fileUrl) { this.fileUrl = fileUrl; }
 }

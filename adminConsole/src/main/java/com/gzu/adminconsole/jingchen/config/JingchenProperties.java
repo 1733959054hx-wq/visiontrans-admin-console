@@ -24,6 +24,28 @@ public class JingchenProperties {
     /** 工作台标题。 */
     private String workspaceTitle = "商户工作台";
 
+    /** 商户上传文件的落盘目录（相对路径基于进程工作目录）。 */
+    private String uploadDir = "uploads/merchant";
+
+    /** 单文件大小上限（MB），按业务类型还有更细的限额（见 MerchantFileService）。 */
+    private int maxUploadMb = 200;
+
+    public String getUploadDir() {
+        return uploadDir;
+    }
+
+    public void setUploadDir(String uploadDir) {
+        this.uploadDir = uploadDir;
+    }
+
+    public int getMaxUploadMb() {
+        return maxUploadMb;
+    }
+
+    public void setMaxUploadMb(int maxUploadMb) {
+        this.maxUploadMb = maxUploadMb;
+    }
+
     public boolean isEnabled() {
         return enabled;
     }

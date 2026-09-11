@@ -1,6 +1,7 @@
 package com.gzu.adminconsole.jingchen.service;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.stereotype.Service;
 
@@ -20,10 +21,13 @@ public class MerchantMaterialService {
 
     private final MerchantMaterialRepository repository;
     private final MerchantAbConfigRepository abRepository;
+    private final MerchantFileService fileService;
 
-    public MerchantMaterialService(MerchantMaterialRepository repository, MerchantAbConfigRepository abRepository) {
+    public MerchantMaterialService(MerchantMaterialRepository repository, MerchantAbConfigRepository abRepository,
+                                   MerchantFileService fileService) {
         this.repository = repository;
         this.abRepository = abRepository;
+        this.fileService = fileService;
     }
 
     public List<MerchantMaterialEntity> list() {
@@ -40,11 +44,11 @@ public class MerchantMaterialService {
 
     public MerchantMaterialEntity create(MerchantMaterialRequest req) {
         MerchantMaterialEntity entity = new MerchantMaterialEntity(
-                requireName(req.name()), req.materialType(),
-                req.sizeKb() == null ? 0L : req.sizeKb(),
+                requireName(req.name()), typeOf(req), sizeKbOf(req),
                 req.exposure() == null ? 0L : req.exposure(),
                 req.ctr(),
-                req.status() == null ? "测试中" : req.status());
+                req.status() == null ? "测试中" : req.status(),
+                req.fileName(), req.fileUrl());
         return repository.save(entity);
     }
 
@@ -56,6 +60,13 @@ public class MerchantMaterialService {
         if (req.exposure() != null) entity.setExposure(req.exposure());
         if (req.ctr() != null) entity.setCtr(req.ctr());
         if (req.status() != null) entity.setStatus(req.status());
+        if (req.fileUrl() != null) {
+            entity.setFileUrl(req.fileUrl());
+            entity.setFileName(req.fileName());
+            // 换文件后以落盘真实大小为准（KB）
+            entity.setSizeKb((fileService.sizeOf(fileService.storedNameOf(req.fileUrl())) + 1023) / 1024);
+            if (req.materialType() == null) entity.setMaterialType(typeOfExt(fileService.storedNameOf(req.fileUrl())));
+        }
         return repository.save(entity);
     }
 
@@ -80,6 +91,40 @@ public class MerchantMaterialService {
             config.setRatioB(ratio);
         }
         return abRepository.save(config);
+    }
+
+    /** 形态:显式指定优先;否则按上传扩展名识别(视频/图片),其余归 H5。 */
+    private String typeOf(MerchantMaterialRequest req) {
+        if (req.materialType() != null && !req.materialType().isBlank()) {
+            return req.materialType();
+        }
+        String extType = typeOfExt(fileService.storedNameOf(req.fileUrl()));
+        return extType == null ? "图片" : extType;
+    }
+
+    private String typeOfExt(String storedName) {
+        if (storedName == null) {
+            return null;
+        }
+        String ext = storedName.substring(storedName.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
+        if (ext.matches("mp4|mov|m4v|webm|avi|mkv")) {
+            return "视频";
+        }
+        if (ext.matches("jpg|jpeg|png|gif|webp|bmp")) {
+            return "图片";
+        }
+        return "H5";
+    }
+
+    /** 文件大小:优先取落盘真实大小(KB);演示建档(无文件)时用前端报数或 0。 */
+    private Long sizeKbOf(MerchantMaterialRequest req) {
+        if (req.fileUrl() != null) {
+            long bytes = fileService.sizeOf(fileService.storedNameOf(req.fileUrl()));
+            if (bytes > 0) {
+                return (bytes + 1023) / 1024;
+            }
+        }
+        return req.sizeKb() == null ? 0L : req.sizeKb();
     }
 
     private String requireName(String name) {

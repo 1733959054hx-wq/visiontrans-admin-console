@@ -5,14 +5,17 @@ import {
   createGoods,
   createMaterial,
   createPlan,
+  createSubtitle,
   createVideo,
   deleteChannel,
   deleteGoods,
   deleteMaterial,
   deletePlan,
+  deleteSubtitle,
   deleteVideo,
   fetchAb,
   fetchChannels,
+  fetchFileBlob,
   fetchFunds,
   fetchGoods,
   fetchMaterials,
@@ -24,6 +27,8 @@ import {
   fetchProfile,
   fetchSales,
   fetchSlots,
+  fetchSubtitles,
+  fetchVideoStats,
   fetchVideos,
   pausePlan,
   rechargeFunds,
@@ -39,7 +44,9 @@ import {
   updateMaterial,
   updatePlan,
   updateProfile,
+  updateSubtitle,
   updateVideo,
+  uploadFile,
   withdrawFunds,
 } from '@/jingchen/api/merchant'
 import { useUiStore } from '@/stores/ui'
@@ -62,6 +69,10 @@ export const useMerchantStore = defineStore('jingchenMerchant', {
     ab: null,
     videos: null,
     videosLoading: false,
+    videoStats: null,
+    videoStatsLoading: false,
+    subtitles: null,
+    subtitlesLoading: false,
     channels: null,
     channelsLoading: false,
     sales: null,
@@ -259,6 +270,91 @@ export const useMerchantStore = defineStore('jingchenMerchant', {
     },
     deleteVideo(id) {
       return this.runVideo(() => deleteVideo(id))
+    },
+    /* ------------------------------ 播放统计 ------------------------------ */
+    async loadVideoStats() {
+      const ui = useUiStore()
+      this.videoStatsLoading = true
+      try {
+        this.videoStats = await fetchVideoStats()
+      } catch (error) {
+        ui.error(`播放统计加载失败：${error.message}`)
+      } finally {
+        this.videoStatsLoading = false
+      }
+    },
+    /* ------------------------------ 文件上传 ------------------------------ */
+    /** 真实文件上传（kind: image/video/subtitle/doc），失败提示并抛出 */
+    async upload(file, kind, onProgress) {
+      const ui = useUiStore()
+      this.acting = true
+      try {
+        return await uploadFile(file, kind, onProgress)
+      } catch (error) {
+        ui.error(`文件上传失败：${error.message}`)
+        throw error
+      } finally {
+        this.acting = false
+      }
+    },
+    /* ------------------------------ 视频字幕 ------------------------------ */
+    async loadSubtitles(videoId) {
+      const ui = useUiStore()
+      this.subtitlesLoading = true
+      try {
+        this.subtitles = await fetchSubtitles(videoId)
+      } catch (error) {
+        ui.error(`字幕加载失败：${error.message}`)
+      } finally {
+        this.subtitlesLoading = false
+      }
+    },
+    async createSubtitle(videoId, payload) {
+      const ui = useUiStore()
+      this.acting = true
+      try {
+        const result = await createSubtitle(videoId, payload)
+        ui.success('字幕已添加')
+        await this.loadSubtitles(videoId)
+        await this.loadVideos()
+        return result
+      } catch (error) {
+        ui.error(error.message)
+        throw error
+      } finally {
+        this.acting = false
+      }
+    },
+    async updateSubtitle(videoId, id, payload) {
+      const ui = useUiStore()
+      this.acting = true
+      try {
+        const result = await updateSubtitle(videoId, id, payload)
+        ui.success('字幕已更新')
+        await this.loadSubtitles(videoId)
+        await this.loadVideos()
+        return result
+      } catch (error) {
+        ui.error(error.message)
+        throw error
+      } finally {
+        this.acting = false
+      }
+    },
+    async deleteSubtitle(videoId, id) {
+      const ui = useUiStore()
+      this.acting = true
+      try {
+        await deleteSubtitle(videoId, id)
+        ui.success('字幕已删除')
+        await this.loadSubtitles(videoId)
+        await this.loadVideos()
+      } catch (error) {
+        ui.error(error.message)
+        throw error
+      } finally {
+        this.acting = false
+      }
     },
     /* ------------------------------ 推广渠道与销售报表 ------------------------------ */
     async loadChannels() {

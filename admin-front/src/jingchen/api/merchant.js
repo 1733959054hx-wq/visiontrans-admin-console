@@ -104,6 +104,34 @@ export function settleOrder(id) {
   return request.put(`/merchant/orders/${id}/settle`)
 }
 
+/* ------------------------------ 文件上传 ------------------------------ */
+
+/**
+ * 真实文件上传（multipart）。
+ *
+ * @param {File} file 用户选择的文件
+ * @param {'image'|'video'|'subtitle'|'doc'} kind 业务类型（决定扩展名白名单与大小上限）
+ * @param {(event: import('axios').AxiosProgressEvent) => void} [onProgress] 上传进度回调
+ * @returns {Promise<{url:string,name:string,sizeBytes:number,sizeKb:number,ext:string}>}
+ */
+export function uploadFile(file, kind, onProgress) {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('kind', kind)
+  return request.post('/merchant/files', form, {
+    // 大文件（视频）上传放宽超时；FormData 交由 axios 自动设置 multipart 头
+    timeout: 120000,
+    onUploadProgress: onProgress,
+  })
+}
+
+/** 取回上传文件内容（blob，用于图片/视频/字幕预览与下载） */
+export function fetchFileBlob(url) {
+  // 后端返回的是 /api/merchant/files/... 全路径，去掉 baseURL 已带的 /api 前缀
+  const path = url.startsWith('/api/') ? url.slice(4) : url
+  return request.get(path, { responseType: 'blob', timeout: 60000 })
+}
+
 /* ------------------------------ 素材管理(含 A/B) ------------------------------ */
 
 export function fetchMaterials() {
@@ -138,6 +166,26 @@ export function updateVideo(id, payload) {
 }
 export function deleteVideo(id) {
   return request.delete(`/merchant/videos/${id}`)
+}
+
+/** 视频播放统计:近 14 天趋势 / 完播率 / 地域分布 */
+export function fetchVideoStats() {
+  return request.get('/merchant/videos/stats')
+}
+
+/* ------------------------------ 视频字幕(按视频逐语种) ------------------------------ */
+
+export function fetchSubtitles(videoId) {
+  return request.get(`/merchant/videos/${videoId}/subtitles`)
+}
+export function createSubtitle(videoId, payload) {
+  return request.post(`/merchant/videos/${videoId}/subtitles`, payload)
+}
+export function updateSubtitle(videoId, id, payload) {
+  return request.put(`/merchant/videos/${videoId}/subtitles/${id}`, payload)
+}
+export function deleteSubtitle(videoId, id) {
+  return request.delete(`/merchant/videos/${videoId}/subtitles/${id}`)
 }
 
 /* ------------------------------ 推广渠道与销售报表 ------------------------------ */

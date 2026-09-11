@@ -43,6 +43,12 @@ export const merchantRoutes = [
     meta: { title: '视频接入', roles: [MERCHANT_ROLE] },
   },
   {
+    path: '/merchant/video-stats',
+    name: 'merchantVideoStats',
+    component: () => import('@/jingchen/views/MerchantVideoStatsView.vue'),
+    meta: { title: '视频播放统计', roles: [MERCHANT_ROLE] },
+  },
+  {
     path: '/merchant/promo',
     name: 'merchantPromo',
     component: () => import('@/jingchen/views/MerchantPromoView.vue'),
