@@ -36,10 +36,10 @@ public class MerchantAuthController {
         this.service = service;
     }
 
-    /** 商户登录（公开，拦截器已放行 /merchant/login）。 */
+    /** 商户登录（公开，拦截器已放行 /merchant/login；device 标识登录端，多端会话并存）。 */
     @PostMapping("/login")
     public Result<MerchantLoginVO> login(@RequestBody MerchantLoginRequest req) {
-        return Result.ok(service.login(req.username(), req.password(), req.captchaId(), req.captchaClicks()));
+        return Result.ok(service.login(req.username(), req.password(), req.captchaId(), req.captchaClicks(), req.device()));
     }
 
     /** 注销商户会话（仅商户令牌）。 */

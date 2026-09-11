@@ -315,7 +315,6 @@ CREATE TABLE `auth_session` (
 
 LOCK TABLES `auth_session` WRITE;
 /*!40000 ALTER TABLE `auth_session` DISABLE KEYS */;
-INSERT INTO `auth_session` VALUES ('8688925385084e71919f883450515cb7','2026-09-11 17:58:10.901307','集群运维组','Danny','SUPER_ADMIN','超级管理员','admin');
 /*!40000 ALTER TABLE `auth_session` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -830,7 +829,7 @@ CREATE TABLE `merchant_material` (
   `file_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `file_url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -839,7 +838,7 @@ CREATE TABLE `merchant_material` (
 
 LOCK TABLES `merchant_material` WRITE;
 /*!40000 ALTER TABLE `merchant_material` DISABLE KEYS */;
-INSERT INTO `merchant_material` VALUES (1,6.82,1864120,'视频','东京机场导览_15s.mp4',12800,'使用中',NULL,NULL),(2,5.47,1610900,'视频','东京机场导览_B版_15s.mp4',12400,'测试中',NULL,NULL),(3,4.28,986400,'图片','免税购物_kv_main.png',2400,'使用中',NULL,NULL),(4,5.03,742600,'H5','医疗术语包_h5.html',180,'已停用',NULL,NULL);
+INSERT INTO `merchant_material` VALUES (1,6.82,1864120,'视频','东京机场导览_15s.mp4',12800,'使用中',NULL,NULL),(2,5.47,1610900,'视频','东京机场导览_B版_15s.mp4',12400,'测试中',NULL,NULL),(3,4.28,986400,'图片','免税购物_kv_main.png',2400,'使用中',NULL,NULL),(4,5.03,742600,'H5','医疗术语包_h5.html',180,'已停用',NULL,NULL),(6,NULL,0,'图片','视界译演示KV',10,'测试中','视界译演示KV.png','/api/merchant/files/1756a9f5d6044ef2aac59f145051fa43.png');
 /*!40000 ALTER TABLE `merchant_material` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -864,7 +863,7 @@ CREATE TABLE `merchant_onboarding` (
   `audit_status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `submitted` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -873,7 +872,7 @@ CREATE TABLE `merchant_onboarding` (
 
 LOCK TABLES `merchant_onboarding` WRITE;
 /*!40000 ALTER TABLE `merchant_onboarding` DISABLE KEYS */;
-INSERT INTO `merchant_onboarding` VALUES (1,'MO-20260907-001','周晨','已签署','91330106MA2H3K7X0A','晨曦文化传媒有限公司','138-0013-8000','营业执照 · 广播电视节目制作经营许可证','','—','待审核','2026-09-07 10:12'),(2,'MO-20260908-002','叶星野','已签署','91350211M0001WQ25B','星野动漫工作室','139-2200-1188','营业执照 · 著作权登记证书','','—','待审核','2026-09-08 15:36'),(3,'MO-20260906-003','许青禾','待签署','91440300MA5DKQ8L7C','青禾教育科技','135-6688-2020','营业执照 · 办学许可证','合同已发送 H5 签署链接，等待商户确认','—','待审核','2026-09-06 09:04'),(4,'MO-20260905-004','林蓝湾','已签署','91440300MA5DKQ8L7D','蓝湾科技有限公司','186-8899-6677','营业执照','资质齐全 · 合同已签署，准予入驻','Danny','已通过','2026-09-05 11:22'),(5,'MO-20260904-005','秦云梦','已签署','91330106MA2H3K7X0B','云梦互娱','137-5566-3344','营业执照（副本模糊）','资质材料不清晰，请补充后重新提交','Danny','已驳回','2026-09-04 17:48');
+INSERT INTO `merchant_onboarding` VALUES (1,'MO-20260907-001','周晨','已签署','91330106MA2H3K7X0A','晨曦文化传媒有限公司','138-0013-8000','营业执照 · 广播电视节目制作经营许可证','','—','待审核','2026-09-07 10:12'),(2,'MO-20260908-002','叶星野','已签署','91350211M0001WQ25B','星野动漫工作室','139-2200-1188','营业执照 · 著作权登记证书','','—','待审核','2026-09-08 15:36'),(3,'MO-20260906-003','许青禾','待签署','91440300MA5DKQ8L7C','青禾教育科技','135-6688-2020','营业执照 · 办学许可证','合同已发送 H5 签署链接，等待商户确认','—','待审核','2026-09-06 09:04'),(4,'MO-20260905-004','林蓝湾','已签署','91440300MA5DKQ8L7D','蓝湾科技有限公司','186-8899-6677','营业执照','资质齐全 · 合同已签署，准予入驻','Danny','已通过','2026-09-05 11:22'),(5,'MO-20260904-005','秦云梦','已签署','91330106MA2H3K7X0B','云梦互娱','137-5566-3344','营业执照（副本模糊）','资质材料不清晰，请补充后重新提交','Danny','已驳回','2026-09-04 17:48'),(7,'APP-930404','张先生','已签署','12121212121','示例商户','11223344','1.png','','','待审核','2026-09-11 10:32');
 /*!40000 ALTER TABLE `merchant_onboarding` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -946,6 +945,7 @@ CREATE TABLE `merchant_session` (
   `merchant_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `role_code` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `role_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `device` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -975,7 +975,7 @@ CREATE TABLE `merchant_subtitle` (
   `uploaded_at` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `video_id` bigint NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1557,4 +1557,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-11  9:58:59
+-- Dump completed on 2026-09-11 13:58:31

@@ -22,10 +22,13 @@ export async function getMerchantPublicKey() {
 /**
  * 商户登录：口令先用 RSA 公钥加密再传输，与后台登录同套加密设施。
  *
+ * 多端会话并存：device 标识登录端（web / android / ios），同一商户可同时在
+ * 网页与手机 App 登录，互不干扰；会话落库，后端重启不失效。
+ *
  * @param username      登录账号（即商户编码）
  * @param password      口令明文（此处加密）
  * @param publicKey     后端下发的 RSA 公钥
- * @param captchaId     验证码挑战 ID（与后台共用验证码设施）
+ * @param captchaId     验证码挑战 ID（与后台共用验证码设施；免验证码宽限期内可传 null）
  * @param captchaClicks 按顺序点击的坐标 [{x, y}]
  */
 export function merchantLogin(username, password, publicKey, captchaId, captchaClicks) {
@@ -35,7 +38,7 @@ export function merchantLogin(username, password, publicKey, captchaId, captchaC
   if (!encrypted) {
     return Promise.reject(new Error('口令加密失败，请刷新页面重试'))
   }
-  return request.post('/merchant/login', { username, password: encrypted, captchaId, captchaClicks })
+  return request.post('/merchant/login', { username, password: encrypted, captchaId, captchaClicks, device: 'web' })
 }
 
 /** 商户登出 */

@@ -206,15 +206,16 @@ git pull upstream main   # 快进或合并
 
 ## 九、注意事项
 
-1. **会话存内存**：管理员/商户会话均为内存态（重启即注销），需要重新登录
+1. **会话存内存**：管理员会话仍为内存态（重启即注销）；**商户会话已落库**（merchant_session 表，2026-09-11 多端互通改造），后端重启商户不失效，网页重开仍在线
 2. **不要同时跑两份后端**：8080 端口唯一
 3. **旧副本勿启动**：`D:\慧科实习文件\VR项目代码\visiontrans-api` 是废弃的独立工程（占用 8080 且连 visiontrans 库）
-4. **`shixun.sql` 应与实际库保持一致**：每次新加表/列后重新导出 mysqldump 全量覆盖（最新一次 2026-09-11，含 merchant_subtitle / merchant_video_daily）
+4. **`shixun.sql` 应与实际库保持一致**：每次新加表/列后重新导出 mysqldump 全量覆盖（最新一次 2026-09-11，含 merchant_subtitle / merchant_video_daily / merchant_session.device）
 5. **前端热更新**：Vite dev 下改动 .vue 文件即时生效，无需重启
 6. **密码哈希**：PasswordHasher 用 PBKDF2(600k 迭代)，用 `PasswordHasher.hash(明文)` 生成，登录时 `matches(明文, hash)` 校验
-7. **上传文件落盘**：素材/视频/字幕/资质统一经 `POST /merchant/files`（kind=image/video/subtitle/doc），存 `admin-console.jingchen.upload-dir`（默认 `uploads/merchant`，按 32 位 uuid 重命名）；取回 `GET /merchant/files/{storedName}` 需商户令牌（前端 blob 预览），管理员令牌 403；删除档案不删文件
+7. **上传文件落盘**：素材/视频/字幕/资质统一经 `POST /merchant/files`（kind=image/video/subtitle/doc），存 `admin-console.jingchen.upload-dir`（默认 `uploads/merchant`，按 32 位 uuid 重命名）；**取回 `GET /merchant/files/{storedName}` 为公开能力地址**（无需令牌，名称不可猜测，移动端/用户端可直接引用展示；见 isPublicPath 中的 `/merchant/files/` 段声明），上传仍需商户令牌；删除档案不删文件。IDEA 启动时工作目录可能是项目根目录，落盘位置随之不同，注意两处 uploads/ 都已加 .gitignore
 8. **字幕冗余字段**：`merchant_video.subtitle_langs` 由 merchant_subtitle 表增删自动回写，仅作展示，不要手工改
 9. **前后端端口要对上**：浏览器若开在 `localhost:5174`（5173 被占时 vite 自动 +1），后端 CORS 白名单须包含该来源，否则登录 POST 会被返回**裸 403（Invalid CORS request，纯文本无 message）**——GET 不带 Origin 头所以页面能开、验证码能刷，唯独登录报错，极易误判。5174 已加入白名单（2026-09-11）；出现"Request failed with status code 403，请重新尝试"先核对浏览器地址端口与 `allowed-origins` 是否一致。同机起两个 dev server 时建议关掉多余的，只留一个。
 10. **登录免验证码宽限**：成功登录后 10 分钟内同一账号再次登录跳过点击式验证码（`common/CaptchaGraceService`，内存态重启即清，管理员/商户按身份隔离）。未在宽限期且未带验证码的登录按业务码 **460** 拒绝，前端登录页据此自动弹出验证码面板（两段式提交），不是报错。
 11. **登录页返回键行为**：登录成功跳转用 `router.push`（非 replace），工作台按浏览器「返回」回到登录页而非退出站点；登录页有「已登录 · 返回工作台」横幅，且身份按 `admin_console_identity` 预选（商户回来不用再手动切换）。
 12. **商户导航抽屉**：顶栏汉堡按钮在商户身份下打开 `jingchen/components/MerchantNavDrawer.vue`（11 个页面跳转 + 当前页高亮），管理员身份仍是原侧栏折叠行为。
+13. **多端会话（移动端互通）**：商户会话落库 + 同一商户多设备并存（登录入参 `device`，web/android/ios，上限 5 台，溢出淘汰最早过期的会话），登出只注销当前设备；移动端联调契约见 **`商户端API契约-移动端联调.md`**（登录/文件公开地址/C端预留约定的单一权威文档）。

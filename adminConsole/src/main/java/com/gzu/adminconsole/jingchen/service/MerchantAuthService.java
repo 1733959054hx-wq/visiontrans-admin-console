@@ -54,9 +54,12 @@ public class MerchantAuthService {
      *
      * <p>与后台登录共用「免验证码宽限」：短时间内成功登录过的账号（按商户编码隔离）
      * 再次登录跳过验证码；宽限期外未携带验证码按业务码 460 拒绝，前端弹出验证码面板重交。
+     *
+     * <p>device 标识登录端（web / android / ios）：多端会话并存互不干扰，
+     * 会话落库（merchant_session 表），后端重启不失效，移动端 App 可长期保持登录。
      */
     public MerchantLoginVO login(String username, String password, String captchaId,
-                                List<CaptchaService.Point> clicks) {
+                                List<CaptchaService.Point> clicks, String device) {
         if (properties.getSecurity().isCaptchaEnabled()
                 && !captchaGrace.isTrusted(CaptchaGraceService.SCOPE_MERCHANT, username)) {
             if (captchaId == null || captchaId.isBlank()) {
@@ -73,7 +76,7 @@ public class MerchantAuthService {
         }
         m.setLastLogin(LocalDateTime.now().format(FMT));
         captchaGrace.grant(CaptchaGraceService.SCOPE_MERCHANT, m.getCode());
-        MerchantSessionEntity s = sessions.create(m);
+        MerchantSessionEntity s = sessions.create(m, device);
         return new MerchantLoginVO(s.getToken(), profileOf(m), s.getExpireAt().format(FMT));
     }
 

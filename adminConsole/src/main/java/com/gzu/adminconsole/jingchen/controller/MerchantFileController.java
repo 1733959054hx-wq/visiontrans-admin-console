@@ -27,7 +27,10 @@ import com.gzu.adminconsole.jingchen.service.MerchantFileService;
  * <p>素材、视频、字幕、入驻资质统一走这里做<b>真实</b> multipart 上传：
  * 服务端校验类型与大小后重命名落盘，返回访问地址；原始文件名由业务表自行保存。
  * 取回接口为内联预览（图片/视频/字幕直接预览，其余按附件下载）。
- * 类级 {@code @RequireRole(MERCHANT)}：仅商户令牌可上传与读取。
+ *
+ * <p><b>取回为公开能力地址</b>（{@code isPublicPath} 放行 {@code /merchant/files/} 段）：
+ * 文件名是不可猜测的 32 位 UUID,移动端 / 用户端凭链接即可展示商户发布的图片与视频,
+ * 无需携带商户令牌;上传(POST)仍需商户令牌,类级 {@code @RequireRole(MERCHANT)}。
  */
 @RestController
 @RequireRole(MerchantConstants.ROLE_CODE)
