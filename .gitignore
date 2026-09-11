@@ -34,5 +34,9 @@ ehthumbs.db
 .env.local
 .env.*.local
 
+# ============ 商户模块上传文件（运行期落盘,不入库；IDEA 启动时工作目录可能是根目录） ============
+uploads/
+adminConsole/uploads/
+
 # ============ 杂项（误创建的孤立文件） ============
 /nul; ---
