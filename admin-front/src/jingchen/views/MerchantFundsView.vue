@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 
 import PageHeader from '@/components/PageHeader.vue'
 import StatusPill from '@/components/StatusPill.vue'
@@ -56,8 +56,37 @@ const applyQuick = (v) => {
   form.amount = v
 }
 
+/* ---- 账户信息维护 ---- */
+const profile = computed(() => store.profile)
+const profileOpen = ref(false)
+const profileForm = reactive({ contact: '', phone: '', settleAccount: '' })
+
+const openProfileEdit = () => {
+  profileForm.contact = profile.value?.contact || ''
+  profileForm.phone = profile.value?.phone || ''
+  profileForm.settleAccount = profile.value?.settleAccount || ''
+  profileOpen.value = true
+}
+const saveProfile = async () => {
+  if (!profileForm.contact.trim() || !profileForm.phone.trim()) {
+    ui.error('联系人与联系电话不能为空')
+    return
+  }
+  try {
+    await store.saveProfile({
+      contact: profileForm.contact,
+      phone: profileForm.phone,
+      settleAccount: profileForm.settleAccount || null,
+    })
+    profileOpen.value = false
+  } catch {
+    /* 提示已在 store 统一处理 */
+  }
+}
+
 onMounted(() => {
   if (!store.funds) store.loadFunds()
+  store.loadProfile()
 })
 </script>
 
@@ -65,11 +94,25 @@ onMounted(() => {
   <div class="p-5">
     <PageHeader title="账户与资金" desc="资金账户总览 · 在线充值 / 提现申请 / 资金流水明细">
       <template #actions>
+        <button class="btn btn-primary btn-sm" @click="openProfileEdit">
+          <i class="fa-solid fa-user-pen"></i>基本信息维护
+        </button>
         <button class="btn btn-ghost btn-sm" @click="store.loadFunds()">
           <i class="fa-solid fa-rotate"></i>刷新
         </button>
       </template>
     </PageHeader>
+
+    <!-- 账户信息卡 -->
+    <div class="card anim mb-1 px-4 py-2.5">
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-1 text-[12px]">
+        <span class="font-bold text-ink"><i class="fa-solid fa-building-columns mr-1.5 text-teal-500"></i>账户信息</span>
+        <span class="text-sub">商户 <b class="text-ink">{{ profile?.merchantName || '—' }}</b></span>
+        <span class="text-sub">联系人 <b class="text-ink">{{ profile?.contact || '—' }}</b></span>
+        <span class="text-sub">电话 <b class="num text-ink">{{ profile?.phone || '—' }}</b></span>
+        <span class="text-sub">结算账户 <b class="num text-ink">{{ profile?.settleAccount || '未设置' }}</b></span>
+      </div>
+    </div>
 
     <template v-if="funds">
       <!-- 余额卡 -->
@@ -207,6 +250,42 @@ onMounted(() => {
 
     <div v-else class="grid h-64 place-items-center text-[13px] text-sub">
       <i class="fa-solid fa-circle-notch fa-spin mr-2"></i>加载资金数据…
+    </div>
+
+    <!-- 资料编辑弹窗 -->
+    <div v-if="profileOpen" class="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-ink/30 p-6 backdrop-blur-sm">
+      <div class="w-full max-w-md rounded-2xl bg-white shadow-lift">
+        <div class="flex items-center justify-between border-b border-[#EEF2F7] px-5 py-3.5">
+          <div class="text-[14.5px] font-semibold text-ink">基本信息维护</div>
+          <button class="text-sub transition hover:text-ink" @click="profileOpen = false">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="space-y-3.5 px-5 py-4">
+          <div>
+            <label class="lbl">商户名称(展示)</label>
+            <input class="field" :value="profile?.merchantName" disabled />
+          </div>
+          <div>
+            <label class="lbl">联系人<span class="text-rose-500">*</span></label>
+            <input v-model="profileForm.contact" class="field" placeholder="法定代表人或经办人" />
+          </div>
+          <div>
+            <label class="lbl">联系电话<span class="text-rose-500">*</span></label>
+            <input v-model="profileForm.phone" class="field" placeholder="手机号" />
+          </div>
+          <div>
+            <label class="lbl">结算账户</label>
+            <input v-model="profileForm.settleAccount" class="field" placeholder="如：工行(****8821)" />
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 border-t border-[#EEF2F7] px-5 py-3.5">
+          <button class="btn btn-ghost btn-sm" @click="profileOpen = false">取消</button>
+          <button class="btn btn-primary btn-sm" :disabled="store.acting" @click="saveProfile">
+            <i v-if="store.acting" class="fa-solid fa-circle-notch fa-spin"></i>保存修改
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>

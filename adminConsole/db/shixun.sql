@@ -1,19 +1,27 @@
--- MySQL dump 10.13  Distrib 8.0.40, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.41, for Win64 (x86_64)
 --
--- Host: 127.0.0.1    Database: shixun
+-- Host: localhost    Database: shixun
 -- ------------------------------------------------------
--- Server version	8.0.40
+-- Server version	8.0.41
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8 */;
+/*!50503 SET NAMES utf8mb4 */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Current Database: `shixun`
+--
+
+CREATE DATABASE /*!32312 IF NOT EXISTS*/ `shixun` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+
+USE `shixun`;
 
 --
 -- Table structure for table `ad_plan`
@@ -34,6 +42,9 @@ CREATE TABLE `ad_plan` (
   `scene` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `plan_status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `used_amount` decimal(14,2) DEFAULT NULL,
+  `slot_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `targeting` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `time_range` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -44,7 +55,7 @@ CREATE TABLE `ad_plan` (
 
 LOCK TABLES `ad_plan` WRITE;
 /*!40000 ALTER TABLE `ad_plan` DISABLE KEYS */;
-INSERT INTO `ad_plan` VALUES (1,'AR 街景锁定',320000.00,6.82,'东京机场口岸 AR 实景导览','Danny',_binary '\0','PLAN-2026-1031','机场口岸 · 中→日','投放中',248600.00),(2,'Banner 信息流',180000.00,5.47,'出境医疗术语包联合推广','Danny',_binary '\0','PLAN-2026-1028','医疗就诊 · 中→英','投放中',152300.00),(3,'Banner 信息流',120000.00,4.28,'免税购物导购专场','Danny',_binary '\0','PLAN-2026-1044','免税购物 · 中→韩','预算预警',118800.00),(4,'AR 街景锁定',210000.00,NULL,'跨境电商商品出海计划','Danny',_binary '\0','PLAN-2026-1063','电商仓库 · 中→英','待审核',0.00);
+INSERT INTO `ad_plan` VALUES (1,'AR 街景锁定',320000.00,6.82,'东京机场口岸 AR 实景导览','Danny',_binary '\0','PLAN-2026-1031','机场口岸 · 中→日','投放中',248600.00,NULL,NULL,NULL),(2,'Banner 信息流',180000.00,5.47,'出境医疗术语包联合推广','Danny',_binary '\0','PLAN-2026-1028','医疗就诊 · 中→英','投放中',152300.00,NULL,NULL,NULL),(3,'Banner 信息流',120000.00,4.28,'免税购物导购专场','Danny',_binary '\0','PLAN-2026-1044','免税购物 · 中→韩','预算预警',118800.00,NULL,NULL,NULL),(4,'AR 街景锁定',210000.00,NULL,'跨境电商商品出海计划','Danny',_binary '\0','PLAN-2026-1063','电商仓库 · 中→英','待审核',0.00,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `ad_plan` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -106,7 +117,7 @@ CREATE TABLE `admin_user` (
 
 LOCK TABLES `admin_user` WRITE;
 /*!40000 ALTER TABLE `admin_user` DISABLE KEYS */;
-INSERT INTO `admin_user` VALUES (1,'集群运维组','2026-09-09 16:40','Danny','138****2043','超级管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','admin'),(2,'模型治理组','2026-09-03 13:41','陈默','139****8812','超级管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','chenmo'),(3,'内容审核组','2026-09-03 12:58','王倩','150****3391','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','wangqian'),(4,'广告运营组','2026-09-03 11:32','赵磊','186****7720','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','zhaolei'),(5,'商户与结算组','2026-09-03 10:05','孙奇','133****5590','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','sunqi'),(6,'合规审计组','2026-09-03 09:47','刘洋','187****1186','只读审计员','停用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','liuyang');
+INSERT INTO `admin_user` VALUES (1,'集群运维组','2026-09-10 09:39','Danny','138****2043','超级管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','admin'),(2,'模型治理组','2026-09-03 13:41','陈默','139****8812','超级管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','chenmo'),(3,'内容审核组','2026-09-03 12:58','王倩','150****3391','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','wangqian'),(4,'广告运营组','2026-09-03 11:32','赵磊','186****7720','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','zhaolei'),(5,'商户与结算组','2026-09-03 10:05','孙奇','133****5590','运营管理员','启用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','sunqi'),(6,'合规审计组','2026-09-03 09:47','刘洋','187****1186','只读审计员','停用','abfb2f224e75e7f5dc98666da707f992d200baaad62d6c0e249d262288ae037d','liuyang');
 /*!40000 ALTER TABLE `admin_user` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -145,10 +156,10 @@ DROP TABLE IF EXISTS `app_session`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `app_session` (
-  `token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `account` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `token` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `expire_at` datetime(6) DEFAULT NULL,
-  `fingerprint` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `fingerprint` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `login_at` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`token`),
   KEY `idx_app_session_fp` (`fingerprint`)
@@ -304,7 +315,6 @@ CREATE TABLE `auth_session` (
 
 LOCK TABLES `auth_session` WRITE;
 /*!40000 ALTER TABLE `auth_session` DISABLE KEYS */;
-INSERT INTO `auth_session` VALUES ('5661c4b4df5e4c239f3a849544e60373','2026-09-10 00:40:51.188469','集群运维组','Danny','SUPER_ADMIN','超级管理员','admin');
 /*!40000 ALTER TABLE `auth_session` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -468,7 +478,7 @@ CREATE TABLE `device_record` (
   `sessions` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `sort_order` int DEFAULT NULL,
   `verdict` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `account` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `account` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`fingerprint`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -742,6 +752,66 @@ INSERT INTO `merchant_daily_stat` VALUES (1,31000,82400.00,620000,53360.00,'2026
 UNLOCK TABLES;
 
 --
+-- Table structure for table `merchant_fund_flow`
+--
+
+DROP TABLE IF EXISTS `merchant_fund_flow`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `merchant_fund_flow` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `amount` decimal(12,2) DEFAULT NULL,
+  `balance_after` decimal(14,2) DEFAULT NULL,
+  `created_at` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `direction` varchar(8) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `flow_type` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `remark` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `merchant_fund_flow`
+--
+
+LOCK TABLES `merchant_fund_flow` WRITE;
+/*!40000 ALTER TABLE `merchant_fund_flow` DISABLE KEYS */;
+INSERT INTO `merchant_fund_flow` VALUES (1,5000000.00,5000000.00,'2026-09-07 12:02','收入','充值','对公转账充值'),(2,145175.79,5145175.79,'2026-09-08 06:02','收入','佣金入账','视频版权分账 ROYALTY-20260831'),(3,248600.00,4896575.79,'2026-09-08 16:02','支出','广告消耗','广告消耗扣款 PLAN-2026-1031'),(4,33309.48,4929885.27,'2026-09-09 06:02','收入','佣金入账','知识包分销 SETTLE-20260902'),(5,500000.00,4429885.27,'2026-09-09 14:02','支出','提现','提现申请冻结 WD-20260902-3'),(6,6880.00,4436765.27,'2026-09-09 22:02','收入','退款','退款退回 REFUND-55210'),(7,612480.60,3824284.67,'2026-09-10 08:02','支出','广告消耗','广告消耗扣款 PLAN-2026-1028'),(8,300000.00,4124284.67,'2026-09-10 18:02','收入','充值','支付宝充值 ALIPAY-9912044'),(9,118800.00,4005484.67,'2026-09-11 04:02','支出','广告消耗','广告消耗扣款 PLAN-2026-1044');
+/*!40000 ALTER TABLE `merchant_fund_flow` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `merchant_goods`
+--
+
+DROP TABLE IF EXISTS `merchant_goods`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `merchant_goods` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `goods_desc` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `discount` int DEFAULT NULL,
+  `goods_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `goods_type` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `price` decimal(10,2) DEFAULT NULL,
+  `sale_price` decimal(10,2) DEFAULT NULL,
+  `sales_count` bigint DEFAULT NULL,
+  `goods_status` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `merchant_goods`
+--
+
+LOCK TABLES `merchant_goods` WRITE;
+/*!40000 ALTER TABLE `merchant_goods` DISABLE KEYS */;
+INSERT INTO `merchant_goods` VALUES (1,'医患场景高频急救术语,EN→ZH 双向对照',100,'出境医疗急救术语包','专业词典',68.00,68.00,18432,'在售'),(2,'12 讲实景微课,涵盖 200+ 交通标志',80,'日本交通标志实景微课','视频课程',128.00,102.40,15908,'在售'),(3,'清真商务礼仪 / 阿语敬语全覆盖',85,'中东商务礼仪文化包','文化包',88.00,74.80,9631,'在售'),(4,'商品标题多语种优化实战',80,'跨境电商标题优化课','视频课程',45.00,36.00,7286,'在售'),(5,'泰 / 越 / 马来三语场景会话',80,'东南亚旅行实用会话包','文化包',38.00,30.40,6905,'在售'),(6,'IEEE / 医学 / 法律三大领域术语',100,'国际学术会议同传术语包','专业词典',268.00,268.00,3142,'已下架');
+/*!40000 ALTER TABLE `merchant_goods` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `merchant_material`
 --
 
@@ -779,19 +849,19 @@ DROP TABLE IF EXISTS `merchant_onboarding`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `merchant_onboarding` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `apply_no` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `contact` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `contract_status` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `license_no` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `merchant_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `qualification` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `remark` varchar(256) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `reviewer` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `audit_status` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `submitted` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `apply_no` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `contact` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `contract_status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `license_no` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `merchant_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `phone` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `qualification` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `remark` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reviewer` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `audit_status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `submitted` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -832,6 +902,31 @@ LOCK TABLES `merchant_order` WRITE;
 /*!40000 ALTER TABLE `merchant_order` DISABLE KEYS */;
 INSERT INTO `merchant_order` VALUES (1,168.00,'抖音内容号',42.00,'2026-09-08 15:31','出境医疗急救术语包','ORD-20260903-001','待结算'),(2,128.00,'小红书达人',32.00,'2026-09-08 13:31','日本交通标志实景微课','ORD-20260903-002','待结算'),(3,88.00,'自有门店',0.00,'2026-09-08 10:31','东京机场口岸 AR 导览','ORD-20260903-003','已结算'),(4,88.00,'旅行社直客',22.00,'2026-09-07 16:31','中东商务礼仪文化包','ORD-20260902-012','已结算'),(5,45.00,'抖音内容号',11.25,'2026-09-07 10:31','跨境电商标题优化课','ORD-20260902-008','退款中'),(6,158.00,'跨境社群',39.50,'2026-09-06 15:31','欧盟通关申报术语库','ORD-20260901-006','已结算'),(7,38.00,'小红书达人',9.50,'2026-09-06 09:31','东南亚旅行实用会话包','ORD-20260901-003','已结算'),(8,25.00,'旅行社直客',6.25,'2026-09-05 11:31','璃月景区导览文化包','ORD-20260831-009','已结算');
 /*!40000 ALTER TABLE `merchant_order` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `merchant_profile_ext`
+--
+
+DROP TABLE IF EXISTS `merchant_profile_ext`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `merchant_profile_ext` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `merchant_code` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `settle_account` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `merchant_profile_ext`
+--
+
+LOCK TABLES `merchant_profile_ext` WRITE;
+/*!40000 ALTER TABLE `merchant_profile_ext` DISABLE KEYS */;
+INSERT INTO `merchant_profile_ext` VALUES (1,'merchant','招行(****6688)');
+/*!40000 ALTER TABLE `merchant_profile_ext` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -891,6 +986,34 @@ LOCK TABLES `merchant_video` WRITE;
 /*!40000 ALTER TABLE `merchant_video` DISABLE KEYS */;
 INSERT INTO `merchant_video` VALUES (1,2538,68.40,'JA·JP','JP_Tokyo_Transit_4K_Master.mp4',1286420,'亚太',12.40,'已上架','中,英,日'),(2,4565,61.20,'DE·DE','DE_Munich_Expo_Day1.mp4',862940,'欧洲',21.86,'已就绪','中,德'),(3,1727,65.80,'FR·FR','FR_Paris_Art_Tour_EP03.mp4',604182,'全球',6.14,'已就绪','中,法'),(4,2120,NULL,'EN·US','EN_Medical_Onboarding_S01E02.mp4',0,'全球',7.92,'转码中','中,英'),(5,3156,59.40,'KO·KR','KR_Seoul_StreetFood_4K.mp4',728510,'亚太',15.30,'已上架','中,韩'),(6,1148,54.10,'AR·AE','AR_Dubai_Business_Etiquette.mp4',196835,'全球',4.05,'已上架','中,阿');
 /*!40000 ALTER TABLE `merchant_video` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `merchant_withdraw`
+--
+
+DROP TABLE IF EXISTS `merchant_withdraw`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `merchant_withdraw` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `account` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `amount` decimal(12,2) DEFAULT NULL,
+  `applied_at` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `w_status` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `withdraw_no` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `merchant_withdraw`
+--
+
+LOCK TABLES `merchant_withdraw` WRITE;
+/*!40000 ALTER TABLE `merchant_withdraw` DISABLE KEYS */;
+INSERT INTO `merchant_withdraw` VALUES (1,'工行(****8821)',500000.00,'2026-09-09 14:02','审核中','WD-20260902-3'),(2,'工行(****8821)',300000.00,'2026-09-01 10:02','已到账','WD-20260828-1');
+/*!40000 ALTER TABLE `merchant_withdraw` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -996,9 +1119,9 @@ CREATE TABLE `nav_menu` (
   `sub` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `menu_text` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `title` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `group_name` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `group_sub` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `roles` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `group_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `group_sub` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `roles` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`menu_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1248,14 +1371,14 @@ DROP TABLE IF EXISTS `third_party_service`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `third_party_service` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `category` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `endpoint` varchar(256) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `last_check` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `category` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `endpoint` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `last_check` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `latency_ms` int DEFAULT NULL,
-  `service_name` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `remark` varchar(256) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `service_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `remark` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `sort_order` int DEFAULT NULL,
-  `service_status` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `service_status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `success_rate` double DEFAULT NULL,
   `timeout_ms` int DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -1268,7 +1391,7 @@ CREATE TABLE `third_party_service` (
 
 LOCK TABLES `third_party_service` WRITE;
 /*!40000 ALTER TABLE `third_party_service` DISABLE KEYS */;
-INSERT INTO `third_party_service` VALUES (1,'核心服务','http://localhost:8080/api/meta/system','2026-09-09 11:14:47',168,'平台 API 网关','自拨测 · 网关与鉴权链路',0,'正常',99.98,2000),(2,'核心服务','https://cdn.jsdelivr.net','2026-09-09 11:14:47',212,'端侧模型分发 CDN','INT8 / FP16 量化模型分发',1,'正常',99.86,3000),(3,'翻译引擎','https://api-free.deepl.com','2026-09-09 11:14:47',342,'NMT 云端翻译引擎','长句与专业领域译文主力',2,'正常',99.72,3000),(4,'语音识别','https://www.google.com','2026-09-09 11:14:47',268,'ASR 语音识别服务','会议 / 语音翻译实时转写',3,'正常',99.65,3000),(5,'翻译引擎','https://cdn.jsdelivr.net','2026-09-09 11:14:47',296,'OCR 文字识别服务','实时画面与图片文字检测',4,'正常',99.41,3000),(6,'地理编码','https://apis.map.qq.com','2026-09-09 14:18:25',11263,'地理编码服务（腾讯 LBS）','HttpConnectTimeoutException · HTTP connect timed out',5,'不可用',79.14,2500),(7,'支付渠道','https://api.mch.weixin.qq.com','2026-09-09 11:14:47',305,'支付渠道网关','会员 / 课程订单收单',6,'正常',99.95,3000);
+INSERT INTO `third_party_service` VALUES (1,'核心服务','http://localhost:8080/api/meta/system','2026-09-09 17:06:58',0,'平台 API 网关','拨测地址不在允许范围内（仅公网 http/https）',0,'不可用',79.98,2000),(2,'核心服务','https://cdn.jsdelivr.net','2026-09-09 17:06:59',1093,'端侧模型分发 CDN','HTTP 301',1,'正常',99.89,3000),(3,'翻译引擎','https://api-free.deepl.com','2026-09-09 17:07:01',1744,'NMT 云端翻译引擎','HTTP 404',2,'不可用',79.78,3000),(4,'语音识别','https://www.google.com','2026-09-09 17:07:04',3060,'ASR 语音识别服务','HttpConnectTimeoutException · HTTP connect timed out',3,'不可用',79.72,3000),(5,'翻译引擎','https://cdn.jsdelivr.net','2026-09-09 17:07:05',833,'OCR 文字识别服务','HTTP 301',4,'正常',99.53,3000),(6,'地理编码','https://apis.map.qq.com','2026-09-09 17:07:05',491,'地理编码服务（腾讯 LBS）','近 24 小时可用率 83.31%',5,'降级',83.31,2500),(7,'支付渠道','https://api.mch.weixin.qq.com','2026-09-09 17:07:06',507,'支付渠道网关','HTTP 404',6,'不可用',79.96,3000);
 /*!40000 ALTER TABLE `third_party_service` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1362,4 +1485,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-09 16:41:47
+-- Dump completed on 2026-09-11  9:28:20

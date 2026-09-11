@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.gzu.adminconsole.common.BusinessException;
 import com.gzu.adminconsole.jingchen.dto.MerchantPlanRequest;
@@ -40,7 +41,7 @@ public class MerchantPlanService {
         return plan;
     }
 
-    /** 新建:编号自动生成,已消耗从 0 起算,默认投放中。 */
+    /** 新建:编号自动生成,已消耗从 0 起算,默认投放中;带投放设置(广告位 / 时段 / 人群)。 */
     public MerchantPlanEntity create(MerchantPlanRequest req) {
         MerchantPlanEntity plan = new MerchantPlanEntity(
                 req.planNo() == null || req.planNo().isBlank()
@@ -55,6 +56,9 @@ public class MerchantPlanService {
                 req.owner(),
                 req.ctr(),
                 false);
+        plan.setSlotName(req.slotName());
+        plan.setTimeRange(req.timeRange());
+        plan.setTargeting(req.targeting());
         return repository.save(plan);
     }
 
@@ -67,7 +71,16 @@ public class MerchantPlanService {
         if (req.budget() != null) plan.setBudget(req.budget());
         if (req.owner() != null) plan.setOwner(req.owner());
         if (req.ctr() != null) plan.setCtr(req.ctr());
+        if (req.slotName() != null) plan.setSlotName(req.slotName());
+        if (req.timeRange() != null) plan.setTimeRange(req.timeRange());
+        if (req.targeting() != null) plan.setTargeting(req.targeting());
         return repository.save(plan);
+    }
+
+    /** 可用广告位列表(主工程 ad_slot 库存,仅上线位,供「广告位选择」)。 */
+    @Transactional(readOnly = true)
+    public List<com.gzu.adminconsole.entity.AdSlotEntity> listSlots() {
+        return repository.findOnlineSlots();
     }
 
     /** 暂停 / 恢复:状态与暂停标记同步维护。 */

@@ -21,7 +21,9 @@ import {
   fetchOrders,
   fetchOverview,
   fetchPlans,
+  fetchProfile,
   fetchSales,
+  fetchSlots,
   fetchVideos,
   pausePlan,
   rechargeFunds,
@@ -36,6 +38,7 @@ import {
   updateGoods,
   updateMaterial,
   updatePlan,
+  updateProfile,
   updateVideo,
   withdrawFunds,
 } from '@/jingchen/api/merchant'
@@ -67,9 +70,11 @@ export const useMerchantStore = defineStore('jingchenMerchant', {
     goodsLoading: false,
     funds: null,
     fundsLoading: false,
-    onboard: null,
-    onboardLoading: false,
-  }),
+  onboard: null,
+  onboardLoading: false,
+  slots: null,
+  profile: null,
+}),
   actions: {
     async loadHome() {
       const ui = useUiStore()
@@ -394,6 +399,36 @@ export const useMerchantStore = defineStore('jingchenMerchant', {
         this.onboard = await signContract()
         ui.success('合作协议签署成功')
         return this.onboard
+      } catch (error) {
+        ui.error(error.message)
+        throw error
+      } finally {
+        this.acting = false
+      }
+    },
+    /* ------------------------------ 广告位与资料 ------------------------------ */
+    async loadSlots() {
+      if (this.slots) return
+      try {
+        this.slots = await fetchSlots()
+      } catch {
+        this.slots = []
+      }
+    },
+    async loadProfile() {
+      try {
+        this.profile = await fetchProfile()
+      } catch {
+        this.profile = null
+      }
+    },
+    async saveProfile(payload) {
+      const ui = useUiStore()
+      this.acting = true
+      try {
+        this.profile = await updateProfile(payload)
+        ui.success('商户资料已更新')
+        return this.profile
       } catch (error) {
         ui.error(error.message)
         throw error

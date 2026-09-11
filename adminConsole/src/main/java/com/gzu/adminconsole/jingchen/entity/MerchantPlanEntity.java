@@ -63,6 +63,18 @@ public class MerchantPlanEntity {
     @Column(name = "paused")
     private Boolean paused = false;
 
+    /** 投放所选广告位名称(对应主工程 ad_slot.slot_name)。 */
+    @Column(name = "slot_name", length = 128)
+    private String slotName;
+
+    /** 投放时段,如 全天 / 白天 06-18 / 晚间 18-24。 */
+    @Column(name = "time_range", length = 32)
+    private String timeRange;
+
+    /** 目标人群定向(逗号分隔标签),如 出境旅游,商务差旅。 */
+    @Column(name = "targeting", length = 255)
+    private String targeting;
+
     protected MerchantPlanEntity() {
     }
 
@@ -103,4 +115,10 @@ public class MerchantPlanEntity {
     public void setCtr(BigDecimal ctr) { this.ctr = ctr; }
     public Boolean getPaused() { return paused; }
     public void setPaused(Boolean paused) { this.paused = paused; }
+    public String getSlotName() { return slotName; }
+    public void setSlotName(String slotName) { this.slotName = slotName; }
+    public String getTimeRange() { return timeRange; }
+    public void setTimeRange(String timeRange) { this.timeRange = timeRange; }
+    public String getTargeting() { return targeting; }
+    public void setTargeting(String targeting) { this.targeting = targeting; }
 }

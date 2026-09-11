@@ -44,6 +44,12 @@ public class MerchantPlanController {
         return Result.ok(service.list());
     }
 
+    /** 可用广告位列表（投放设置第一步「广告位选择」数据源）。 */
+    @GetMapping("/slots")
+    public Result<List<com.gzu.adminconsole.entity.AdSlotEntity>> slots() {
+        return Result.ok(service.listSlots());
+    }
+
     /** 计划详情。 */
     @GetMapping("/{id}")
     public Result<MerchantPlanEntity> get(@PathVariable Long id) {

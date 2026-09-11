@@ -31,6 +31,13 @@ public class MerchantPlanRepository {
         return em.find(MerchantPlanEntity.class, id);
     }
 
+    /** 可上线的广告位列表(主工程 ad_slot,按排序位,投放设置「广告位选择」数据源)。 */
+    public List<com.gzu.adminconsole.entity.AdSlotEntity> findOnlineSlots() {
+        return em.createQuery("select s from AdSlotEntity s where s.online = true order by s.sortOrder",
+                        com.gzu.adminconsole.entity.AdSlotEntity.class)
+                .getResultList();
+    }
+
     /** 计划条数(判断是否需要灌入演示数据)。 */
     public long count() {
         Long count = em.createQuery("select count(p) from MerchantPlanEntity p", Long.class).getSingleResult();

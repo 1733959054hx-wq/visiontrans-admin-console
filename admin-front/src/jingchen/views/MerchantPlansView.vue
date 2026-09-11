@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import CrudDialog from '@/components/CrudDialog.vue'
@@ -13,10 +13,12 @@ import { useUiStore } from '@/stores/ui'
 /**
  * 商户投放计划管理（jingchen 模块业务页）。
  *
- * 能力：计划列表 / 新建 / 编辑 / 暂停恢复 / 删除；
+ * 能力：投放设置三步向导（广告位选择 → 预算时段定向 → 确认提交）/
+ * 计划列表 / 编辑 / 暂停恢复 / 删除 / 投放报表导出；
  * 数据走 /api/merchant/plans（@RequireRole(MERCHANT)，管理员令牌不可达）。
  */
 const store = useMerchantStore()
+const ui = useUiStore()
 const { confirmState, askConfirm, resolveConfirm } = useConfirm()
 
 const plans = computed(() => store.plans || [])
@@ -47,8 +49,6 @@ const barColor = (pct) => (pct > 95 ? '#EF4444' : pct > 80 ? '#F59E0B' : '#0D948
 const planPct = (p) => (p.budget > 0 ? Math.min(100, Math.round(((p.used || 0) / p.budget) * 100)) : 0)
 
 /* ---- 投放报表:效果数据查看 + 导出(Excel / PDF) ---- */
-const ui = useUiStore()
-
 const avgCtr = computed(() => {
   const withCtr = plans.value.filter((p) => p.ctr != null)
   if (!withCtr.length) return '—'
@@ -58,12 +58,11 @@ const avgCtr = computed(() => {
 const exportExcel = () => {
   exportCsv(
     `投放报表-${stamp()}`,
-    ['计划编号', '计划名称', '广告形式', '定向场景', '日预算(元)', '已消耗(元)', '消耗进度', 'CTR', '状态', '负责人'],
+    ['计划编号', '计划名称', '广告形式', '定向场景', '广告位', '投放时段', '人群定向', '日预算(元)', '已消耗(元)', 'CTR', '状态', '负责人'],
     plans.value.map((p) => [
-      p.planNo, p.name, p.adForm, p.scene,
+      p.planNo, p.name, p.adForm, p.scene, p.slotName || '', p.timeRange || '', p.targeting || '',
       Number(p.budget || 0).toFixed(2),
       Number(p.used || 0).toFixed(2),
-      `${planPct(p)}%`,
       p.ctr == null ? '' : `${p.ctr}%`,
       p.paused ? '已暂停' : p.status,
       p.owner || '',
@@ -76,7 +75,63 @@ const exportPdf = () => {
   window.print()
 }
 
-/* ---- 新增 / 编辑（复用通用 CrudDialog，字段按后端契约配置） ---- */
+/* ---- 新建投放计划 · 三步向导 ---- */
+const TIME_OPTIONS = ['全天', '白天 06-18', '晚间 18-24', '午晚高峰']
+const TARGET_OPTIONS = ['出境旅游', '商务差旅', '海外留学', '跨境电商', '医疗陪诊', '免税购物', '会展人群', '留学生']
+
+const wizard = reactive({ open: false, step: 1, slotName: '', timeRange: '全天', targets: [], name: '', adForm: 'Banner 信息流', scene: '', budget: 100000, owner: '' })
+
+const openWizard = () => {
+  wizard.open = true
+  wizard.step = 1
+  wizard.slotName = ''
+  wizard.timeRange = '全天'
+  wizard.targets = []
+  wizard.name = ''
+  wizard.adForm = 'Banner 信息流'
+  wizard.scene = ''
+  wizard.budget = 100000
+  wizard.owner = ''
+  store.loadSlots()
+}
+
+const slots = computed(() => store.slots || [])
+const slotTone = { 已售罄: 'red', 部分售出: 'amber', 预售锁定: 'blue', 空闲可购: 'green' }
+const pickSlot = (s) => {
+  if (s.slotStatus === '已售罄') {
+    ui.error('该广告位已售罄，请选择其他位置')
+    return
+  }
+  wizard.slotName = s.name
+}
+const toggleTarget = (t) => {
+  const i = wizard.targets.indexOf(t)
+  if (i >= 0) wizard.targets.splice(i, 1)
+  else wizard.targets.push(t)
+}
+const submitWizard = async () => {
+  if (!wizard.name.trim()) {
+    ui.error('计划名称必填')
+    return
+  }
+  try {
+    await store.createPlan({
+      name: wizard.name,
+      adForm: wizard.adForm,
+      scene: wizard.scene || '',
+      budget: Number(wizard.budget) || 0,
+      owner: wizard.owner || null,
+      slotName: wizard.slotName,
+      timeRange: wizard.timeRange,
+      targeting: wizard.targets.join(','),
+    })
+    wizard.open = false
+  } catch {
+    /* 提示已在 store 统一处理 */
+  }
+}
+
+/* ---- 编辑（保留简单弹窗,投放设置编辑后续迭代） ---- */
 const PLAN_FIELDS = [
   { key: 'name', label: '计划名称', type: 'text', required: true, placeholder: '如：东京机场口岸 AR 实景导览' },
   { key: 'adForm', label: '广告形式', type: 'select', options: ['AR 街景锁定', 'Banner 信息流', '开屏广告'] },
@@ -86,26 +141,14 @@ const PLAN_FIELDS = [
   { key: 'ctr', label: '点击率 CTR', type: 'text', kind: 'decimal', suffix: '%', decimals: 2, min: 0, max: 100, placeholder: '6.82，选填' },
 ]
 
-const dialog = reactive({ open: false, title: '', record: {}, mode: 'create' })
-
-const openCreate = () => {
-  dialog.open = true
-  dialog.mode = 'create'
-  dialog.title = '新建投放计划'
-  dialog.record = { name: '', adForm: 'Banner 信息流', scene: '', budget: 100000, owner: '', ctr: '' }
-}
-
+const editDialog = reactive({ open: false, record: {} })
 const openEdit = (row) => {
-  dialog.open = true
-  dialog.mode = 'edit'
-  dialog.title = `编辑计划 · ${row.name}`
-  dialog.record = { ...row }
+  editDialog.open = true
+  editDialog.record = { ...row }
 }
-
-/** 弹窗提交 → 数值字段归一化为后端期望的 JSON 类型 */
-const submitDialog = async (form) => {
-  const mode = dialog.mode
-  dialog.open = false
+const submitEdit = async (form) => {
+  const id = editDialog.record.id
+  editDialog.open = false
   const ctrRaw = String(form.ctr ?? '').replace(/[^\d.-]/g, '')
   const payload = {
     name: form.name,
@@ -116,8 +159,7 @@ const submitDialog = async (form) => {
     ctr: ctrRaw === '' ? null : Number(ctrRaw),
   }
   try {
-    if (mode === 'create') await store.createPlan(payload)
-    else await store.updatePlan(dialog.record.id, payload)
+    await store.updatePlan(id, payload)
   } catch {
     /* 提示已在 store 统一处理 */
   }
@@ -153,7 +195,7 @@ onMounted(() => {
         <button class="btn btn-ghost btn-sm" title="打印窗口中另存为 PDF" @click="exportPdf">
           <i class="fa-solid fa-file-pdf text-rose-500"></i>导出 PDF
         </button>
-        <button class="btn btn-primary btn-sm" :disabled="store.acting" @click="openCreate">
+        <button class="btn btn-primary btn-sm" :disabled="store.acting" @click="openWizard">
           <i class="fa-solid fa-plus"></i>新建投放计划
         </button>
       </template>
@@ -208,6 +250,7 @@ onMounted(() => {
               <th>计划名称 / 编号</th>
               <th>广告形式</th>
               <th>定向场景</th>
+              <th>广告位 / 时段 / 人群</th>
               <th class="text-right">日预算(元)</th>
               <th class="text-right">已消耗(元)</th>
               <th>消耗进度</th>
@@ -218,7 +261,7 @@ onMounted(() => {
           </thead>
           <tbody>
             <tr v-if="store.plansLoading">
-              <td colspan="9" class="py-8 text-center text-[12px] text-sub">
+              <td colspan="10" class="py-8 text-center text-[12px] text-sub">
                 <i class="fa-solid fa-circle-notch fa-spin mr-2"></i>正在加载投放计划…
               </td>
             </tr>
@@ -229,15 +272,21 @@ onMounted(() => {
               </td>
               <td><StatusPill :text="plan.adForm || '—'" tone="blue" small /></td>
               <td class="text-[12px] text-sub">{{ plan.scene || '—' }}</td>
-              <td class="num text-[12px]">{{ fmtMoney(plan.budget) }}</td>
-              <td class="num text-[12px]">{{ fmtMoney(plan.used) }}</td>
+              <td class="text-[11.5px] text-sub leading-relaxed">
+                <div v-if="plan.slotName"><i class="fa-solid fa-location-dot mr-1 text-teal-500"></i>{{ plan.slotName }}</div>
+                <div v-if="plan.timeRange"><i class="fa-regular fa-clock mr-1 text-teal-500"></i>{{ plan.timeRange }}</div>
+                <div v-if="plan.targeting"><i class="fa-solid fa-users mr-1 text-teal-500"></i>{{ plan.targeting }}</div>
+                <div v-if="!plan.slotName && !plan.timeRange && !plan.targeting">—</div>
+              </td>
+              <td class="num text-right text-[12px]">{{ fmtMoney(plan.budget) }}</td>
+              <td class="num text-right text-[12px]">{{ fmtMoney(plan.used) }}</td>
               <td>
                 <div class="flex items-center gap-2">
                   <div class="bar w-24"><i :style="`width:${planPct(plan)}%;background:${barColor(planPct(plan))}`"></i></div>
                   <span class="num text-[11.5px] text-sub">{{ planPct(plan) }}%</span>
                 </div>
               </td>
-              <td class="num text-[12px] text-right">{{ fmtCtr(plan.ctr) }}</td>
+              <td class="num text-right text-[12px]">{{ fmtCtr(plan.ctr) }}</td>
               <td><StatusPill :text="planTone(plan).text" :tone="planTone(plan).tone" /></td>
               <td>
                 <div class="flex items-center justify-end gap-1">
@@ -259,21 +308,123 @@ onMounted(() => {
               </td>
             </tr>
             <tr v-if="!store.plansLoading && !plans.length">
-              <td colspan="9" class="py-8 text-center text-[12px] text-sub">还没有投放计划，点击右上「新建投放计划」创建一条</td>
+              <td colspan="10" class="py-8 text-center text-[12px] text-sub">还没有投放计划，点击右上「新建投放计划」创建一条</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
+    <!-- 三步向导:广告位 → 投放设置 → 确认 -->
+    <div v-if="wizard.open" class="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-ink/30 p-6 backdrop-blur-sm">
+      <div class="w-full max-w-xl rounded-2xl bg-white shadow-lift">
+        <div class="flex items-center justify-between border-b border-[#EEF2F7] px-5 py-3.5">
+          <div class="text-[14.5px] font-semibold text-ink">新建投放计划 · 第 {{ wizard.step }} / 3 步</div>
+          <button class="text-sub transition hover:text-ink" @click="wizard.open = false">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- 步骤 1:广告位选择 -->
+        <div v-if="wizard.step === 1" class="px-5 py-4">
+          <div class="mb-3 text-[12.5px] font-semibold text-ink">① 选择广告位</div>
+          <div class="grid max-h-80 grid-cols-1 gap-2 overflow-y-auto md:grid-cols-2">
+            <button
+              v-for="s in store.slots"
+              :key="s.id"
+              class="rounded-xl border-2 p-3 text-left transition"
+              :class="wizard.slotName === s.name ? 'border-electric bg-blue-50/60' : s.slotStatus === '已售罄' ? 'border-line bg-slate-50 opacity-50' : 'border-line hover:border-blue-200'"
+              @click="pickSlot(s)"
+            >
+              <div class="flex items-center gap-2">
+                <span class="h-2.5 w-2.5 rounded-full" :style="`background:${s.color}`"></span>
+                <span class="text-[12.5px] font-semibold text-ink">{{ s.name }}</span>
+                <span class="pill ml-auto" :class="s.slotStatus === '已售罄' ? 'pill-red' : s.slotStatus === '部分售出' ? 'pill-amber' : s.slotStatus === '预售锁定' ? 'pill-blue' : 'pill-green'">{{ s.slotStatus }}</span>
+              </div>
+              <div class="num mt-1.5 text-[11px] text-sub">
+                {{ s.ratio >= 0 ? `¥ ${s.ratio} / 千次曝光` : '预售 · 价格待定' }} · 剩余 {{ s.remain }}
+              </div>
+            </button>
+          </div>
+          <div class="mt-3 flex justify-end">
+            <button class="btn btn-primary btn-sm" :disabled="!wizard.slotName" @click="wizard.step = 2">
+              下一步 · 投放设置
+            </button>
+          </div>
+        </div>
+
+        <!-- 步骤 2:投放设置 -->
+        <div v-else-if="wizard.step === 2" class="grid grid-cols-1 gap-x-4 gap-y-3.5 px-5 py-4">
+          <div>
+            <label class="lbl">计划名称<span class="text-rose-500">*</span></label>
+            <input v-model="wizard.name" class="field" placeholder="如：东京机场口岸 AR 实景导览" />
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="lbl">广告形式</label>
+              <select v-model="wizard.adForm" class="field">
+                <option>AR 街景锁定</option><option>Banner 信息流</option><option>开屏广告</option>
+              </select>
+            </div>
+            <div>
+              <label class="lbl">日预算(元)<span class="text-rose-500">*</span></label>
+              <input v-model.number="wizard.budget" type="number" min="0" class="field" />
+            </div>
+          </div>
+          <div>
+            <label class="lbl">定向场景</label>
+            <input v-model="wizard.scene" class="field" placeholder="如：机场口岸 · 中→日" />
+          </div>
+          <div>
+            <label class="lbl">投放时段</label>
+            <div class="flex flex-wrap gap-2">
+              <button v-for="t in TIME_OPTIONS" :key="t" class="btn btn-sm" :class="wizard.timeRange === t ? 'btn-primary' : 'btn-ghost'" @click="wizard.timeRange = t">{{ t }}</button>
+            </div>
+          </div>
+          <div>
+            <label class="lbl">目标人群定向(多选)</label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="t in ['出境旅游', '商务差旅', '海外留学', '跨境电商', '医疗陪诊', '免税购物']"
+                :key="t"
+                class="btn btn-sm" :class="wizard.targets.includes(t) ? 'btn-primary' : 'btn-ghost'"
+                @click="toggleTarget(t)"
+              >{{ t }}</button>
+            </div>
+          </div>
+          <div class="flex items-center justify-between border-t border-[#EEF2F7] pt-3">
+            <button class="btn btn-ghost btn-sm" @click="wizard.step = 1">← 上一步</button>
+            <button class="btn btn-primary btn-sm" :disabled="!wizard.name" @click="wizard.step = 3">下一步 · 确认提交</button>
+          </div>
+        </div>
+
+        <!-- 步骤 3:确认提交 -->
+        <div v-else class="px-5 py-4">
+          <div class="space-y-2 text-[12.5px]">
+            <div class="flex justify-between rounded-lg bg-slate-50 px-3 py-2"><span class="text-sub">计划名称</span><b>{{ wizard.name }}</b></div>
+            <div class="flex justify-between rounded-lg bg-slate-50 px-3 py-2"><span class="text-sub">广告位</span><b>{{ wizard.slotName }}</b></div>
+            <div class="flex justify-between rounded-lg bg-slate-50 px-3 py-2"><span class="text-sub">广告形式 / 时段</span><b>{{ wizard.adForm }} · {{ wizard.timeRange }}</b></div>
+            <div class="flex justify-between rounded-lg bg-slate-50 px-3 py-2"><span class="text-sub">人群定向</span><b>{{ wizard.targets.join('、') || '不限' }}</b></div>
+            <div class="flex justify-between rounded-lg bg-slate-50 px-3 py-2"><span class="text-sub">日预算</span><b class="num text-navy">{{ fmtMoney(wizard.budget) }}</b></div>
+          </div>
+          <div class="mt-4 flex items-center justify-between border-t border-[#EEF2F7] pt-3.5">
+            <button class="btn btn-ghost btn-sm" @click="wizard.step = 2">← 上一步</button>
+            <button class="btn btn-primary btn-sm" :disabled="store.acting" @click="submitWizard">
+              <i class="fa-solid fa-rocket"></i>提交投放计划
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <CrudDialog
-      :open="dialog.open"
-      :title="dialog.title"
+      :open="editDialog.open"
+      title="编辑计划"
       :fields="PLAN_FIELDS"
-      :model-value="dialog.record"
+      :model-value="editDialog.record"
       :loading="store.acting"
-      @close="dialog.open = false"
-      @submit="submitDialog"
+      @close="editDialog.open = false"
+      @submit="submitEdit"
     />
     <ConfirmDialog v-bind="confirmState" @resolve="resolveConfirm" />
   </div>

@@ -55,6 +55,11 @@ export function fetchPlans() {
   return request.get('/merchant/plans')
 }
 
+/** 可用广告位列表（投放设置 - 广告位选择） */
+export function fetchSlots() {
+  return request.get('/merchant/plans/slots')
+}
+
 /** 新建投放计划 */
 export function createPlan(payload) {
   return request.post('/merchant/plans', payload)
@@ -196,4 +201,13 @@ export function submitOnboard(payload) {
 }
 export function signContract() {
   return request.post('/merchant/onboarding/contract/sign')
+}
+
+/* ------------------------------ 账户信息维护 ------------------------------ */
+
+export function fetchProfile() {
+  return request.get('/merchant/profile')
+}
+export function updateProfile(payload) {
+  return request.put('/merchant/profile', payload)
 }
