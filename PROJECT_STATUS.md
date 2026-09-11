@@ -214,3 +214,4 @@ git pull upstream main   # 快进或合并
 6. **密码哈希**：PasswordHasher 用 PBKDF2(600k 迭代)，用 `PasswordHasher.hash(明文)` 生成，登录时 `matches(明文, hash)` 校验
 7. **上传文件落盘**：素材/视频/字幕/资质统一经 `POST /merchant/files`（kind=image/video/subtitle/doc），存 `admin-console.jingchen.upload-dir`（默认 `uploads/merchant`，按 32 位 uuid 重命名）；取回 `GET /merchant/files/{storedName}` 需商户令牌（前端 blob 预览），管理员令牌 403；删除档案不删文件
 8. **字幕冗余字段**：`merchant_video.subtitle_langs` 由 merchant_subtitle 表增删自动回写，仅作展示，不要手工改
+9. **前后端端口要对上**：浏览器若开在 `localhost:5174`（5173 被占时 vite 自动 +1），后端 CORS 白名单须包含该来源，否则登录 POST 会被返回**裸 403（Invalid CORS request，纯文本无 message）**——GET 不带 Origin 头所以页面能开、验证码能刷，唯独登录报错，极易误判。5174 已加入白名单（2026-09-11）；出现"Request failed with status code 403，请重新尝试"先核对浏览器地址端口与 `allowed-origins` 是否一致。同机起两个 dev server 时建议关掉多余的，只留一个。
