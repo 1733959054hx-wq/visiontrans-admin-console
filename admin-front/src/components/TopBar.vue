@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import StatusPill from '@/components/StatusPill.vue'
+import MerchantNavDrawer from '@/jingchen/components/MerchantNavDrawer.vue'
 import { useAppStore } from '@/stores/app'
 import { useClusterStore } from '@/stores/cluster'
 import { useAuthStore } from '@/stores/auth'
@@ -15,6 +16,13 @@ const auth = useAuthStore()
 const route = useRoute()
 
 const { confirmState, askConfirm, resolveConfirm } = useConfirm()
+
+/** 商户没有后台侧栏，汉堡按钮改为呼出商户端导航抽屉（jingchen 模块组件） */
+const merchantNavOpen = ref(false)
+const onToggleNav = () => {
+  if (auth.isMerchant) merchantNavOpen.value = true
+  else app.toggleSide()
+}
 
 const logout = async () => {
   const ok = await askConfirm('退出后将结束当前会话并返回登录页，需要重新验证身份后才能再次进入。', '确认退出登录')
@@ -34,6 +42,11 @@ const logoutSubject = computed(() =>
 const meta = computed(() => app.metaOf(String(route.name || '')))
 const title = computed(() => meta.value?.title || route.meta.title || '平台管理后台')
 const crumb = computed(() => {
+  if (auth.isMerchant) {
+    // 商户页面不在后台菜单 meta 里，直接用页面标题组装面包屑
+    const t = route.meta.title || ''
+    return t === '商户工作台' ? '商户工作台' : `商户工作台 / ${t}`
+  }
   const m = meta.value
   if (!m) return '平台管理后台'
   return `平台管理后台 / ${m.title} / ${m.sub}`
@@ -102,8 +115,8 @@ const toggleBell = async () => {
     <div class="flex min-w-0 items-center gap-3">
       <button
         class="grid h-8 w-8 place-items-center rounded-lg border border-line bg-white text-sub transition hover:border-brand-200 hover:text-electric"
-        title="折叠 / 展开侧栏（H）"
-        @click="app.toggleSide()"
+        :title="auth.isMerchant ? '打开商户导航' : '折叠 / 展开侧栏（H）'"
+        @click="onToggleNav"
       >
         <i class="fa-solid fa-bars text-[12px]"></i>
       </button>
@@ -123,7 +136,7 @@ const toggleBell = async () => {
         box-shadow: 0 6px 16px -8px rgba(6, 182, 212, 0.9);
       "
     >
-      <i class="fa-solid fa-server"></i>{{ app.system?.consoleLabel || '平台管理后台 · Admin Console' }}
+      <i class="fa-solid fa-server"></i>{{ auth.isMerchant ? '商户工作台 · Merchant Console' : app.system?.consoleLabel || '平台管理后台 · Admin Console' }}
     </div>
 
     <div
@@ -249,6 +262,7 @@ const toggleBell = async () => {
         confirm-text="退出登录"
         @resolve="resolveConfirm"
       />
+      <MerchantNavDrawer :open="merchantNavOpen" @close="merchantNavOpen = false" />
     </Teleport>
   </header>
 </template>

@@ -16,8 +16,9 @@ const ui = useUiStore()
 const router = useRouter()
 
 const form = reactive({ username: '', password: '' })
-/** 登录身份：管理员 / 商户（选身份后走各自独立的登录接口与令牌体系） */
-const identity = ref('admin')
+/** 登录身份：管理员 / 商户（选身份后走各自独立的登录接口与令牌体系）。
+ *  从工作台「返回」到登录页时按上次身份预选，配合免验证码宽限可直接重登。 */
+const identity = ref(localStorage.getItem('admin_console_identity') === 'merchant' ? 'merchant' : 'admin')
 const loading = ref(false)
 const captcha = ref(null)
 const clicks = ref([])
@@ -299,12 +300,31 @@ const undoLastClick = () => {
   }
 }
 
+/** 与后端 CaptchaGraceService.CAPTCHA_REQUIRED_CODE 一致：需要先完成验证码挑战 */
+const CAPTCHA_REQUIRED_CODE = 460
+
+/**
+ * 「登 录」按钮：先不带验证码直接提交。
+ * 免验证码宽限期内（短时间内成功登录过）直接进入工作台；
+ * 后端要求验证码（业务码 460）时再弹出安全挑战面板，不算登录失败。
+ */
+const tryLogin = async () => {
+  if (!form.username || !form.password) {
+    formError.value = '请输入账号与口令'
+    return
+  }
+  await submitLogin(null, null)
+}
+
 const confirmLogin = async () => {
   if (clicks.value.length < 3) {
     formError.value = '请按提示顺序点击验证码中的文字'
     return
   }
+  await submitLogin(captcha.value.id, clicks.value)
+}
 
+const submitLogin = async (captchaId, captchaClicks) => {
   loading.value = true
   formError.value = ''
   clearGesture()
@@ -319,18 +339,25 @@ const confirmLogin = async () => {
   try {
     // 按所选身份走各自独立的登录接口：商户签发商户令牌，管理员签发后台令牌
     const submit = identity.value === 'merchant'
-      ? await auth.loginMerchant(form.username, form.password, publicKey.value, captcha.value.id, clicks.value)
-      : await auth.login(form.username, form.password, publicKey.value, captcha.value.id, clicks.value)
+      ? await auth.loginMerchant(form.username, form.password, publicKey.value, captchaId, captchaClicks)
+      : await auth.login(form.username, form.password, publicKey.value, captchaId, captchaClicks)
     loginStatus.value = 'success'
     ui.success(`欢迎回来，${submit.profile.name}`)
     const target = submit.profile.roleCode === 'MERCHANT' ? '/merchant' : '/'
     // 跳转动画期间并行预取大盘数据：原来要等 900ms 跳过去后 TopBar 挂载才发请求，
     // 落地后白屏等待；现在请求与动画同时进行，且成功动画从 900ms 缩短到 300ms。
     if (target === '/') useClusterStore().load()
+    // push 而非 replace：工作台按「返回」回到登录页，而不是退出到站外
     setTimeout(() => {
-      router.replace(target)
+      router.push(target)
     }, 300)
   } catch (error) {
+    // 需要验证码挑战：弹出面板让用户点选后经 confirmLogin 重交，不算失败
+    if (error?.code === CAPTCHA_REQUIRED_CODE && !captchaOpen.value) {
+      captchaOpen.value = true
+      await loadCaptcha()
+      return
+    }
     loginStatus.value = 'failed'
     const errMsg = error?.message || '登录失败，请稍后重试'
     if (errMsg.includes('验证码') || errMsg.includes('captcha')) {
@@ -726,6 +753,22 @@ onBeforeUnmount(() => {
           <div class="absolute inset-x-0 top-0 h-[3px]" style="background: linear-gradient(90deg, #0f766e, #0d9488 55%, #06b6d4)"></div>
 
           <div class="mb-5">
+            <!-- 已登录提示：从工作台按「返回」回到这里时，可直接返回，不必重新登录 -->
+            <div
+              v-if="auth.isLoggedIn"
+              class="mb-4 flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2"
+            >
+              <span class="min-w-0 truncate text-[12px] text-emerald-700">
+                <i class="fa-solid fa-circle-check mr-1"></i>已登录 {{ auth.user?.name || '' }}
+              </span>
+              <button
+                type="button"
+                class="shrink-0 text-[11.5px] font-semibold text-emerald-700 underline-offset-2 transition hover:underline"
+                @click="router.push(auth.isMerchant ? '/merchant' : '/')"
+              >
+                返回工作台 <i class="fa-solid fa-arrow-right text-[10px]"></i>
+              </button>
+            </div>
             <!-- 身份选择：管理员 / 商户，分别走独立的登录接口与令牌体系 -->
             <div class="mb-4 inline-flex rounded-xl border border-line bg-slate-50 p-1">
               <button
@@ -802,7 +845,7 @@ onBeforeUnmount(() => {
           <button
             type="button"
             class="btn btn-primary w-full justify-center py-2.5 text-[13.5px]"
-            @click="openCaptcha"
+            @click="tryLogin"
             @mouseenter="playGesture('pop', 600)"
           >
             <span>登 录</span>

@@ -215,3 +215,6 @@ git pull upstream main   # 快进或合并
 7. **上传文件落盘**：素材/视频/字幕/资质统一经 `POST /merchant/files`（kind=image/video/subtitle/doc），存 `admin-console.jingchen.upload-dir`（默认 `uploads/merchant`，按 32 位 uuid 重命名）；取回 `GET /merchant/files/{storedName}` 需商户令牌（前端 blob 预览），管理员令牌 403；删除档案不删文件
 8. **字幕冗余字段**：`merchant_video.subtitle_langs` 由 merchant_subtitle 表增删自动回写，仅作展示，不要手工改
 9. **前后端端口要对上**：浏览器若开在 `localhost:5174`（5173 被占时 vite 自动 +1），后端 CORS 白名单须包含该来源，否则登录 POST 会被返回**裸 403（Invalid CORS request，纯文本无 message）**——GET 不带 Origin 头所以页面能开、验证码能刷，唯独登录报错，极易误判。5174 已加入白名单（2026-09-11）；出现"Request failed with status code 403，请重新尝试"先核对浏览器地址端口与 `allowed-origins` 是否一致。同机起两个 dev server 时建议关掉多余的，只留一个。
+10. **登录免验证码宽限**：成功登录后 10 分钟内同一账号再次登录跳过点击式验证码（`common/CaptchaGraceService`，内存态重启即清，管理员/商户按身份隔离）。未在宽限期且未带验证码的登录按业务码 **460** 拒绝，前端登录页据此自动弹出验证码面板（两段式提交），不是报错。
+11. **登录页返回键行为**：登录成功跳转用 `router.push`（非 replace），工作台按浏览器「返回」回到登录页而非退出站点；登录页有「已登录 · 返回工作台」横幅，且身份按 `admin_console_identity` 预选（商户回来不用再手动切换）。
+12. **商户导航抽屉**：顶栏汉堡按钮在商户身份下打开 `jingchen/components/MerchantNavDrawer.vue`（11 个页面跳转 + 当前页高亮），管理员身份仍是原侧栏折叠行为。

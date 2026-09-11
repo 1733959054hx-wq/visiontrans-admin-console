@@ -99,7 +99,9 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
   if (to.meta.public) {
-    return auth.isLoggedIn ? homeFor(auth.roleCode) : true
+    // 登录页始终放行：支持从工作台「返回」到登录页（页面内提供「返回工作台」入口），
+    // 也支持在免验证码宽限期内直接重新登录或切换身份
+    return true
   }
   if (!auth.isLoggedIn) {
     return { path: '/login' }

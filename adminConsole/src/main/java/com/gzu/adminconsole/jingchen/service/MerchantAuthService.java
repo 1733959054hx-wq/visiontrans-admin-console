@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.gzu.adminconsole.common.BusinessException;
+import com.gzu.adminconsole.common.CaptchaGraceService;
 import com.gzu.adminconsole.common.PasswordHasher;
 import com.gzu.adminconsole.common.RsaKeyHolder;
 import com.gzu.adminconsole.config.AdminContext;
@@ -34,24 +35,36 @@ public class MerchantAuthService {
     private final MerchantSessionRepository sessions;
     private final CaptchaService captchaService;
     private final RsaKeyHolder rsaKeyHolder;
+    private final CaptchaGraceService captchaGrace;
     private final AppProperties properties;
 
     public MerchantAuthService(MerchantRepository repository, MerchantSessionRepository sessions,
-                              CaptchaService captchaService, RsaKeyHolder rsaKeyHolder, AppProperties properties) {
+                              CaptchaService captchaService, RsaKeyHolder rsaKeyHolder,
+                              CaptchaGraceService captchaGrace, AppProperties properties) {
         this.repository = repository;
         this.sessions = sessions;
         this.captchaService = captchaService;
         this.rsaKeyHolder = rsaKeyHolder;
+        this.captchaGrace = captchaGrace;
         this.properties = properties;
     }
 
     /**
      * 商户登录：验证码 → RSA 解密 → 凭据比对 → 签发独立商户令牌。
+     *
+     * <p>与后台登录共用「免验证码宽限」：短时间内成功登录过的账号（按商户编码隔离）
+     * 再次登录跳过验证码；宽限期外未携带验证码按业务码 460 拒绝，前端弹出验证码面板重交。
      */
     public MerchantLoginVO login(String username, String password, String captchaId,
                                 List<CaptchaService.Point> clicks) {
-        if (properties.getSecurity().isCaptchaEnabled() && !captchaService.verify(captchaId, clicks)) {
-            throw new BusinessException("验证码校验失败，请重新验证");
+        if (properties.getSecurity().isCaptchaEnabled()
+                && !captchaGrace.isTrusted(CaptchaGraceService.SCOPE_MERCHANT, username)) {
+            if (captchaId == null || captchaId.isBlank()) {
+                throw new BusinessException(CaptchaGraceService.CAPTCHA_REQUIRED_CODE, "需要先完成安全验证");
+            }
+            if (!captchaService.verify(captchaId, clicks)) {
+                throw new BusinessException("验证码校验失败，请重新验证");
+            }
         }
         String raw = rsaKeyHolder.decrypt(password);
         MerchantEntity m = repository.findByCode(username);
@@ -59,6 +72,7 @@ public class MerchantAuthService {
             throw new BusinessException("账号或口令错误");
         }
         m.setLastLogin(LocalDateTime.now().format(FMT));
+        captchaGrace.grant(CaptchaGraceService.SCOPE_MERCHANT, m.getCode());
         MerchantSessionEntity s = sessions.create(m);
         return new MerchantLoginVO(s.getToken(), profileOf(m), s.getExpireAt().format(FMT));
     }

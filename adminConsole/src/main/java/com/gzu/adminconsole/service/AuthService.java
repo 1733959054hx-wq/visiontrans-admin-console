@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.gzu.adminconsole.common.BusinessException;
+import com.gzu.adminconsole.common.CaptchaGraceService;
 import com.gzu.adminconsole.config.AppProperties;
 import com.gzu.adminconsole.common.PasswordHasher;
 import com.gzu.adminconsole.common.RsaKeyHolder;
@@ -31,6 +32,7 @@ public class AuthService {
     private final AuthRepository authRepository;
     private final CaptchaService captchaService;
     private final RsaKeyHolder rsaKeyHolder;
+    private final CaptchaGraceService captchaGrace;
     private final AppProperties properties;
 
     /**
@@ -40,10 +42,11 @@ public class AuthService {
     private final Map<String, long[]> attempts = new ConcurrentHashMap<>();
 
     public AuthService(AuthRepository authRepository, CaptchaService captchaService, RsaKeyHolder rsaKeyHolder,
-                       AppProperties properties) {
+                       CaptchaGraceService captchaGrace, AppProperties properties) {
         this.authRepository = authRepository;
         this.captchaService = captchaService;
         this.rsaKeyHolder = rsaKeyHolder;
+        this.captchaGrace = captchaGrace;
         this.properties = properties;
     }
 
@@ -55,13 +58,19 @@ public class AuthService {
         if (username == null || username.isBlank() || password == null || password.isBlank()) {
             throw new BusinessException("账号与口令不能为空");
         }
-        // 验证码默认开启；admin-console.security.captcha-enabled=false 时可跳过（自动化联调 / 无障碍）
-        if (properties.getSecurity().isCaptchaEnabled() && !captchaService.verify(captchaId, captchaClicks)) {
-            throw new BusinessException("验证码校验失败，请重新验证");
-        }
         String account = username.trim();
         // 风控前置校验：账号处于锁定期内直接拒绝，避免口令被暴力枚举
         requireUnlocked(account);
+        // 验证码默认开启；免验证码宽限期内（短时间内成功登录过）或 captcha-enabled=false 时可跳过。
+        // 首次 / 宽限期外的登录若未携带验证码，按专用业务码 460 拒绝，前端据此弹出验证码面板重交
+        if (properties.getSecurity().isCaptchaEnabled() && !captchaGrace.isTrusted(CaptchaGraceService.SCOPE_ADMIN, account)) {
+            if (captchaId == null || captchaId.isBlank()) {
+                throw new BusinessException(CaptchaGraceService.CAPTCHA_REQUIRED_CODE, "需要先完成安全验证");
+            }
+            if (!captchaService.verify(captchaId, captchaClicks)) {
+                throw new BusinessException("验证码校验失败，请重新验证");
+            }
+        }
         // password 字段是前端用 RSA 公钥加密的密文，这里解出明文再校验
         String plainPassword = rsaKeyHolder.decrypt(password);
         AdminUserEntity user = authRepository.findByUsername(account);
@@ -85,8 +94,9 @@ public class AuthService {
         if (!"启用".equals(user.getStatus())) {
             throw new BusinessException("该账号已停用，请联系超级管理员");
         }
-        // 校验通过：清空该账号的失败记录
+        // 校验通过：清空该账号的失败记录，并记入免验证码宽限期
         attempts.remove(account);
+        captchaGrace.grant(CaptchaGraceService.SCOPE_ADMIN, account);
 
         user.setLastLogin(LocalDateTime.now().format(FORMATTER));
         AuthSessionEntity session = authRepository.createSession(user);
