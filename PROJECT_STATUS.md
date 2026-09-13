@@ -36,7 +36,9 @@ ADMIN_DDL_AUTO=update
 
 ### 数据库
 - 库名 `shixun`（utf8mb4），52 张表
-- 快照文件：`adminConsole/db/shixun.sql`（全量含数据，导入即恢复）
+- 快照文件（两处同步，内容一致）：
+  - `adminConsole/db/shixun.sql`（工程内标准位置，全量含数据，导入即恢复）
+  - `db/shixun.sql`（**根目录独立副本**，供移动端同学直接拉取导入，含使用说明 `db/README.md`）
 - 迁移脚本：`adminConsole/db/upgrade-*.sql`（幂等，可安全重复执行）
 - root 密码：`jcJC198101`
 - 业务账号：`shixun / 123456`（GRANT ALL ON shixun.*）
@@ -149,7 +151,7 @@ D:\shixun\
 │   ├── src/views/LoginView.vue      # 登录页(管理员/商户身份切换)
 │   └── src/router/index.js          # 主路由(注册 merchantRoutes,守卫按角色分发)
 │
-├── db/shixun.sql                    # 全量库快照(50张,含数据)
+├── db/shixun.sql                    # 全量库快照(52张,含数据,可直接导入运行) · db/README.md 为导入说明
 ├── 商户端模块说明.md
 └── 联调说明-商户端接入.md
 ```
@@ -209,7 +211,7 @@ git pull upstream main   # 快进或合并
 1. **会话存内存**：管理员会话仍为内存态（重启即注销）；**商户会话已落库**（merchant_session 表，2026-09-11 多端互通改造），后端重启商户不失效，网页重开仍在线
 2. **不要同时跑两份后端**：8080 端口唯一
 3. **旧副本勿启动**：`D:\慧科实习文件\VR项目代码\visiontrans-api` 是废弃的独立工程（占用 8080 且连 visiontrans 库）
-4. **`shixun.sql` 应与实际库保持一致**：每次新加表/列后重新导出 mysqldump 全量覆盖（最新一次 2026-09-11，含 merchant_subtitle / merchant_video_daily / merchant_session.device）
+4. **`shixun.sql` 应与实际库保持一致**：每次新加表/列后重新导出 mysqldump 全量覆盖（最新一次 2026-09-11，含 merchant_subtitle / merchant_video_daily / merchant_session.device）。**注意导出后要同步两处**：`adminConsole/db/shixun.sql` 与根目录 `db/shixun.sql`（独立副本,给移动端同学直接导入用,旁边有 db/README.md 导入说明）。曾因目录树写错导致伙伴找不到库文件——快照实际位置以本条为准。
 5. **前端热更新**：Vite dev 下改动 .vue 文件即时生效，无需重启
 6. **密码哈希**：PasswordHasher 用 PBKDF2(600k 迭代)，用 `PasswordHasher.hash(明文)` 生成，登录时 `matches(明文, hash)` 校验
 7. **上传文件落盘**：素材/视频/字幕/资质统一经 `POST /merchant/files`（kind=image/video/subtitle/doc），存 `admin-console.jingchen.upload-dir`（默认 `uploads/merchant`，按 32 位 uuid 重命名）；**取回 `GET /merchant/files/{storedName}` 为公开能力地址**（无需令牌，名称不可猜测，移动端/用户端可直接引用展示；见 isPublicPath 中的 `/merchant/files/` 段声明），上传仍需商户令牌；删除档案不删文件。IDEA 启动时工作目录可能是项目根目录，落盘位置随之不同，注意两处 uploads/ 都已加 .gitignore
