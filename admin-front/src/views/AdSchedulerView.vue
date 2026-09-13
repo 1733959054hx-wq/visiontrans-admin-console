@@ -1,5 +1,5 @@
-﻿<script setup>
-import { computed, onMounted, reactive, watch } from 'vue'
+<script setup>
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import CrudDialog from '@/components/CrudDialog.vue'
@@ -12,6 +12,7 @@ import { exportCsv, stamp } from '@/utils/csv'
 import { useAdStore } from '@/stores/ads'
 import { useAppStore } from '@/stores/app'
 import { useConfirm } from '@/composables/useConfirm'
+import { ASSET_VERDICTS, fetchAssets, reviewAsset } from '@/api/moderation'
 
 const app = useAppStore()
 const store = useAdStore()
@@ -34,7 +35,52 @@ watch(
 
 onMounted(() => {
   if (!data.value) store.load()
+  loadAssets()
 })
+
+/* ---------------------------- 广告素材审核 ---------------------------- */
+
+/** 素材审核数据走轻量端点 /moderation/assets（只取素材行，不拉审核中台大盘）；广告运营页仅做审核视角 */
+const assets = ref([])
+const assetsLoading = ref(false)
+/** 筛选值 = verdict 常量；'ALL' 表示全部。默认停留在待人工复审队列 */
+const assetFilter = ref(ASSET_VERDICTS.REVIEW)
+const ASSET_FILTERS = [
+  { label: '待人工复审', value: ASSET_VERDICTS.REVIEW },
+  { label: '全部', value: 'ALL' },
+  { label: '已通过', value: ASSET_VERDICTS.PASS },
+  { label: '已驳回', value: ASSET_VERDICTS.REJECT },
+]
+
+const loadAssets = async () => {
+  assetsLoading.value = true
+  try {
+    assets.value = await fetchAssets()
+  } catch {
+    assets.value = []
+  } finally {
+    assetsLoading.value = false
+  }
+}
+
+/** 按当前筛选展示素材（verdict 取值统一引用 ASSET_VERDICTS，复审后后端改写判定并重拉） */
+const filteredAssets = computed(() =>
+  assetFilter.value === 'ALL'
+    ? assets.value
+    : assets.value.filter((a) => a.verdict === assetFilter.value),
+)
+
+/** 人工复审：pass 通过 / reject 驳回，成功后重新拉取素材台账 */
+const reviewCreative = async (asset, decision) => {
+  const label = decision === 'pass' ? ASSET_VERDICTS.PASS : ASSET_VERDICTS.REJECT
+  if (!(await askConfirm(`确定${label}广告素材「${asset.name}」？`, `素材审核${label}`))) return
+  try {
+    await reviewAsset(asset.id, decision)
+    await loadAssets()
+  } catch {
+    /* 提示已在请求拦截器统一处理 */
+  }
+}
 
 const commitFrequency = (item) => {
   if (freqValues[item.name] !== item.value) {
@@ -93,12 +139,12 @@ const setOnline = (slot, online) => {
   if (!!slot.online !== online) store.setOnline(slot.id, online).catch(() => {})
 }
 
-/** eCPM 矩阵单元格配色 */
+/** eCPM 矩阵单元格配色（青绿单色系：低值近白、高值主色青绿） */
 const cellStyle = (value) => {
   const t = value / (data.value?.matrix?.max || 92)
-  const r = Math.round(248 - (248 - 37) * t)
-  const g = Math.round(250 - (250 - 99) * t)
-  const b = Math.round(252 - (252 - 235) * t)
+  const r = Math.round(240 - (240 - 13) * t)
+  const g = Math.round(253 - (253 - 148) * t)
+  const b = Math.round(250 - (250 - 136) * t)
   return { background: `rgb(${r},${g},${b})`, color: t > 0.55 ? '#ffffff' : '#0F172A' }
 }
 
@@ -184,7 +230,7 @@ const exportSlots = () => {
   <div class="p-5">
     <template v-if="data">
       <PageHeader
-        title="全网广告位排期与调度引擎"
+        title="广告运营"
         desc="曝光 / 点击 / 转化实时数据看板 · 12 类广告位库存甘特排期 · 场景×语种 eCPM 策略矩阵 · 单用户跨广告位联合频控"
       >
         <template #actions>
@@ -438,6 +484,70 @@ const exportSlots = () => {
           >
             <i class="fa-solid fa-check"></i>采纳建议
           </button>
+        </div>
+      </div>
+
+      <!-- 广告素材审核：广告主提交创意 → 机审置信度 → 人工复审通过 / 驳回 -->
+      <div class="card anim mt-4">
+        <div class="card-h flex-wrap">
+          <div>
+            <div class="card-t">广告素材审核</div>
+            <div class="card-s">广告主提交的图片 / 视频 / H5 创意 · 机审置信度初判 · 待人工复审素材在此通过或驳回</div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button
+              v-for="f in ASSET_FILTERS"
+              :key="f.value"
+              class="rounded-lg px-2.5 py-1 text-[11.5px] font-semibold transition"
+              :class="assetFilter === f.value ? 'bg-brand-50 text-teal-700' : 'text-sub hover:text-ink'"
+              @click="assetFilter = f.value"
+            >
+              {{ f.label }}
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="tb">
+            <thead>
+              <tr>
+                <th>素材名称</th>
+                <th class="w-48">机审置信度</th>
+                <th>机审判定</th>
+                <th>人工复审</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="asset in filteredAssets" :key="asset.id">
+                <td class="text-[12.5px] font-medium text-ink">{{ asset.name }}</td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <div class="bar w-32"><i :style="`width:${asset.confidence}`"></i></div>
+                    <span class="num text-[12px] font-semibold">{{ asset.confidence }}</span>
+                  </div>
+                </td>
+                <td><StatusPill :text="asset.verdict" :tone="asset.tone" /></td>
+                <td>
+                  <template v-if="asset.verdict === ASSET_VERDICTS.REVIEW">
+                    <button class="btn btn-ghost btn-sm !py-1 !text-emerald-600" @click="reviewCreative(asset, 'pass')">
+                      <i class="fa-solid fa-check"></i>通过
+                    </button>
+                    <button class="btn btn-ghost btn-sm !py-1 !text-rose-500" @click="reviewCreative(asset, 'reject')">
+                      <i class="fa-solid fa-ban"></i>驳回
+                    </button>
+                  </template>
+                  <span v-else class="text-[11.5px] text-sub">已审结</span>
+                </td>
+              </tr>
+              <tr v-if="assetsLoading">
+                <td colspan="4" class="py-8 text-center text-[12px] text-sub">
+                  <i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i>正在加载素材台账…
+                </td>
+              </tr>
+              <tr v-else-if="!filteredAssets.length">
+                <td colspan="4" class="py-8 text-center text-[12px] text-sub">当前筛选下暂无素材</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </template>

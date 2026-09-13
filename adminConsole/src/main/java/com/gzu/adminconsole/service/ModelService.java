@@ -205,13 +205,48 @@ public class ModelService {
                 .toList();
     }
 
+    /**
+     * 灰度卡片：真实数据只有「当前灰度比例」（已入库）。下方 A/B/C/全量四档不是独立业务数据，
+     * 而是把当前比例按发布阶梯（10→35→60→100）翻译成进度：已越过的档=已通过、当前所在档=观察中、
+     * 未到档=未开始、全量档未触发=待触发；比例 100% 时全部已通过。阶梯阈值是发布策略常量，无需建表。
+     */
+    private static final int[] GRAYSCALE_TARGETS = {10, 35, 60, 100};
+    private static final String[] GRAYSCALE_NAMES = {"批次 A", "批次 B", "批次 C", "全量"};
+
     private ModelOverviewVO.GrayscaleCard grayscaleCard() {
-        List<ModelOverviewVO.BatchRow> batches = List.of(
-                new ModelOverviewVO.BatchRow("批次 A", "10%", "已通过", "green"),
-                new ModelOverviewVO.BatchRow("批次 B", "35%", "观察中", "amber"),
-                new ModelOverviewVO.BatchRow("批次 C", "60%", "未开始", "blue"),
-                new ModelOverviewVO.BatchRow("全量", "100%", "待触发", "slate"));
-        return new ModelOverviewVO.GrayscaleCard(repository.getGrayscaleRatio(), batches);
+        int ratio = Math.max(0, Math.min(100, repository.getGrayscaleRatio()));
+        // 当前正在放量的档位：第一个「目标比例 ≥ 当前比例」的阶梯；ratio=0 尚未开始（无观察档），100 已全量
+        int current = -1;
+        if (ratio > 0 && ratio < 100) {
+            for (int i = 0; i < GRAYSCALE_TARGETS.length; i++) {
+                if (GRAYSCALE_TARGETS[i] >= ratio) {
+                    current = i;
+                    break;
+                }
+            }
+        }
+        List<ModelOverviewVO.BatchRow> batches = new ArrayList<>();
+        for (int i = 0; i < GRAYSCALE_TARGETS.length; i++) {
+            boolean isFull = i == GRAYSCALE_TARGETS.length - 1;
+            String status;
+            String tone;
+            if (ratio >= 100 || ratio > GRAYSCALE_TARGETS[i]) {
+                status = "已通过";
+                tone = "green";
+            } else if (i == current) {
+                status = "观察中";
+                tone = "amber";
+            } else if (isFull) {
+                status = "待触发";
+                tone = "slate";
+            } else {
+                status = "未开始";
+                tone = "blue";
+            }
+            batches.add(new ModelOverviewVO.BatchRow(GRAYSCALE_NAMES[i], GRAYSCALE_TARGETS[i] + "%",
+                    status, tone));
+        }
+        return new ModelOverviewVO.GrayscaleCard(ratio, batches);
     }
 
     private static String now() {

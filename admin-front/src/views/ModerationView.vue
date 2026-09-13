@@ -10,6 +10,7 @@ import { exportCsv, stamp } from '@/utils/csv'
 import { useAppStore } from '@/stores/app'
 import { useModerationStore } from '@/stores/moderation'
 import { useConfirm } from '@/composables/useConfirm'
+import { ASSET_VERDICTS, ASSET_VERDICT_OPTIONS } from '@/api/moderation'
 
 const app = useAppStore()
 const store = useModerationStore()
@@ -37,7 +38,7 @@ const TASK_FIELDS = [
 const ASSET_FIELDS = [
   { key: 'name', label: '素材名称', type: 'text', required: true, placeholder: 'AR 开屏 · 双十一' },
   { key: 'confidence', label: '机审置信度', type: 'text', kind: 'percent', suffix: '%', decimals: 1, min: 0, max: 100, placeholder: '91.2' },
-  { key: 'verdict', label: '判定结果', type: 'select', options: ['通过', '人工复审', '驳回'] },
+  { key: 'verdict', label: '判定结果', type: 'select', options: ASSET_VERDICT_OPTIONS },
 ]
 
 /** 语种包 / 课程知识包表单 */
@@ -71,7 +72,7 @@ const openAssetCreate = () => {
   dialog.mode = 'asset-create'
   dialog.title = '新增 AR 广告素材'
   dialog.fields = ASSET_FIELDS
-  dialog.record = { name: '', confidence: '90.0%', verdict: '人工复审' }
+  dialog.record = { name: '', confidence: '90.0%', verdict: ASSET_VERDICTS.REVIEW }
 }
 
 const openAssetEdit = (row) => {
@@ -131,7 +132,7 @@ const removeAsset = async (row) => {
 
 /** 素材人工复审（仅「人工复审」行可操作） */
 const reviewAsset = async (row, decision) => {
-  const label = decision === 'pass' ? '通过' : '驳回'
+  const label = decision === 'pass' ? ASSET_VERDICTS.PASS : ASSET_VERDICTS.REJECT
   if (await askConfirm(`确定将素材「${row.name}」人工复审为「${label}」？`, '素材复审')) {
     await store.reviewAsset(row.id, decision).catch(() => {})
   }
@@ -195,10 +196,14 @@ const exportAssets = () => {
   <div class="p-5">
     <template v-if="data">
       <PageHeader
-        title="语种术语库审核与 UGC 风控中台"
+        title="内容审核"
         desc="多语种术语库审核、AR 广告素材机审与 UGC 违规高亮拦截 · 平均处置耗时 82 ms"
       >
         <template #actions>
+          <RouterLink to="/models" class="btn btn-ghost btn-sm">
+            <i class="fa-solid fa-brain"></i>版本管理（AI 模型发布 / 回滚）
+            <i class="fa-solid fa-arrow-right"></i>
+          </RouterLink>
           <button class="btn btn-ghost btn-sm" @click="openTaskCreate()">
             <i class="fa-solid fa-file-import"></i>术语库导入
           </button>
@@ -379,18 +384,12 @@ const exportAssets = () => {
               </span>
               <span
                 class="pill w-16 justify-center !text-[10px]"
-                :class="
-                  asset.verdict === '通过'
-                    ? 'pill-green'
-                    : asset.verdict === '人工复审'
-                      ? 'pill-amber'
-                      : 'pill-red'
-                "
+                :class="asset.tone === 'green' ? 'pill-green' : asset.tone === 'amber' ? 'pill-amber' : 'pill-red'"
               >
                 {{ asset.verdict }}
               </span>
               <!-- 人工复审：仅「人工复审」行可操作 -->
-              <template v-if="asset.verdict === '人工复审'">
+              <template v-if="asset.verdict === ASSET_VERDICTS.REVIEW">
                 <button
                   class="text-[11px] text-slate-300 transition hover:text-emerald-600"
                   title="复审通过"

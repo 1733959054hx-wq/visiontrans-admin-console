@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -289,7 +289,7 @@ const gotoModeration = () => router.push({ name: 'a8' })
   <div class="p-5">
     <template v-if="data">
       <PageHeader
-        title="用户管理、权限管理与系统配置"
+        title="系统管理"
         desc="注册用户与登录设备台账 · 角色分配与菜单权限配置 · 接口限流 / 会话有效期等运行参数"
       >
         <template #actions>

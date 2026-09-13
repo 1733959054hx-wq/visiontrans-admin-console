@@ -25,6 +25,7 @@ import com.gzu.adminconsole.dto.common.KpiMetric;
 import com.gzu.adminconsole.dto.common.ToggleItem;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
 import com.gzu.adminconsole.dto.security.AppUserPageVO;
+import com.gzu.adminconsole.dto.security.AuditLogPageVO;
 import com.gzu.adminconsole.dto.security.MenuAccessVO;
 import com.gzu.adminconsole.dto.security.PermissionUpdateRequest;
 import com.gzu.adminconsole.dto.security.SecurityOverviewVO;
@@ -548,6 +549,26 @@ public class SecurityService {
                 .map(l -> new SecurityOverviewVO.AuditLogRow(l.id(), l.time(), l.operator(), l.role(), l.group(),
                         l.action(), l.detail(), l.source(), l.result(), l.hash()))
                 .toList();
+    }
+
+    /**
+     * 操作日志独立分页检索（监控运维页「日志审计」）：支持操作人模糊匹配与时间范围。
+     * 只读查询，不额外写审计日志。
+     */
+    public AuditLogPageVO auditLogPage(int page, int size, String start, String end, String operator) {
+        int safeSize = Math.min(Math.max(1, size), SecurityRepository.AUDIT_PAGE_SIZE);
+        long total = repository.totalLogs(start, end, operator);
+        int totalPages = Math.max(1, (int) Math.ceil((double) total / (double) safeSize));
+        int safePage = Math.min(Math.max(1, page), totalPages);
+        List<SecurityOverviewVO.AuditLogRow> rows =
+                repository.findAuditLogs(safePage, safeSize, start, end, operator).stream()
+                        .map(l -> new SecurityOverviewVO.AuditLogRow(l.id(), l.time(), l.operator(), l.role(),
+                                l.group(), l.action(), l.detail(), l.source(), l.result(), l.hash()))
+                        .toList();
+        int from = total == 0 ? 0 : (safePage - 1) * safeSize + 1;
+        int to = (int) Math.min(total, (long) safePage * safeSize);
+        return new AuditLogPageVO(rows, safePage, safeSize, total, totalPages,
+                "显示 " + from + "–" + to + " 条，共 " + formatCount(total) + " 条");
     }
 
     private List<SecurityOverviewVO.AdminUserRow> admins() {

@@ -50,6 +50,11 @@ export const fetchAppUsers = (params) => request.get('/security/app-users', { pa
 /** 更新 C 端用户（会员状态 / 账号状态，body 同 appUser 对象含 id）。 */
 export const updateUser = (payload) => request.put('/security/app-users', payload)
 
+/* ------------------------------ 操作日志 ------------------------------ */
+
+/** 管理员操作日志分页检索（操作人模糊 + 起止日期 yyyy-MM-dd）。 */
+export const fetchAuditLogs = (params) => request.get('/security/audit-logs', { params })
+
 /* ---------------------------- 菜单权限配置 ---------------------------- */
 
 /** 菜单 × 角色可见性矩阵。 */

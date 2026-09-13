@@ -109,7 +109,7 @@ const filteredModels = computed(() => (data.value?.models || [])
   <div class="p-5">
     <template v-if="data">
       <PageHeader
-        title="AI 模型生命周期与热更中心"
+        title="版本管理"
         desc="端侧量化模型与云端大模型统一纳管 · 秒级热更 · 一键回滚"
       >
         <template #actions>
@@ -265,7 +265,8 @@ const filteredModels = computed(() => (data.value?.models || [])
               </button>
               <button
                 class="btn btn-ghost btn-sm flex-1"
-                :disabled="store.acting"
+                :disabled="store.acting || !filteredModels.length"
+                :title="filteredModels.length ? '' : '暂无可回滚的模型版本'"
                 @click="store.rollback(filteredModels[0]?.name || '').catch(() => {})"
               >
                 <i class="fa-solid fa-rotate-left"></i>一键回滚

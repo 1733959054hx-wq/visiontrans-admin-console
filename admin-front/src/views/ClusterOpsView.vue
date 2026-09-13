@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -15,6 +15,7 @@ import { exportCsv, stamp } from '@/utils/csv'
 import { useAppStore } from '@/stores/app'
 import { useClusterStore } from '@/stores/cluster'
 import { useConfirm } from '@/composables/useConfirm'
+import { fetchAuditLogs } from '@/api/security'
 
 const app = useAppStore()
 const store = useClusterStore()
@@ -49,6 +50,8 @@ onMounted(() => {
   if (!store.sysLogs) store.loadSysLogs()
   // 核心服务与第三方接口可用性：独立区块
   store.loadDependencies()
+  // 管理员操作日志检索：独立轻量接口
+  loadAuditLogs()
 })
 
 /* ------------------------------ 图表配置 ------------------------------ */
@@ -446,13 +449,73 @@ const queryLogs = () => {
 
 const filteredLogs = computed(() => (store.sysLogs?.logs || [])
   .filter((l) => matchKeyword(l.time, l.level, l.category, l.source, l.message)))
+
+/* ------------------------------ 操作日志检索 ------------------------------ */
+
+/** 管理员操作日志（操作人 / 时间 / IP 检索）：独立于系统日志，服务端分页 */
+const auditLogs = ref([])
+const auditLoading = ref(false)
+const auditPage = ref(1)
+const auditTotalPages = ref(1)
+const auditTotal = ref(0)
+const auditQuery = reactive({ operator: '', start: '', end: '' })
+/** 表单内编辑值，点击查询才生效，避免输入中途触发请求 */
+const auditForm = reactive({ operator: '', start: '', end: '' })
+
+const loadAuditLogs = async () => {
+  auditLoading.value = true
+  try {
+    const res = await fetchAuditLogs({
+      page: auditPage.value,
+      size: 10,
+      operator: auditQuery.operator || undefined,
+      start: auditQuery.start || undefined,
+      end: auditQuery.end || undefined,
+    })
+    auditLogs.value = res.rows || []
+    auditPage.value = res.page
+    auditTotalPages.value = res.totalPages
+    auditTotal.value = res.total
+  } catch {
+    auditLogs.value = []
+  } finally {
+    auditLoading.value = false
+  }
+}
+
+/** 执行检索：回到第一页并同步查询条件 */
+const searchAuditLogs = () => {
+  auditQuery.operator = auditForm.operator.trim()
+  auditQuery.start = auditForm.start
+  auditQuery.end = auditForm.end
+  auditPage.value = 1
+  loadAuditLogs()
+}
+
+/** 清空筛选条件并重新加载 */
+const resetAuditFilters = () => {
+  auditForm.operator = ''
+  auditForm.start = ''
+  auditForm.end = ''
+  searchAuditLogs()
+}
+
+const goAuditPage = (delta) => {
+  const target = auditPage.value + delta
+  if (target < 1 || target > auditTotalPages.value) return
+  auditPage.value = target
+  loadAuditLogs()
+}
+
+/** 操作结果着色：成功绿 / 其余琥珀 */
+const auditResultTone = (result) => (String(result || '').includes('成功') ? 'green' : 'amber')
 </script>
 
 <template>
   <div class="p-5">
     <template v-if="data">
       <PageHeader
-        title="集群态势感知与推演监控大盘"
+        title="监控运维"
         :desc="`全网实时并发、端到端延迟拆解、QPS 吞吐与节点健康度 · 采样周期 ${data.summary.sampling} · ${data.summary.dataDelay}`"
       >
         <template #actions>
@@ -932,6 +995,87 @@ const filteredLogs = computed(() => (store.sysLogs?.logs || [])
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- 操作日志检索（管理员审计：操作人 / 时间 / IP） -->
+      <div class="card anim mt-4">
+        <div class="card-h flex-wrap">
+          <div>
+            <div class="card-t">操作日志检索</div>
+            <div class="card-s">后台管理员全部操作留痕 · 哈希链存证不可篡改 · 支持操作人与日期范围检索</div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <input
+              v-model="auditForm.operator"
+              class="field !w-36 !py-1 text-[12px]"
+              type="text"
+              placeholder="操作人"
+              @keyup.enter="searchAuditLogs"
+            />
+            <input v-model="auditForm.start" class="field !w-36 !py-1 text-[12px]" type="date" />
+            <span class="text-[11px] text-sub">至</span>
+            <input v-model="auditForm.end" class="field !w-36 !py-1 text-[12px]" type="date" />
+            <button class="btn btn-primary btn-sm" @click="searchAuditLogs">
+              <i class="fa-solid fa-magnifying-glass"></i>查询
+            </button>
+            <button class="btn btn-ghost btn-sm" @click="resetAuditFilters">
+              <i class="fa-solid fa-rotate-left"></i>重置
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="tb">
+            <thead>
+              <tr>
+                <th>操作时间</th>
+                <th>操作人</th>
+                <th>角色</th>
+                <th>操作类型</th>
+                <th>操作详情</th>
+                <th>来源 IP / 地域</th>
+                <th>结果</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="log in auditLogs" :key="log.id">
+                <td class="num whitespace-nowrap text-[12px]">{{ log.time }}</td>
+                <td class="text-[12px] font-semibold text-ink">{{ log.operator }}</td>
+                <td class="text-[11.5px] text-sub">{{ log.role }}</td>
+                <td class="whitespace-nowrap text-[12px]">{{ log.action }}</td>
+                <td class="text-[12px]">{{ log.detail }}</td>
+                <td class="num text-[11.5px] text-sub">{{ log.source }}</td>
+                <td><StatusPill :text="log.result" :tone="auditResultTone(log.result)" /></td>
+              </tr>
+              <tr v-if="auditLoading">
+                <td colspan="7" class="py-8 text-center text-[12px] text-sub">
+                  <i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i>正在检索操作日志…
+                </td>
+              </tr>
+              <tr v-else-if="!auditLogs.length">
+                <td colspan="7" class="py-8 text-center text-[12px] text-sub">没有匹配的操作日志</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="flex items-center justify-between px-[18px] py-3 text-[11.5px] text-sub">
+          <span>共 {{ auditTotal }} 条 · 第 {{ auditPage }} / {{ auditTotalPages }} 页</span>
+          <div class="flex items-center gap-2">
+            <button
+              class="btn btn-ghost btn-sm !px-2.5"
+              :disabled="auditPage <= 1"
+              @click="goAuditPage(-1)"
+            >
+              <i class="fa-solid fa-chevron-left"></i>上一页
+            </button>
+            <button
+              class="btn btn-ghost btn-sm !px-2.5"
+              :disabled="auditPage >= auditTotalPages"
+              @click="goAuditPage(1)"
+            >
+              下一页<i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
         </div>
       </div>
     </template>

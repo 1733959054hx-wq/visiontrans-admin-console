@@ -512,12 +512,12 @@ public class DataInitializer implements ApplicationRunner {
                 new GlossaryTask(null, "机场标识多语 v4.0", "—", "本月 +312", "—", "—", "已发布"),
                 new GlossaryTask(null, "金融财报术语 v2.8", "—", "本月 +88", "—", "—", "已发布"));
         List<MaterialAsset> assets = List.of(
-                new MaterialAsset(null, "AR 开屏 · 全站冷启动", "98.4%", "通过"),
-                new MaterialAsset(null, "AR 街景 · 南京路商圈", "95.1%", "通过"),
-                new MaterialAsset(null, "AR Banner · 教育季", "88.7%", "人工复审"),
-                new MaterialAsset(null, "AR 激励视频 · 游戏联运", "82.3%", "人工复审"),
-                new MaterialAsset(null, "AR 信息流 · 电商", "74.6%", "驳回"),
-                new MaterialAsset(null, "AR 贴片 · 影视宣发", "69.2%", "驳回"));
+                new MaterialAsset(null, "AR 开屏 · 全站冷启动", "98.4%", MaterialAsset.VERDICT_PASS),
+                new MaterialAsset(null, "AR 街景 · 南京路商圈", "95.1%", MaterialAsset.VERDICT_PASS),
+                new MaterialAsset(null, "AR Banner · 教育季", "88.7%", MaterialAsset.VERDICT_REVIEW),
+                new MaterialAsset(null, "AR 激励视频 · 游戏联运", "82.3%", MaterialAsset.VERDICT_REVIEW),
+                new MaterialAsset(null, "AR 信息流 · 电商", "74.6%", MaterialAsset.VERDICT_REJECT),
+                new MaterialAsset(null, "AR 贴片 · 影视宣发", "69.2%", MaterialAsset.VERDICT_REJECT));
         moderationRepository.saveTasks(tasks);
         moderationRepository.saveAssets(assets);
 

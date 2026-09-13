@@ -133,7 +133,7 @@ const exportOnboardings = () => {
   <div class="p-5">
     <template v-if="data">
       <PageHeader
-        title="财务订单与商户结算中心"
+        title="财务订单"
         desc="C 端订单支付与退款处置 · 商户入驻资质与合同审核 · 按账期对账分账 · B 端发票申请人工复核"
       >
         <template #actions>

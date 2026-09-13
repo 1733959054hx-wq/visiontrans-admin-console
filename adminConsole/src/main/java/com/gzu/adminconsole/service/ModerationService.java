@@ -231,32 +231,40 @@ public class ModerationService {
 
     private List<ModerationOverviewVO.KanbanColumn> kanban(List<GlossaryTask> tasks) {
         return List.of(
-                column("待初审", "18", "amber", tasks),
-                column("术语复核", "7", "blue", tasks),
-                column("已发布", "1,286", "green", tasks));
+                column("待初审", "amber", tasks),
+                column("术语复核", "blue", tasks),
+                column("已发布", "green", tasks));
     }
 
-    private ModerationOverviewVO.KanbanColumn column(String title, String countLabel, String tone,
-                                                     List<GlossaryTask> tasks) {
+    /** 组装单个看板列：列头计数取该列真实任务数（千分位），不再写死。 */
+    private ModerationOverviewVO.KanbanColumn column(String title, String tone, List<GlossaryTask> tasks) {
         List<ModerationOverviewVO.KanbanCard> cards = tasks.stream()
-                .filter(t -> t.column().equals(title))
+                .filter(t -> title.equals(t.column()))
                 .map(t -> new ModerationOverviewVO.KanbanCard(t.id(), t.title(), t.priority(), t.meta(),
                         t.owner(), t.due()))
                 .toList();
-        return new ModerationOverviewVO.KanbanColumn(title, countLabel, tone, cards);
+        return new ModerationOverviewVO.KanbanColumn(title, String.format("%,d", cards.size()), tone, cards);
     }
 
     private List<ModerationOverviewVO.MaterialRow> assets() {
         List<ModerationOverviewVO.MaterialRow> rows = new ArrayList<>();
         for (MaterialAsset a : repository.findAssets()) {
             String tone = switch (a.verdict()) {
-                case "通过" -> "green";
-                case "人工复审" -> "amber";
+                case MaterialAsset.VERDICT_PASS -> "green";
+                case MaterialAsset.VERDICT_REVIEW -> "amber";
                 default -> "red";
             };
             rows.add(new ModerationOverviewVO.MaterialRow(a.id(), a.name(), a.confidence(), a.verdict(), tone));
         }
         return rows;
+    }
+
+    /**
+     * 素材机审台账轻量列表（广告运营页「广告素材审核」区使用）：
+     * 只查询素材行，不加载审核中台大盘的 KPI / 看板 / UGC 等其余数据。
+     */
+    public List<ModerationOverviewVO.MaterialRow> listAssets() {
+        return assets();
     }
 
     /* ------------------------------ 语种包 / 课程知识包 ------------------------------ */
@@ -307,6 +315,9 @@ public class ModerationService {
         if (!AuditPackage.STATUS_PENDING.equals(current.status())) {
             throw new BusinessException("审核包「" + current.name() + "」已处理：" + current.status());
         }
+        if (!"pass".equalsIgnoreCase(decision) && !"reject".equalsIgnoreCase(decision)) {
+            throw new BusinessException("不支持的复核决定：" + decision + "（可选 pass / reject）");
+        }
         String target = "pass".equalsIgnoreCase(decision)
                 ? AuditPackage.STATUS_PUBLISHED : AuditPackage.STATUS_REJECTED;
         repository.updatePackage(new AuditPackage(current.id(), current.type(), current.name(), current.source(),
@@ -321,10 +332,14 @@ public class ModerationService {
         if (current == null) {
             throw new BusinessException("未找到素材 #" + id);
         }
-        if (!"人工复审".equals(current.verdict())) {
+        if (!MaterialAsset.VERDICT_REVIEW.equals(current.verdict())) {
             throw new BusinessException("素材「" + current.name() + "」不在人工复审队列：" + current.verdict());
         }
-        String target = "pass".equalsIgnoreCase(decision) ? "通过" : "驳回";
+        if (!"pass".equalsIgnoreCase(decision) && !"reject".equalsIgnoreCase(decision)) {
+            throw new BusinessException("不支持的复核决定：" + decision + "（可选 pass / reject）");
+        }
+        String target = "pass".equalsIgnoreCase(decision)
+                ? MaterialAsset.VERDICT_PASS : MaterialAsset.VERDICT_REJECT;
         repository.updateAsset(new MaterialAsset(current.id(), current.name(), current.confidence(), target));
         writeLog("素材机审复核", "素材「" + current.name() + "」复核结果：" + target);
         return ActionResultVO.ok("素材「" + current.name() + "」复核完成：" + target, current.name());

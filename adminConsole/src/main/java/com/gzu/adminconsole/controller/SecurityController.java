@@ -15,6 +15,7 @@ import com.gzu.adminconsole.common.Result;
 import com.gzu.adminconsole.config.RequireRole;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
 import com.gzu.adminconsole.dto.security.AppUserPageVO;
+import com.gzu.adminconsole.dto.security.AuditLogPageVO;
 import com.gzu.adminconsole.dto.security.MenuAccessVO;
 import com.gzu.adminconsole.dto.security.PermissionUpdateRequest;
 import com.gzu.adminconsole.dto.security.SecurityOverviewVO;
@@ -141,8 +142,22 @@ public class SecurityController {
         return Result.ok(service.updateAppUser(user));
     }
 
-    /* ---------------------------- 菜单权限配置 ---------------------------- */
+    /* ------------------------------ 操作日志 ------------------------------ */
 
+    /**
+     * 管理员操作日志分页检索（监控运维页「日志审计」使用）：
+     * 支持操作人模糊匹配与起止日期（yyyy-MM-dd）过滤。
+     */
+    @GetMapping("/audit-logs")
+    public Result<AuditLogPageVO> auditLogs(@RequestParam(required = false) String operator,
+            @RequestParam(required = false) String start,
+            @RequestParam(required = false) String end,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return Result.ok(service.auditLogPage(page, size, start, end, operator));
+    }
+
+    /* ---------------------------- 菜单权限配置 ---------------------------- */
     /** 菜单 × 角色可见性矩阵。 */
     @GetMapping("/menu-permissions")
     public Result<MenuAccessVO> menuPermissions() {

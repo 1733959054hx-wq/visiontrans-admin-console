@@ -576,14 +576,22 @@ public class SecurityRepository {
      * 过滤条件下推到数据库执行，避免把全部日志读进内存。
      */
     public List<AuditLogEntry> findAuditLogs(int page, int size, String start, String end) {
+        return findAuditLogs(page, size, start, end, null);
+    }
+
+    /**
+     * 操作日志分页（page 从 1 开始）：支持时间范围与操作人模糊检索。
+     * 过滤条件下推到数据库执行，避免把全部日志读进内存。
+     */
+    public List<AuditLogEntry> findAuditLogs(int page, int size, String start, String end, String operator) {
         int safePage = Math.max(1, page);
         int safeSize = Math.max(1, Math.min(size, 100));
         TypedQuery<AuditLogEntity> query = em
-                .createQuery("select l from AuditLogEntity l" + auditRangeClause(start, end) + " order by l.id desc",
+                .createQuery("select l from AuditLogEntity l" + auditFilterClause(start, end, operator) + " order by l.id desc",
                         AuditLogEntity.class)
                 .setFirstResult((safePage - 1) * safeSize)
                 .setMaxResults(safeSize);
-        bindAuditRange(query, start, end);
+        bindAuditFilters(query, start, end, operator);
         return query.getResultList().stream().map(this::toLogModel).toList();
     }
 
@@ -591,10 +599,10 @@ public class SecurityRepository {
     public Map<String, Long> countLogsByDate(String start, String end) {
         Query query = em.createQuery(
                         "select substring(l.time, 1, 10), count(l) from AuditLogEntity l"
-                                + auditRangeClause(start, end)
+                                + auditFilterClause(start, end, null)
                                 + " group by substring(l.time, 1, 10) order by substring(l.time, 1, 10)",
                         Object[].class);
-        bindAuditRange(query, start, end);
+        bindAuditFilters(query, start, end, null);
         List<Object[]> rows = query.getResultList();
         Map<String, Long> out = new LinkedHashMap<>();
         for (Object[] row : rows) {
@@ -622,20 +630,25 @@ public class SecurityRepository {
                 .toList();
     }
 
-    /** 操作日志总量（可按 yyyy-MM-dd 时间范围过滤，数据库侧 count）。 */
+    /** 操作日志总量（可按时间范围 / 操作人过滤，数据库侧 count）。 */
     public long totalLogs(String start, String end) {
-        Query query = em.createQuery("select count(l) from AuditLogEntity l" + auditRangeClause(start, end),
+        return totalLogs(start, end, null);
+    }
+
+    /** 操作日志总量：支持时间范围与操作人模糊过滤。 */
+    public long totalLogs(String start, String end, String operator) {
+        Query query = em.createQuery("select count(l) from AuditLogEntity l" + auditFilterClause(start, end, operator),
                 Long.class);
-        bindAuditRange(query, start, end);
+        bindAuditFilters(query, start, end, operator);
         Long count = (Long) query.getSingleResult();
         return count == null ? 0L : count;
     }
 
     /**
-     * 时间范围过滤条件：日志时间以 yyyy-MM-dd 开头，取前 10 位做字符串比较即等价于日期比较。
-     * 仅拼接条件骨架，日期一律以参数绑定，无 SQL 注入风险。
+     * 日志过滤条件：日志时间以 yyyy-MM-dd 开头，取前 10 位做字符串比较即等价于日期比较；
+     * operator 非空时按操作人模糊匹配。所有实参一律参数绑定，无 SQL 注入风险。
      */
-    private static String auditRangeClause(String start, String end) {
+    private static String auditFilterClause(String start, String end, String operator) {
         StringBuilder clause = new StringBuilder(" where 1=1");
         if (start != null && !start.isBlank()) {
             clause.append(" and substring(l.time, 1, 10) >= :start");
@@ -643,15 +656,21 @@ public class SecurityRepository {
         if (end != null && !end.isBlank()) {
             clause.append(" and substring(l.time, 1, 10) <= :end");
         }
+        if (operator != null && !operator.isBlank()) {
+            clause.append(" and l.operator like :operator");
+        }
         return clause.toString();
     }
 
-    private static void bindAuditRange(Query query, String start, String end) {
+    private static void bindAuditFilters(Query query, String start, String end, String operator) {
         if (start != null && !start.isBlank()) {
             query.setParameter("start", start);
         }
         if (end != null && !end.isBlank()) {
             query.setParameter("end", end);
+        }
+        if (operator != null && !operator.isBlank()) {
+            query.setParameter("operator", "%" + operator.trim() + "%");
         }
     }
 

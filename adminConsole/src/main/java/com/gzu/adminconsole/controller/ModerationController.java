@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 import com.gzu.adminconsole.common.Result;
 import com.gzu.adminconsole.config.RequireRole;
 import com.gzu.adminconsole.dto.meta.ActionResultVO;
@@ -89,6 +91,12 @@ public class ModerationController {
     }
 
     /* ------------------------------ 素材机审 CRUD ------------------------------ */
+
+    /** 素材机审台账轻量列表（广告运营页素材审核区复用：只取素材行，不加载审核大盘）。 */
+    @GetMapping("/assets")
+    public Result<List<ModerationOverviewVO.MaterialRow>> assets() {
+        return Result.ok(service.listAssets());
+    }
 
     /** 新增素材（运营管理员及以上）。 */
     @RequireRole({"SUPER_ADMIN", "OPERATIONS"})
