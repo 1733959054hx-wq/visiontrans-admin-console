@@ -95,5 +95,5 @@ C 端接口联调时如需新增字段（如商品简介、封面图），与商
 ## 六、联调环境
 
 - 后端启动环境变量：`ADMIN_DB_USER=shixun` / `ADMIN_DB_PASSWORD=123456` / `ADMIN_DDL_AUTO=update`（首个移动端联调如需建表用）
-- 商户演示账号：`merchant / merchant123`；数据快照：`adminConsole/db/shixun.sql`
+- 商户演示账号：`merchant / merchant123`；数据快照：根目录 `db/shixun.sql`（全量 52 表含数据，直接导入即可运行，见 `db/README.md`）
 - 接口前缀可配置（`admin-console.api.base-path`，默认 `/api`），移动端不要写死 8080 之外的路径假设

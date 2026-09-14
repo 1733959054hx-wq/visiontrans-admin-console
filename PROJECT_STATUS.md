@@ -36,12 +36,12 @@ ADMIN_DDL_AUTO=update
 
 ### 数据库
 - 库名 `shixun`（utf8mb4），52 张表
-- 快照文件（两处同步，内容一致）：
-  - `adminConsole/db/shixun.sql`（工程内标准位置，全量含数据，导入即恢复）
-  - `db/shixun.sql`（**根目录独立副本**，供移动端同学直接拉取导入，含使用说明 `db/README.md`）
-- 迁移脚本：`adminConsole/db/upgrade-*.sql`（幂等，可安全重复执行）
+- 全量快照：**`db/shixun.sql`（根目录唯一位置，全量含数据可直接导入，旁附 `db/README.md` 导入说明）**
+  - 2026-09-13 起按队友决策（d141986）SQL 不再入库，`adminConsole/db/` 已移除；
+    历史版本可从 git 历史（e9d895e 之前）取回，迁移脚本同样由本地自行留档
+- 迁移脚本：本地维护（`upgrade-merchant-files-subtitles-stats.sql` / `upgrade-merchant-session-mobile.sql` 等历史脚本见 git 历史）
 - root 密码：`jcJC198101`
-- 业务账号：`shixun / 123456`（GRANT ALL ON shixun.*）
+- 业务账号：`shixun / 123456`（GRANT ALL ON shixun.*；后端连接支持 `DB_USERNAME/DB_PASSWORD` 环境变量覆盖）
 
 ## 三、架构与分层
 
@@ -211,7 +211,7 @@ git pull upstream main   # 快进或合并
 1. **会话存内存**：管理员会话仍为内存态（重启即注销）；**商户会话已落库**（merchant_session 表，2026-09-11 多端互通改造），后端重启商户不失效，网页重开仍在线
 2. **不要同时跑两份后端**：8080 端口唯一
 3. **旧副本勿启动**：`D:\慧科实习文件\VR项目代码\visiontrans-api` 是废弃的独立工程（占用 8080 且连 visiontrans 库）
-4. **`shixun.sql` 应与实际库保持一致**：每次新加表/列后重新导出 mysqldump 全量覆盖（最新一次 2026-09-11，含 merchant_subtitle / merchant_video_daily / merchant_session.device）。**注意导出后要同步两处**：`adminConsole/db/shixun.sql` 与根目录 `db/shixun.sql`（独立副本,给移动端同学直接导入用,旁边有 db/README.md 导入说明）。曾因目录树写错导致伙伴找不到库文件——快照实际位置以本条为准。
+4. **`shixun.sql` 应与实际库保持一致**：每次新加表/列后重新导出 mysqldump 全量覆盖根目录 `db/shixun.sql`（最新一次 2026-09-11，含 merchant_subtitle / merchant_video_daily / merchant_session.device）。**2026-09-13 起按队友决策 SQL 不再入库**：快照唯一位置为根目录 `db/shixun.sql`，`adminConsole/db/` 已删除；幂等迁移脚本由各负责人本地留档（历史版本可用 `git show e9d895e:adminConsole/db/...` 取回）。
 5. **前端热更新**：Vite dev 下改动 .vue 文件即时生效，无需重启
 6. **密码哈希**：PasswordHasher 用 PBKDF2(600k 迭代)，用 `PasswordHasher.hash(明文)` 生成，登录时 `matches(明文, hash)` 校验
 7. **上传文件落盘**：素材/视频/字幕/资质统一经 `POST /merchant/files`（kind=image/video/subtitle/doc），存 `admin-console.jingchen.upload-dir`（默认 `uploads/merchant`，按 32 位 uuid 重命名）；**取回 `GET /merchant/files/{storedName}` 为公开能力地址**（无需令牌，名称不可猜测，移动端/用户端可直接引用展示；见 isPublicPath 中的 `/merchant/files/` 段声明），上传仍需商户令牌；删除档案不删文件。IDEA 启动时工作目录可能是项目根目录，落盘位置随之不同，注意两处 uploads/ 都已加 .gitignore
