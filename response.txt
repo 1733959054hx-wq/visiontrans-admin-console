@@ -1,5 +1,0 @@
-{
-  "message": "Problems parsing JSON",
-  "documentation_url": "https://docs.github.com/rest/collaborators/collaborators#add-a-repository-collaborator",
-  "status": "400"
-}

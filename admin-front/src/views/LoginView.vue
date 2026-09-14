@@ -16,9 +16,6 @@ const ui = useUiStore()
 const router = useRouter()
 
 const form = reactive({ username: '', password: '' })
-/** 登录身份：管理员 / 商户（选身份后走各自独立的登录接口与令牌体系）。
- *  从工作台「返回」到登录页时按上次身份预选，配合免验证码宽限可直接重登。 */
-const identity = ref(localStorage.getItem('admin_console_identity') === 'merchant' ? 'merchant' : 'admin')
 const loading = ref(false)
 const captcha = ref(null)
 const clicks = ref([])
@@ -193,7 +190,7 @@ const mascotSpeech = computed(() => {
     return {
       tag: '认真观察',
       type: 'curious',
-      text: identity.value === 'merchant' ? '请在右侧输入您的商户授权账号 ✍️' : '请在右侧输入您的管理员授权账号 ✍️',
+      text: '请在右侧输入您的授权账号，系统会自动识别身份 ✍️',
     }
   }
   if (isBlinking.value) {
@@ -325,6 +322,16 @@ const confirmLogin = async () => {
 }
 
 const submitLogin = async (captchaId, captchaClicks) => {
+  // 提交前兜底：免验证码宽限期内验证码面板不会打开，而公钥原本只随验证码加载，
+  // 此处必须保证公钥已就位，否则空公钥会让口令加密直接失败（登出后重登的故障点）
+  if (!publicKey.value) {
+    try {
+      publicKey.value = await getPublicKey()
+    } catch {
+      formError.value = '安全公钥获取失败，请刷新页面重试'
+      return
+    }
+  }
   loading.value = true
   formError.value = ''
   clearGesture()
@@ -337,10 +344,8 @@ const submitLogin = async (captchaId, captchaClicks) => {
     verifyLine.value = VERIFY_LINES[step]
   }, 900)
   try {
-    // 按所选身份走各自独立的登录接口：商户签发商户令牌，管理员签发后台令牌
-    const submit = identity.value === 'merchant'
-      ? await auth.loginMerchant(form.username, form.password, publicKey.value, captchaId, captchaClicks)
-      : await auth.login(form.username, form.password, publicKey.value, captchaId, captchaClicks)
+    // 统一登录接口：后端按账号自动识别管理员 / 商户身份并签发对应体系的令牌
+    const submit = await auth.login(form.username, form.password, publicKey.value, captchaId, captchaClicks)
     loginStatus.value = 'success'
     ui.success(`欢迎回来，${submit.profile.name}`)
     const target = submit.profile.roleCode === 'MERCHANT' ? '/merchant' : '/'
@@ -380,6 +385,14 @@ const submitLogin = async (captchaId, captchaClicks) => {
 
 onMounted(() => {
   window.addEventListener('mousemove', handleMouseMove, { passive: true })
+  // 进页面即预取 RSA 公钥：宽限期内直接登录不弹验证码，公钥不能再依赖验证码面板顺带获取
+  getPublicKey()
+    .then((key) => {
+      if (!publicKey.value) publicKey.value = key
+    })
+    .catch(() => {
+      // 预取失败不打扰用户，提交时 submitLogin 还会再兜底取一次
+    })
   // 由登出跳转而来（/login?bye=1）：短暂表达不舍后恢复常态
   if (route.query.bye) {
     farewell.value = true
@@ -769,34 +782,9 @@ onBeforeUnmount(() => {
                 返回工作台 <i class="fa-solid fa-arrow-right text-[10px]"></i>
               </button>
             </div>
-            <!-- 身份选择：管理员 / 商户，分别走独立的登录接口与令牌体系 -->
-            <div class="mb-4 inline-flex rounded-xl border border-line bg-slate-50 p-1">
-              <button
-                type="button"
-                class="rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition"
-                :class="identity === 'admin' ? 'bg-white text-electric shadow-sm' : 'text-sub hover:text-ink'"
-                @click="identity = 'admin'"
-              >
-                管理员
-              </button>
-              <button
-                type="button"
-                class="rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition"
-                :class="identity === 'merchant' ? 'bg-white text-electric shadow-sm' : 'text-sub hover:text-ink'"
-                @click="identity = 'merchant'"
-              >
-                商户
-              </button>
-            </div>
-            <h2 class="text-[17px] font-bold tracking-tight text-ink">
-              {{ identity === 'merchant' ? '商户登录' : '管理员登录' }}
-            </h2>
+            <h2 class="text-[17px] font-bold tracking-tight text-ink">账号登录</h2>
             <p class="mt-1 text-[12px] text-sub">
-              {{
-                identity === 'merchant'
-                  ? '请输入商户授权凭证以进入独立工作台'
-                  : '请输入系统授权凭证以访问控制台'
-              }}
+              请输入授权凭证，系统将自动识别身份并进入对应工作台
             </p>
           </div>
 
@@ -851,15 +839,16 @@ onBeforeUnmount(() => {
             <span>登 录</span>
           </button>
 
-          <div class="mt-4 rounded-lg border border-brand-100 bg-brand-50 p-2.5 text-center text-[11.5px] text-sub">
-            <template v-if="identity === 'merchant'">
-              演示账号 <code class="rounded bg-brand-50 px-1 py-0.5 font-mono text-ink">merchant</code> / 口令
-              <code class="rounded bg-brand-50 px-1 py-0.5 font-mono text-ink">merchant123</code> · RSA 保护
-            </template>
-            <template v-else>
-              演示账号 <code class="rounded bg-brand-50 px-1 py-0.5 font-mono text-ink">admin</code> / 口令
-              <code class="rounded bg-brand-50 px-1 py-0.5 font-mono text-ink">admin123</code> · RSA 保护
-            </template>
+          <div class="mt-4 space-y-1 rounded-lg border border-brand-100 bg-brand-50 p-2.5 text-center text-[11.5px] text-sub">
+            <div>
+              管理员演示账号 <code class="rounded bg-white/60 px-1 py-0.5 font-mono text-ink">admin</code> / 口令
+              <code class="rounded bg-white/60 px-1 py-0.5 font-mono text-ink">admin123</code>
+            </div>
+            <div>
+              商户演示账号 <code class="rounded bg-white/60 px-1 py-0.5 font-mono text-ink">merchant</code> / 口令
+              <code class="rounded bg-white/60 px-1 py-0.5 font-mono text-ink">merchant123</code>
+            </div>
+            <div class="text-[10.5px] text-slate-400">口令经 RSA-2048 公钥加密传输</div>
           </div>
 
           <!-- 卡片内验证抽屉 -->

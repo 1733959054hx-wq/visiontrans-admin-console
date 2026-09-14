@@ -32,6 +32,20 @@ export function login(username, password, publicKey, captchaId, captchaClicks) {
   return request.post('/auth/login', { username, password: encrypted, captchaId, captchaClicks })
 }
 
+/**
+ * 统一登录：无需选择身份，后端按账号自动识别管理员 / 商户（管理员优先），
+ * 返回 { token, identity: 'admin' | 'merchant', profile, expireAt }。
+ */
+export function unifiedLogin(username, password, publicKey, captchaId, captchaClicks) {
+  const encryptor = new JSEncrypt()
+  encryptor.setPublicKey(publicKey)
+  const encrypted = encryptor.encrypt(password)
+  if (!encrypted) {
+    return Promise.reject(new Error('口令加密失败，请刷新页面重试'))
+  }
+  return request.post('/auth/auto-login', { username, password: encrypted, captchaId, captchaClicks })
+}
+
 /** 登出 */
 export function logout() {
   return request.post('/auth/logout')

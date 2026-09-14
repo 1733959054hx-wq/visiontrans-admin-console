@@ -1,6 +1,6 @@
 # 视界译 VisionTrans · 平台管理后台（Admin Console）
 
-基于 `demo/管理后台-AdminConsole.html` 高保真原型，落地的一套**前后端分离**管理后台：
+一套**前后端分离**的管理后台（原始高保真原型已移除，页面以现行代码为准）：
 
 - **前端**：Vue 3 + Vite + Pinia + Vue Router + Tailwind CSS + ECharts + Axios
 - **后端**：Spring Boot 4.1.1（Java 21，Maven）+ Spring Data JPA（Hibernate）
@@ -47,7 +47,7 @@
 
 ```
 adminConsole/
-├─ demo/                                # 原始高保真原型（保留作参考）
+├─ docs/                                # 项目文档（浏览器扩展说明、三级功能清单、后台端/、商户端/）
 ├─ adminConsole/                        # 后端 Spring Boot
 │  ├─ pom.xml
 │  ├─ db/init.sql                       # 建库 + 账号授权脚本（用 root 执行一次）
@@ -199,12 +199,14 @@ npm run build          # 产物在 admin-front/dist
 
 > 商户账号默认由 `MerchantAccountInitializer` 在 `admin-console.jingchen.enabled=true`（默认）时自动灌入；账号 / 口令可经 `application.properties` 的 `admin-console.jingchen.username` / `.password` 覆盖。
 
-**方案：独立登录（选身份）**
+**方案：统一登录入口，自动识别身份**
 
-登录页提供「管理员 / 商户」身份切换（顶部分段控件）。二者走**完全独立的登录接口与令牌体系**：
+登录页无需选择身份，一个账号框直接登录。由 `POST /api/auth/auto-login` 按账号自动识别（管理员优先，两侧均无账号时返回统一错误文案，不暴露账号是否存在）：
 
-- 管理员：`POST /api/auth/login` → 主工程 `auth_session` 令牌
-- 商户：`POST /api/merchant/login` → 模块自有 `merchant_session` 令牌
+- 识别为管理员 → 管理员登录链路（`POST /api/auth/login` 同逻辑）→ 主工程 `auth_session` 令牌
+- 识别为商户 → 商户登录链路（`POST /api/merchant/login` 同逻辑）→ 模块自有 `merchant_session` 令牌
+
+两条原始登录接口均保留：管理员接口供兼容，**`/api/merchant/login` 供移动端 App 联调使用**；验证码、免验证码宽限、锁定计数在两套体系间各自独立，登出会撤销宽限（再登录必须重新验证码）。
 
 统一鉴权 `AuthInterceptor` 通过 `common/TokenResolver` SPI 依次尝试主工程与会话解析器：管理员令牌由 `AuthRepository` 解析，商户令牌由 `MerchantSessionRepository` 解析，互不干扰。
 

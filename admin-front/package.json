@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:ext": "node scripts/gen-icons.mjs && vite build --mode extension",
     "preview": "vite preview"
   },
   "dependencies": {

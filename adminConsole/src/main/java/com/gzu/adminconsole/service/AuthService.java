@@ -160,10 +160,17 @@ public class AuthService {
     private record FailureState(boolean locked, int remaining) {
     }
 
-    /** 登出：删除会话。 */
+    /**
+     * 登出：删除会话并撤销免验证码宽限。
+     * 先查会话拿到账号（删除后即不可查），再撤销宽限，保证再次登录必须重新验证。
+     */
     @Transactional
     public void logout(String token) {
+        AuthSessionEntity session = authRepository.findValidSession(token);
         authRepository.deleteSession(token);
+        if (session != null) {
+            captchaGrace.revoke(CaptchaGraceService.SCOPE_ADMIN, session.getUsername());
+        }
     }
 
     /** 当前登录管理员（令牌无效时抛 401）。资料实时读库，改名 / 换组后旧令牌也能读到最新信息。 */

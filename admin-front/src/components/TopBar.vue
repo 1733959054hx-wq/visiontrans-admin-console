@@ -9,6 +9,7 @@ import { useAppStore } from '@/stores/app'
 import { useClusterStore } from '@/stores/cluster'
 import { useAuthStore } from '@/stores/auth'
 import { useConfirm } from '@/composables/useConfirm'
+import { isExtension } from '@/api/extConfig'
 
 const app = useAppStore()
 const cluster = useClusterStore()
@@ -28,8 +29,9 @@ const logout = async () => {
   const ok = await askConfirm('退出后将结束当前会话并返回登录页，需要重新验证身份后才能再次进入。', '确认退出登录')
   if (!ok) return
   await auth.logout()
-  // bye=1 让登录页的「译译」以哭泣相迎
-  location.href = '/login?bye=1'
+  // bye=1 让登录页的「译译」以哭泣相迎；扩展为 hash 路由，只能改 hash
+  if (isExtension) location.hash = '#/login?bye=1'
+  else location.href = '/login?bye=1'
 }
 
 /** 确认框中醒目展示当前登录身份，一眼看清"谁要退出" */

@@ -1,6 +1,7 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
+import { isExtension, hasExtensionApiBase } from '@/api/extConfig'
 import { MERCHANT_ROLE } from '@/jingchen/config'
 // 模块路由由各模块自行维护后在此注册（商户模块：src/jingchen/router）
 import { merchantRoutes } from '@/jingchen/router'
@@ -38,13 +39,25 @@ function isAdminPage(route) {
  * 实现「商户看不到管理页、管理员进不了商户页」的双向隔离。
  */
 const router = createRouter({
-  history: createWebHistory(),
+  // chrome-extension:// 协议下没有服务端做 history 回退，扩展包必须用 hash 路由；网页不变
+  history: isExtension ? createWebHashHistory() : createWebHistory(),
   routes: [
+    // 扩展专属：首次使用时配置后端地址（不登录也必须能访问）
+    ...(isExtension
+      ? [
+          {
+            path: '/ext-setup',
+            name: 'ext-setup',
+            component: () => import('@/views/ExtensionSetupView.vue'),
+            meta: { public: true, title: '服务器配置' },
+          },
+        ]
+      : []),
     {
       path: '/login',
       name: 'login',
       component: () => import('@/views/LoginView.vue'),
-      meta: { public: true, title: '管理员登录' },
+      meta: { public: true, title: '登录' },
     },
     {
       path: '/',
@@ -98,6 +111,10 @@ const router = createRouter({
 // 登录守卫：未登录访问受保护页面 → 跳登录页；已登录访问登录页 → 按角色送回各自首页
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
+  // 扩展模式：未配置后端地址时，任何页面（含登录页）都先落到配置页
+  if (isExtension && !hasExtensionApiBase() && to.name !== 'ext-setup') {
+    return { name: 'ext-setup' }
+  }
   if (to.meta.public) {
     // 登录页始终放行：支持从工作台「返回」到登录页（页面内提供「返回工作台」入口），
     // 也支持在免验证码宽限期内直接重新登录或切换身份

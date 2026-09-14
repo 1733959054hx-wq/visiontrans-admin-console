@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "视界译 VisionTrans 管理控制台",
+  "version": "1.0.0",
+  "description": "视界译平台管理后台扩展：监控运维、版本管理、内容审核、广告运营、系统管理与商户工作台。",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "打开视界译管理控制台",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://*/*"
+  ]
+}

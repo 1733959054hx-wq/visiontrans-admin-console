@@ -47,6 +47,16 @@ public class CaptchaGraceService {
         trustedUntil.values().removeIf(until -> until <= now);
     }
 
+    /**
+     * 主动撤销宽限（用户显式登出时调用）：登出代表本次信任会话结束，
+     * 再次登录必须重新完成验证码挑战，而不是沿用 10 分钟宽限直接放行。
+     */
+    public void revoke(String scope, String account) {
+        if (account != null && !account.isBlank()) {
+            trustedUntil.remove(key(scope, account));
+        }
+    }
+
     private static String key(String scope, String account) {
         return (scope == null ? "" : scope) + ':' + (account == null ? "" : account.trim());
     }

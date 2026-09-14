@@ -38,9 +38,9 @@ public class AuthRepository implements TokenResolver {
     /** 令牌有效期（小时）。 */
     public static final int TOKEN_HOURS = 8;
 
-    /** 免鉴权公开路径后缀（登录 / 验证码 / 公钥下发）。 */
+    /** 免鉴权公开路径后缀（登录 / 统一登录 / 验证码 / 公钥下发）。 */
     private static final List<String> PUBLIC_PATH_SUFFIXES =
-            List.of("/auth/login", "/auth/captcha", "/auth/public-key");
+            List.of("/auth/login", "/auth/auto-login", "/auth/captcha", "/auth/public-key");
 
     @PersistenceContext
     private EntityManager em;

@@ -80,9 +80,13 @@ public class MerchantAuthService {
         return new MerchantLoginVO(s.getToken(), profileOf(m), s.getExpireAt().format(FMT));
     }
 
-    /** 注销当前商户会话。 */
+    /** 注销当前商户会话，并撤销该商户的免验证码宽限（再次登录需重新完成安全挑战）。 */
     public void logout(String token) {
+        MerchantSessionEntity session = sessions.findValid(token);
         sessions.delete(token);
+        if (session != null) {
+            captchaGrace.revoke(CaptchaGraceService.SCOPE_MERCHANT, session.getMerchantCode());
+        }
     }
 
     /** 返回当前登录商户的身份档案（用于 /me）。 */

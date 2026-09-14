@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-import { login as apiLogin, logout as apiLogout, me as apiMe } from '@/api/auth'
-import { merchantLogin, merchantLogout, merchantMe } from '@/jingchen/api/merchant'
+import { unifiedLogin, logout as apiLogout, me as apiMe } from '@/api/auth'
+import { merchantLogout, merchantMe } from '@/jingchen/api/merchant'
 
 /** 登录身份持久化键：刷新页面后能据此分辨调用哪套 /me 与 /logout */
 const IDENTITY_KEY = 'admin_console_identity'
@@ -33,18 +33,15 @@ export const useAuthStore = defineStore('auth', {
       if (identity) localStorage.setItem(IDENTITY_KEY, identity)
       else localStorage.removeItem(IDENTITY_KEY)
     },
+    /**
+     * 统一登录：后端按账号自动识别身份（管理员优先），返回 identity('admin'/'merchant')。
+     * 两类令牌存于同一 localStorage 键，拦截器按令牌所属会话体系区分，
+     * restore / logout 再按这里记录的 identity 各走各的 /me、/logout。
+     */
     async login(username, password, publicKey, captchaId, captchaClicks) {
-      const res = await apiLogin(username, password, publicKey, captchaId, captchaClicks)
+      const res = await unifiedLogin(username, password, publicKey, captchaId, captchaClicks)
       this.setToken(res.token)
-      this.setIdentity('admin')
-      this.user = res.profile
-      return res
-    },
-    /** 商户独立登录：签发商户令牌，存于同一 localStorage 键，由拦截器按令牌类型区分 */
-    async loginMerchant(username, password, publicKey, captchaId, captchaClicks) {
-      const res = await merchantLogin(username, password, publicKey, captchaId, captchaClicks)
-      this.setToken(res.token)
-      this.setIdentity('merchant')
+      this.setIdentity(res.identity === 'merchant' ? 'merchant' : 'admin')
       this.user = res.profile
       return res
     },

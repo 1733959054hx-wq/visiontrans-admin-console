@@ -13,8 +13,10 @@ import com.gzu.adminconsole.common.Result;
 import com.gzu.adminconsole.config.AuthInterceptor;
 import com.gzu.adminconsole.config.RequireRole;
 import com.gzu.adminconsole.dto.meta.LoginResultVO;
+import com.gzu.adminconsole.dto.meta.UnifiedLoginVO;
 import com.gzu.adminconsole.service.AuthService;
 import com.gzu.adminconsole.service.CaptchaService;
+import com.gzu.adminconsole.service.UnifiedAuthService;
 
 import java.util.List;
 
@@ -26,11 +28,14 @@ import java.util.List;
 public class AuthController {
 
     private final AuthService service;
+    private final UnifiedAuthService unifiedAuthService;
     private final CaptchaService captchaService;
     private final RsaKeyHolder rsaKeyHolder;
 
-    public AuthController(AuthService service, CaptchaService captchaService, RsaKeyHolder rsaKeyHolder) {
+    public AuthController(AuthService service, UnifiedAuthService unifiedAuthService,
+                          CaptchaService captchaService, RsaKeyHolder rsaKeyHolder) {
         this.service = service;
+        this.unifiedAuthService = unifiedAuthService;
         this.captchaService = captchaService;
         this.rsaKeyHolder = rsaKeyHolder;
     }
@@ -42,6 +47,19 @@ public class AuthController {
             return Result.fail(400, "请求体不能为空");
         }
         return Result.ok(service.login(request.username(), request.password(),
+                request.captchaId(), request.captchaClicks()));
+    }
+
+    /**
+     * 统一登录：用户无需选择身份，系统按账号自动识别管理员 / 商户（管理员优先），
+     * 命中后走各自原有的验证码、风控与会话签发流程，返回归一化结果。
+     */
+    @PostMapping("/auto-login")
+    public Result<UnifiedLoginVO> autoLogin(@RequestBody LoginRequest request) {
+        if (request == null) {
+            return Result.fail(400, "请求体不能为空");
+        }
+        return Result.ok(unifiedAuthService.login(request.username(), request.password(),
                 request.captchaId(), request.captchaClicks()));
     }
 
