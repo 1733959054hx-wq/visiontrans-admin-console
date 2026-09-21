@@ -44,3 +44,6 @@ adminConsole/uploads/
 # ============ 本地文档 / 设计稿（不入库） ============
 项目api接口设计/
 GITHUB_GUIDE.md
+
+# ============ 若依重构子仓库（独立 git 仓库,不随本仓库提交） ============
+visiontrans-ruoyi/
